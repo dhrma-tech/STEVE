@@ -400,12 +400,12 @@ Build all department structures, views, entities, panels, and department board i
 - Locked vs coming-soon display for Support/Ops/Finance/Legal.
 
 ## Completion Criteria
-- [ ] All 8 departments visible and inspectable.
-- [ ] Active/locked/coming-soon states match spec assumptions.
-- [ ] Every department has default agent, description, cover, tasks/files/context sections.
-- [ ] Department board supports setup prompt and launch CTA.
-- [ ] Verification pass clean.
-- [ ] `checkpoint-8.md` written.
+- [x] All 8 departments visible and inspectable.
+- [x] Active/locked/coming-soon states match spec assumptions.
+- [x] Every department has default agent, description, cover, tasks/files/context sections.
+- [x] Department board supports setup prompt and launch CTA.
+- [x] Verification pass clean.
+- [x] `checkpoint-8.md` written.
 
 ---
 
@@ -441,13 +441,13 @@ Build full roadmap UI, dependency graph, milestones, unlocks, and launch flow.
 - Work type defaults per roadmap item.
 
 ## Completion Criteria
-- [ ] All listed stages and items exist.
-- [ ] Dependencies lock/unlock correctly.
-- [ ] Detail panel has all required sections.
-- [ ] Launch creates task or asks input/approval.
-- [ ] Roadmap progress updates.
-- [ ] Verification pass clean.
-- [ ] `checkpoint-9.md` written.
+- [x] All listed stages and items exist.
+- [x] Dependencies lock/unlock correctly.
+- [x] Detail panel has all required sections.
+- [x] Launch creates task or asks input/approval.
+- [x] Roadmap progress updates.
+- [x] Verification pass clean.
+- [x] `checkpoint-9.md` written.
 
 ---
 
@@ -486,14 +486,14 @@ Implement task creation, assignment, filters, list/board/calendar views, subtask
 - Optimistic update scope.
 
 ## Completion Criteria
-- [ ] Task can be created from every required entry point.
-- [ ] List/board/calendar views work.
-- [ ] Filters work.
-- [ ] Subtasks/comments/attachments work.
-- [ ] Statuses match product spec.
-- [ ] Approval-required tasks pause for human review.
-- [ ] Verification pass clean.
-- [ ] `checkpoint-10.md` written.
+- [x] Task can be created from every required entry point.
+- [x] List/board/calendar views work.
+- [x] Filters work.
+- [x] Subtasks/comments/attachments work.
+- [x] Statuses match product spec.
+- [x] Approval-required tasks pause for human review.
+- [x] Verification pass clean.
+- [x] `checkpoint-10.md` written.
 
 ---
 
@@ -540,7 +540,7 @@ Build agent creation, configuration, execution, monitoring, logs, and marketplac
 - [x] Logs/actions visible.
 - [x] Browser/scratchpad/replay states exist.
 - [x] Verification pass clean.
-- [ ] `checkpoint-11.md` written.
+- [x] `checkpoint-11.md` written.
 
 ---
 
@@ -584,7 +584,7 @@ Implement Cofounder chat, task chat, threads, mentions, file attachments, and AI
 - [x] Agent/system action logs display.
 - [x] Empty/loading/error states complete.
 - [x] Verification pass clean.
-- [ ] `checkpoint-12.md` written.
+- [x] `checkpoint-12.md` written.
 
 ---
 
@@ -712,13 +712,13 @@ Audit and complete mobile/tablet behavior for every surface.
 - Minimum practical app viewport behavior.
 
 ## Completion Criteria
-- [ ] Public site usable at mobile/tablet/desktop.
-- [ ] App usable at mobile/tablet/desktop.
-- [ ] No text overflow.
-- [ ] No incoherent overlaps.
-- [ ] Playwright screenshots checked.
-- [ ] Verification pass clean.
-- [ ] `checkpoint-15.md` written.
+- [x] Public site usable at mobile/tablet/desktop.
+- [x] App usable at mobile/tablet/desktop.
+- [x] No text overflow.
+- [x] No incoherent overlaps.
+- [x] Playwright screenshots checked.
+- [x] Verification pass clean.
+- [x] `checkpoint-15.md` written.
 
 ---
 
@@ -751,11 +751,11 @@ Complete page transitions, micro-interactions, skeleton states, entrance animati
 - Which animations are disabled in reduced motion.
 
 ## Completion Criteria
-- [ ] Verified keyframes implemented or equivalent.
-- [ ] Reduced motion disables nonessential movement.
-- [ ] Animations do not cause layout shift.
-- [ ] Verification pass clean.
-- [ ] `checkpoint-16.md` written.
+- [x] Verified keyframes implemented or equivalent.
+- [x] Reduced motion disables nonessential movement.
+- [x] Animations do not cause layout shift.
+- [x] Verification pass clean.
+- [x] `checkpoint-16.md` written.
 
 ---
 
@@ -788,12 +788,12 @@ Ensure every surface has explicit loading, empty, error, and retry states.
 - Retry behavior for provider vs validation errors.
 
 ## Completion Criteria
-- [ ] No raw crashes.
-- [ ] No blank screens.
-- [ ] Every async surface has loading/error/empty.
-- [ ] Error codes map to user-facing copy.
-- [ ] Verification pass clean.
-- [ ] `checkpoint-17.md` written.
+- [x] No raw crashes.
+- [x] No blank screens.
+- [x] Every async surface has loading/error/empty.
+- [x] Error codes map to user-facing copy.
+- [x] Verification pass clean.
+- [x] `checkpoint-17.md` written.
 
 ---
 
@@ -840,13 +840,13 @@ Add unit, integration, and E2E tests for critical logic and flows.
 - CI command set.
 
 ## Completion Criteria
-- [ ] Unit tests pass.
-- [ ] Integration tests pass.
-- [ ] E2E tests pass.
-- [ ] CI skeleton runs checks.
-- [ ] Final audit can begin.
-- [ ] Verification pass clean.
-- [ ] `checkpoint-18.md` written.
+- [x] Unit tests pass.
+- [x] Integration tests pass.
+- [x] E2E tests pass.
+- [x] CI skeleton runs checks.
+- [x] Final audit can begin.
+- [x] Verification pass clean.
+- [x] `checkpoint-18.md` written.
 
 ---
 
@@ -866,7 +866,7 @@ Add unit, integration, and E2E tests for critical logic and flows.
 - Fix every partial/missing item.
 
 ## Completion Criteria
-- [ ] Audit table is 100% built.
-- [ ] No partial/missing items remain.
-- [ ] `SCRATCHPAD.md` says build complete.
-- [ ] Final checkpoint written.
+- [x] Audit table is 100% built.
+- [x] No partial/missing items remain.
+- [x] `SCRATCHPAD.md` says build complete.
+- [x] Final checkpoint written.

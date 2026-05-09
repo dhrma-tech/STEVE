@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Figtree, IBM_Plex_Mono, Pixelify_Sans, Plus_Jakarta_Sans } from "next/font/google";
+import { cn } from "@/lib/utils/cn";
 import "@xyflow/react/dist/style.css";
 import "@/styles/globals.css";
 
@@ -35,8 +36,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={`${plusJakarta.variable} ${figtree.variable} ${ibmPlexMono.variable} ${pixelifySans.variable}`}>
+    <html lang="en" suppressHydrationWarning>
+      <body 
+        className={cn(plusJakarta.variable, figtree.variable, ibmPlexMono.variable, pixelifySans.variable)} 
+        suppressHydrationWarning
+      >
         {children}
       </body>
     </html>

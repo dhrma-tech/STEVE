@@ -49,6 +49,10 @@ export function PreferencesSettingsForm({ orgId, initialData }: { orgId: string;
   const [message, setMessage] = React.useState<string | null>(null);
 
   async function save() {
+    if (!preferredName.trim()) {
+      setMessage("Preferred name cannot be empty.");
+      return;
+    }
     setBusy(true);
     setMessage(null);
     const payload = await api<PReferencesSettingsDataCompat>(`/api/orgs/${orgId}/settings/preferences`, {

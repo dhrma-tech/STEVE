@@ -22,16 +22,24 @@ export function HeroPixelScene({ className }: { className?: string }) {
         className
       )}
     >
-      <div className="absolute left-[6%] top-[18%] size-20 animate-[logo-slide_22s_linear_infinite] bg-white/45 shadow-[140px_30px_0_12px_rgba(255,255,255,0.35),320px_-10px_0_8px_rgba(255,255,255,0.4),720px_45px_0_14px_rgba(255,255,255,0.32)]" />
-      <div className="absolute bottom-[20%] right-[12%] h-[320px] w-[320px] rounded-[18px] border-[10px] border-[#315946] bg-[linear-gradient(180deg,#d9f7ff,#85bfe2_62%,#55768d)] shadow-[0_28px_0_#315946,0_50px_0_rgba(0,0,0,0.08)]" />
-      <div className="absolute bottom-[23%] right-[20%] h-[220px] w-[68px] bg-[#253d37] shadow-[80px_30px_0_#253d37,-78px_42px_0_#253d37]" />
-      <div className="absolute bottom-[31%] right-[19%] grid grid-cols-3 gap-3">
+      {/* Clouds - only on desktop to avoid headline overlap */}
+      <div className="absolute left-[6%] top-[18%] size-20 animate-[logo-slide_22s_linear_infinite] bg-white/45 shadow-[140px_30px_0_12px_rgba(255,255,255,0.35),320px_-10px_0_8px_rgba(255,255,255,0.4),720px_45px_0_14px_rgba(255,255,255,0.32)] hidden lg:block" />
+      
+      {/* Tower - only on desktop */}
+      <div className="absolute bottom-[20%] right-[12%] h-[320px] w-[320px] rounded-[18px] border-[10px] border-[#315946] bg-[linear-gradient(180deg,#d9f7ff,#85bfe2_62%,#55768d)] shadow-[0_28px_0_#315946,0_50px_0_rgba(0,0,0,0.08)] hidden lg:block" />
+      
+      {/* Antenna - only on desktop */}
+      <div className="absolute bottom-[23%] right-[20%] h-[220px] w-[68px] bg-[#253d37] shadow-[80px_30px_0_#253d37,-78px_42px_0_#253d37] hidden lg:block" />
+      
+      {/* Lights */}
+      <div className="absolute bottom-[31%] right-[19%] hidden grid-cols-3 gap-3 lg:grid">
         {Array.from({ length: 15 }).map((_, index) => (
           <span key={index} className="size-4 bg-[#f8ffbe] shadow-[0_0_16px_rgba(248,255,190,0.75)]" />
         ))}
       </div>
-      <div className="absolute bottom-[13%] left-[48%] h-[170px] w-[270px] rounded-[10px] bg-[#314c59] shadow-[0_24px_0_#1f343d]" />
-      <div className="absolute bottom-[18%] left-[52%] h-[70px] w-[150px] bg-[#f7fbff] shadow-[0_0_0_8px_#223642,0_20px_0_#223642]" />
+
+      <div className="absolute bottom-[13%] left-[48%] h-[170px] w-[270px] rounded-[10px] bg-[#314c59] shadow-[0_24px_0_#1f343d] hidden lg:block" />
+      <div className="absolute bottom-[18%] left-[52%] h-[70px] w-[150px] bg-[#f7fbff] shadow-[0_0_0_8px_#223642,0_20px_0_#223642] hidden lg:block" />
       <div className="absolute bottom-[13%] left-0 right-0 h-[130px] bg-[linear-gradient(180deg,rgba(54,111,53,0),#6dbb4b_48%,#3a7737_48%)]" />
       <GrassStrip className="absolute bottom-0" />
     </div>

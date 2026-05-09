@@ -7,125 +7,121 @@ datasource db {
 }
 
 model User {
-  id                  String    @id @default(cuid())
-  githubId            String?   @unique
-  email               String?   @unique
-  name                String?
-  preferredName       String?
-  avatarUrl           String?
-  timezone            String?
-  onboardingStatus    String    @default("not_started")
-  technicalExperience String?
-  primaryRole         String?
-  companyStage        String?
-  lastOrgSlug         String?
-  isSandbox           Boolean   @default(true)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  deletedAt           DateTime?
-
-  memberships             Membership[]
-  onboardingAnswers       OnboardingAnswer[]
-  createdTasks            Task[]                   @relation("CreatedTasks")
-  assignedTasks           Task[]                   @relation("AssignedTasks")
-  chatThreads             ChatThread[]
+  id                      String                   @id @default(cuid())
+  githubId                String?                  @unique
+  email                   String?                  @unique
+  name                    String?
+  preferredName           String?
+  avatarUrl               String?
+  timezone                String?
+  onboardingStatus        String                   @default("not_started")
+  technicalExperience     String?
+  primaryRole             String?
+  companyStage            String?
+  lastOrgSlug             String?
+  isSandbox               Boolean                  @default(true)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  deletedAt               DateTime?
+  approvalsReviewed       Approval[]
+  auditLogs               AuditLog[]
+  canvasViewStates        CanvasViewState[]
   chatMessages            ChatMessage[]
+  chatThreads             ChatThread[]
   uploadedFiles           File[]
   fileVersions            FileVersion[]
-  approvalsReviewed       Approval[]
+  memberships             Membership[]
   notificationPreferences NotificationPreference[]
+  onboardingAnswers       OnboardingAnswer[]
+  assignedTasks           Task[]                   @relation("AssignedTasks")
+  createdTasks            Task[]                   @relation("CreatedTasks")
   userPreference          UserPreference?
-  canvasViewStates        CanvasViewState[]
-  auditLogs               AuditLog[]
 
   @@index([lastOrgSlug])
 }
 
 model Organization {
-  id                       String    @id @default(cuid())
-  name                     String
-  slug                     String    @unique
-  description              String?
-  stage                    String?
-  status                   String    @default("onboarding")
-  businessPlanFileId       String?
-  designOnboardingStatus   String    @default("not_started")
-  roadmapProgress          Float     @default(0)
-  currentPlan              String    @default("trial")
-  trialEndsAt              DateTime?
-  createdAt                DateTime  @default(now())
-  updatedAt                DateTime  @updatedAt
-  deletedAt                DateTime?
-
-  memberships             Membership[]
-  onboardingAnswers       OnboardingAnswer[]
-  departments             Department[]
+  id                      String                   @id @default(cuid())
+  name                    String
+  slug                    String                   @unique
+  description             String?
+  stage                   String?
+  status                  String                   @default("onboarding")
+  businessPlanFileId      String?
+  designOnboardingStatus  String                   @default("not_started")
+  roadmapProgress         Float                    @default(0)
+  currentPlan             String                   @default("trial")
+  trialEndsAt             DateTime?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  deletedAt               DateTime?
   agents                  Agent[]
-  tasks                   Task[]
-  taskSessions            TaskSession[]
   agentActions            AgentAction[]
-  chatThreads             ChatThread[]
-  chatMessages            ChatMessage[]
-  folders                 Folder[]
-  files                   File[]
-  roadmapStages           RoadmapStage[]
-  roadmapItems            RoadmapItem[]
-  roadmapDependencies     RoadmapDependency[]
+  agentInboxes            AgentInbox[]
   approvals               Approval[]
+  auditLogs               AuditLog[]
+  billingAccount          BillingAccount?
+  canvasViewStates        CanvasViewState[]
+  chatMessages            ChatMessage[]
+  chatThreads             ChatThread[]
+  departments             Department[]
+  files                   File[]
+  folders                 Folder[]
+  inboxDomains            InboxDomain[]
   integrations            Integration[]
   integrationEvents       IntegrationEvent[]
-  secrets                 Secret[]
-  inboxDomains            InboxDomain[]
-  agentInboxes            AgentInbox[]
+  memberships             Membership[]
   notificationPreferences NotificationPreference[]
-  billingAccount          BillingAccount?
+  onboardingAnswers       OnboardingAnswer[]
+  roadmapDependencies     RoadmapDependency[]
+  roadmapItems            RoadmapItem[]
+  roadmapStages           RoadmapStage[]
+  secrets                 Secret[]
+  tasks                   Task[]
+  taskSessions            TaskSession[]
   usageRecords            UsageRecord[]
-  canvasViewStates        CanvasViewState[]
-  auditLogs               AuditLog[]
 
   @@index([status])
   @@index([currentPlan])
 }
 
 model Membership {
-  id               String       @id @default(cuid())
-  organizationId   String
-  userId           String
-  role             String
-  invitedByUserId  String?
-  invitedEmail     String?
-  acceptedAt       DateTime?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String       @id @default(cuid())
+  organizationId  String
+  userId          String
+  role            String
+  invitedByUserId String?
+  invitedEmail    String?
+  acceptedAt      DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, userId])
   @@index([organizationId, role])
 }
 
 model OnboardingAnswer {
-  id               String   @id @default(cuid())
-  organizationId   String
-  questionKey      String
-  questionText     String
-  selectedOption   String?
-  freeText         String?
+  id                String       @id @default(cuid())
+  organizationId    String
+  questionKey       String
+  questionText      String
+  selectedOption    String?
+  freeText          String?
   recommendedOption String?
-  answeredByUserId String?
-  aiDecided        Boolean  @default(false)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  answeredBy   User?        @relation(fields: [answeredByUserId], references: [id], onDelete: SetNull)
+  answeredByUserId  String?
+  aiDecided         Boolean      @default(false)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  answeredBy        User?        @relation(fields: [answeredByUserId], references: [id])
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, questionKey])
 }
 
 model Department {
-  id             String   @id @default(cuid())
+  id             String        @id @default(cuid())
   organizationId String
   slug           String
   name           String
@@ -133,58 +129,56 @@ model Department {
   icon           String
   color          String
   coverAsset     String?
-  availability   String   @default("active")
+  availability   String        @default("active")
   contextJson    String?
   sortOrder      Int
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  agents       Agent[]
-  tasks        Task[]
-  files        File[]
-  folders      Folder[]
-  roadmapItems RoadmapItem[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  agents         Agent[]
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  files          File[]
+  folders        Folder[]
+  roadmapItems   RoadmapItem[]
+  tasks          Task[]
 
   @@unique([organizationId, slug])
   @@index([organizationId, availability])
 }
 
 model Agent {
-  id              String    @id @default(cuid())
+  id              String        @id @default(cuid())
   organizationId  String
   departmentId    String
   name            String
   slug            String
   description     String?
-  isDefault       Boolean   @default(false)
-  status          String    @default("idle")
+  isDefault       Boolean       @default(false)
+  status          String        @default("idle")
   model           String?
   prompt          String?
   toolsJson       String?
   permissionsJson String?
   inboxAddress    String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
   archivedAt      DateTime?
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  department   Department   @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  tasks        Task[]
-  sessions     TaskSession[]
-  actions      AgentAction[]
-  chatThreads  ChatThread[]
-  chatMessages ChatMessage[]
-  inboxes      AgentInbox[]
-  approvals    Approval[]
-  auditLogs    AuditLog[]
+  department      Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actions         AgentAction[]
+  inboxes         AgentInbox[]
+  approvals       Approval[]
+  auditLogs       AuditLog[]
+  chatMessages    ChatMessage[]
+  chatThreads     ChatThread[]
+  tasks           Task[]
+  sessions        TaskSession[]
 
   @@unique([organizationId, slug])
   @@index([departmentId, status])
 }
 
 model Task {
-  id              String    @id @default(cuid())
+  id              String        @id @default(cuid())
   organizationId  String
   departmentId    String?
   agentId         String?
@@ -195,26 +189,25 @@ model Task {
   description     String?
   type            String
   status          String
-  priority        Int       @default(0)
+  priority        Int           @default(0)
   dueAt           DateTime?
   startedAt       DateTime?
   completedAt     DateTime?
   metadataJson    String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
   archivedAt      DateTime?
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  department   Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  agent        Agent?       @relation(fields: [agentId], references: [id], onDelete: SetNull)
-  roadmapItem  RoadmapItem? @relation(fields: [roadmapItemId], references: [id], onDelete: SetNull)
-  createdBy    User?        @relation("CreatedTasks", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  assignedUser User?        @relation("AssignedTasks", fields: [assignedUserId], references: [id], onDelete: SetNull)
-  subtasks     Subtask[]
-  sessions     TaskSession[]
-  chatThreads  ChatThread[]
-  files        File[]
-  approvals    Approval[]
+  approvals       Approval[]
+  chatThreads     ChatThread[]
+  files           File[]
+  subtasks        Subtask[]
+  assignedUser    User?         @relation("AssignedTasks", fields: [assignedUserId], references: [id])
+  createdBy       User?         @relation("CreatedTasks", fields: [createdByUserId], references: [id])
+  roadmapItem     RoadmapItem?  @relation(fields: [roadmapItemId], references: [id])
+  agent           Agent?        @relation(fields: [agentId], references: [id])
+  department      Department?   @relation(fields: [departmentId], references: [id])
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sessions        TaskSession[]
 
   @@index([organizationId, status])
   @@index([organizationId, departmentId])
@@ -231,14 +224,13 @@ model Subtask {
   sortOrder Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@index([taskId, sortOrder])
 }
 
 model TaskSession {
-  id             String    @id @default(cuid())
+  id             String        @id @default(cuid())
   taskId         String
   organizationId String
   agentId        String?
@@ -246,23 +238,22 @@ model TaskSession {
   browserUrl     String?
   replayUrl      String?
   scratchpad     String?
-  elapsedMs      Int       @default(0)
+  elapsedMs      Int           @default(0)
   startedAt      DateTime?
   finishedAt     DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  task         Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  agent        Agent?       @relation(fields: [agentId], references: [id], onDelete: SetNull)
-  actions      AgentAction[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  actions        AgentAction[]
+  agent          Agent?        @relation(fields: [agentId], references: [id])
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  task           Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
   @@index([organizationId, status])
 }
 
 model AgentAction {
-  id             String    @id @default(cuid())
+  id             String       @id @default(cuid())
   sessionId      String
   organizationId String
   agentId        String?
@@ -270,84 +261,80 @@ model AgentAction {
   actionType     String
   status         String
   payloadJson    String?
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime     @default(now())
   completedAt    DateTime?
-
-  session      TaskSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  agent        Agent?       @relation(fields: [agentId], references: [id], onDelete: SetNull)
-  approvals    Approval[]
+  agent          Agent?       @relation(fields: [agentId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  session        TaskSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  approvals      Approval[]
 
   @@index([sessionId, createdAt])
   @@index([organizationId, status])
 }
 
 model ChatThread {
-  id              String    @id @default(cuid())
+  id              String        @id @default(cuid())
   organizationId  String
   taskId          String?
   agentId         String?
   title           String?
   kind            String
   createdByUserId String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
   archivedAt      DateTime?
-
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  task         Task?         @relation(fields: [taskId], references: [id], onDelete: SetNull)
-  agent        Agent?        @relation(fields: [agentId], references: [id], onDelete: SetNull)
-  createdBy    User?         @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
-  messages     ChatMessage[]
+  messages        ChatMessage[]
+  createdBy       User?         @relation(fields: [createdByUserId], references: [id])
+  agent           Agent?        @relation(fields: [agentId], references: [id])
+  task            Task?         @relation(fields: [taskId], references: [id])
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, kind])
   @@index([taskId])
 }
 
 model ChatMessage {
-  id            String    @id @default(cuid())
-  threadId      String
+  id             String       @id @default(cuid())
+  threadId       String
   organizationId String
-  senderType    String
-  senderUserId  String?
-  senderAgentId String?
-  body          String
-  metadataJson  String?
-  createdAt     DateTime  @default(now())
+  senderType     String
+  senderUserId   String?
+  senderAgentId  String?
+  body           String
+  metadataJson   String?
+  createdAt      DateTime     @default(now())
   editedAt       DateTime?
-
-  thread       ChatThread  @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  senderUser   User?        @relation(fields: [senderUserId], references: [id], onDelete: SetNull)
-  senderAgent  Agent?       @relation(fields: [senderAgentId], references: [id], onDelete: SetNull)
+  senderAgent    Agent?       @relation(fields: [senderAgentId], references: [id])
+  senderUser     User?        @relation(fields: [senderUserId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  thread         ChatThread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@index([threadId, createdAt])
   @@index([organizationId, createdAt])
 }
 
 model Folder {
-  id             String    @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   departmentId   String?
   parentFolderId String?
   name           String
-  sortOrder      Int       @default(0)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  sortOrder      Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
   archivedAt     DateTime?
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  department   Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  parentFolder Folder?      @relation("FolderTree", fields: [parentFolderId], references: [id], onDelete: SetNull)
-  children     Folder[]     @relation("FolderTree")
-  files        File[]
+  files          File[]
+  parentFolder   Folder?      @relation("FolderTree", fields: [parentFolderId], references: [id])
+  children       Folder[]     @relation("FolderTree")
+  department     Department?  @relation(fields: [departmentId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, parentFolderId, name])
   @@index([organizationId, departmentId])
 }
 
 model File {
-  id               String    @id @default(cuid())
+  id               String        @id @default(cuid())
   organizationId   String
   departmentId     String?
   folderId         String?
@@ -355,21 +342,20 @@ model File {
   uploadedByUserId String?
   name             String
   mimeType         String?
-  sizeBytes        Int       @default(0)
+  sizeBytes        Int           @default(0)
   storageKey       String
   visibility       String
   currentVersionId String?
   metadataJson     String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
   archivedAt       DateTime?
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  department   Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  folder       Folder?      @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  task         Task?        @relation(fields: [taskId], references: [id], onDelete: SetNull)
-  uploadedBy   User?        @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
-  versions     FileVersion[]
+  uploadedBy       User?         @relation(fields: [uploadedByUserId], references: [id])
+  task             Task?         @relation(fields: [taskId], references: [id])
+  folder           Folder?       @relation(fields: [folderId], references: [id])
+  department       Department?   @relation(fields: [departmentId], references: [id])
+  organization     Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  versions         FileVersion[]
 
   @@index([organizationId, folderId])
   @@index([organizationId, departmentId])
@@ -386,31 +372,29 @@ model FileVersion {
   checksum        String?
   createdByUserId String?
   createdAt       DateTime @default(now())
-
-  file      File  @relation(fields: [fileId], references: [id], onDelete: Cascade)
-  createdBy User? @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdBy       User?    @relation(fields: [createdByUserId], references: [id])
+  file            File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
 
   @@unique([fileId, versionNumber])
 }
 
 model RoadmapStage {
-  id             String   @id @default(cuid())
+  id             String        @id @default(cuid())
   organizationId String
   key            String
   name           String
   sortOrder      Int
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  items        RoadmapItem[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  items          RoadmapItem[]
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, key])
   @@index([organizationId, sortOrder])
 }
 
 model RoadmapItem {
-  id               String    @id @default(cuid())
+  id               String              @id @default(cuid())
   organizationId   String
   stageId          String
   departmentId     String?
@@ -422,16 +406,15 @@ model RoadmapItem {
   whatBecomesTrue  String?
   howToMoveForward String?
   sortOrder        Int
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
   completedAt      DateTime?
-
-  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  stage        RoadmapStage          @relation(fields: [stageId], references: [id], onDelete: Cascade)
-  department   Department?           @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  tasks        Task[]
-  dependencies RoadmapDependency[]   @relation("ItemDependencies")
-  unlocks      RoadmapDependency[]   @relation("ItemUnlocks")
+  unlocks          RoadmapDependency[] @relation("ItemUnlocks")
+  dependencies     RoadmapDependency[] @relation("ItemDependencies")
+  department       Department?         @relation(fields: [departmentId], references: [id])
+  stage            RoadmapStage        @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tasks            Task[]
 
   @@unique([organizationId, key])
   @@index([stageId, sortOrder])
@@ -439,22 +422,21 @@ model RoadmapItem {
 }
 
 model RoadmapDependency {
-  id              String   @id @default(cuid())
+  id              String       @id @default(cuid())
   organizationId  String
   itemId          String
   dependsOnItemId String
-  createdAt       DateTime @default(now())
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  item         RoadmapItem  @relation("ItemDependencies", fields: [itemId], references: [id], onDelete: Cascade)
-  dependsOn    RoadmapItem  @relation("ItemUnlocks", fields: [dependsOnItemId], references: [id], onDelete: Cascade)
+  createdAt       DateTime     @default(now())
+  dependsOn       RoadmapItem  @relation("ItemUnlocks", fields: [dependsOnItemId], references: [id], onDelete: Cascade)
+  item            RoadmapItem  @relation("ItemDependencies", fields: [itemId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([itemId, dependsOnItemId])
   @@index([organizationId, itemId])
 }
 
 model Approval {
-  id                 String    @id @default(cuid())
+  id                 String       @id @default(cuid())
   organizationId     String
   taskId             String?
   agentActionId      String?
@@ -464,22 +446,21 @@ model Approval {
   description        String?
   riskLevel          String
   status             String
-  createdAt          DateTime  @default(now())
+  createdAt          DateTime     @default(now())
   reviewedAt         DateTime?
   expiresAt          DateTime?
-
-  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  task             Task?        @relation(fields: [taskId], references: [id], onDelete: SetNull)
-  agentAction      AgentAction? @relation(fields: [agentActionId], references: [id], onDelete: SetNull)
-  requestedByAgent Agent?       @relation(fields: [requestedByAgentId], references: [id], onDelete: SetNull)
-  reviewedBy       User?        @relation(fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewedBy         User?        @relation(fields: [reviewedByUserId], references: [id])
+  requestedByAgent   Agent?       @relation(fields: [requestedByAgentId], references: [id])
+  agentAction        AgentAction? @relation(fields: [agentActionId], references: [id])
+  task               Task?        @relation(fields: [taskId], references: [id])
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, status])
   @@index([taskId])
 }
 
 model Integration {
-  id             String   @id @default(cuid())
+  id             String             @id @default(cuid())
   organizationId String
   provider       String
   status         String
@@ -489,141 +470,133 @@ model Integration {
   configJson     String?
   lastCheckedAt  DateTime?
   errorMessage   String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  events       IntegrationEvent[]
-  secrets      Secret[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  events         IntegrationEvent[]
+  secrets        Secret[]
 
   @@unique([organizationId, provider, externalId])
   @@index([organizationId, status])
 }
 
 model IntegrationEvent {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   integrationId  String
   eventType      String
   status         String
   payloadJson    String?
-  createdAt      DateTime @default(now())
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  integration  Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  integration    Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([integrationId, createdAt])
   @@index([organizationId, eventType])
 }
 
 model Secret {
-  id              String    @id @default(cuid())
+  id              String       @id @default(cuid())
   organizationId  String
   integrationId   String?
   key             String
   valueCiphertext String?
-  isWriteOnly     Boolean   @default(true)
+  isWriteOnly     Boolean      @default(true)
   environment     String
   createdByUserId String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
   rotatedAt       DateTime?
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  integration  Integration? @relation(fields: [integrationId], references: [id], onDelete: SetNull)
+  integration     Integration? @relation(fields: [integrationId], references: [id])
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, environment, key])
   @@index([integrationId])
 }
 
 model InboxDomain {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   domain         String
   status         String
   dnsRecordsJson String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  agentInboxes AgentInbox[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  agentInboxes   AgentInbox[]
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, domain])
 }
 
 model AgentInbox {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   agentId        String
   inboxDomainId  String?
   address        String
   status         String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  agent        Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  inboxDomain  InboxDomain? @relation(fields: [inboxDomainId], references: [id], onDelete: SetNull)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  inboxDomain    InboxDomain? @relation(fields: [inboxDomainId], references: [id])
+  agent          Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, address])
   @@unique([agentId, address])
 }
 
 model NotificationPreference {
-  id               String   @id @default(cuid())
+  id               String       @id @default(cuid())
   userId           String
   organizationId   String
-  desktopAlerts    Boolean  @default(false)
-  emailTaskUpdates Boolean  @default(true)
-  emailBilling     Boolean  @default(true)
-  inAppMentions    Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  desktopAlerts    Boolean      @default(false)
+  emailTaskUpdates Boolean      @default(true)
+  emailBilling     Boolean      @default(true)
+  inAppMentions    Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, organizationId])
 }
 
 model UserPreference {
-  id                      String   @id @default(cuid())
-  userId                  String   @unique
-  theme                   String   @default("system")
-  shadowsEnabled          Boolean  @default(true)
-  preferredName           String?
-  timezone                String?
-  aiModel                 String?
-  promptPersonalization   String?
-  suggestedTasksEnabled   Boolean  @default(true)
-  queueMessagesEnabled    Boolean  @default(true)
-  reviewBotMode           String   @default("blockers_only")
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  theme                 String   @default("system")
+  shadowsEnabled        Boolean  @default(true)
+  preferredName         String?
+  timezone              String?
+  aiModel               String?
+  promptPersonalization String?
+  suggestedTasksEnabled Boolean  @default(true)
+  queueMessagesEnabled  Boolean  @default(true)
+  reviewBotMode         String   @default("blockers_only")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model BillingAccount {
-  id                   String    @id @default(cuid())
-  organizationId       String    @unique
+  id                   String       @id @default(cuid())
+  organizationId       String       @unique
   plan                 String
   status               String
   stripeCustomerId     String?
   stripeSubscriptionId String?
-  includedUsageCents   Int       @default(0)
-  baseMonthlyCents     Int       @default(0)
+  includedUsageCents   Int          @default(0)
+  baseMonthlyCents     Int          @default(0)
   trialEndsAt          DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([stripeCustomerId])
 }
 
 model UsageRecord {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   category       String
   quantity       Float
@@ -631,32 +604,30 @@ model UsageRecord {
   costCents      Int
   sourceId       String?
   occurredAt     DateTime
-  createdAt      DateTime @default(now())
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, occurredAt])
   @@index([organizationId, category])
 }
 
 model CanvasViewState {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   userId         String
   organizationId String
   viewportJson   String
   selectedNodeId String?
   activeTab      String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, organizationId])
 }
 
 model AuditLog {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   actorUserId    String?
   actorAgentId   String?
@@ -664,11 +635,10 @@ model AuditLog {
   targetType     String
   targetId       String?
   metadataJson   String?
-  createdAt      DateTime @default(now())
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  actorUser    User?        @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
-  actorAgent   Agent?       @relation(fields: [actorAgentId], references: [id], onDelete: SetNull)
+  createdAt      DateTime     @default(now())
+  actorAgent     Agent?       @relation(fields: [actorAgentId], references: [id])
+  actorUser      User?        @relation(fields: [actorUserId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, createdAt])
   @@index([targetType, targetId])

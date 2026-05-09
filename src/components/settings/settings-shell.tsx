@@ -46,8 +46,8 @@ export function SettingsShell({
   return (
     <main className="min-h-full bg-[var(--app-canvas)] p-4 text-[var(--app-text)] md:p-6">
       <div className="mx-auto grid max-w-[1320px] gap-5 xl:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="grid content-start gap-3 rounded-[12px] border border-[var(--app-border)] bg-[var(--app-panel)] p-3">
-          <div className="flex items-center gap-3 px-1 py-2">
+        <aside className="grid content-start gap-3 xl:rounded-[12px] xl:border xl:border-[var(--app-border)] xl:bg-[var(--app-panel)] xl:p-3">
+          <div className="hidden items-center gap-3 px-1 py-2 xl:flex">
             <span className="grid size-9 place-items-center rounded-[9px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.06)] text-[var(--app-primary-light)]">
               <Database aria-hidden="true" className="size-4" />
             </span>
@@ -56,7 +56,7 @@ export function SettingsShell({
               <h1 className="text-lg font-medium tracking-[0px]">Settings</h1>
             </div>
           </div>
-          <nav className="grid gap-1" aria-label="Settings sections">
+          <nav className="flex gap-1 overflow-x-auto pb-2 scrollbar-none xl:grid xl:overflow-visible xl:pb-0" aria-label="Settings sections">
             {settingsNavItems.map((item) => {
               const Icon = item.icon;
               const active = item.section === activeSection;
@@ -65,7 +65,7 @@ export function SettingsShell({
                   key={item.section}
                   href={`/org/${orgId}/settings/${item.section}`}
                   className={cn(
-                    "flex min-h-10 items-center gap-2 rounded-[9px] px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]",
+                    "flex min-h-10 shrink-0 items-center gap-2 rounded-[9px] px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--brand-300)] xl:shrink",
                     active
                       ? "bg-[rgba(216,255,122,0.13)] text-[var(--app-text)]"
                       : "text-[var(--app-text-50)] hover:bg-[rgba(255,255,255,0.06)] hover:text-[var(--app-text)]"
@@ -79,7 +79,7 @@ export function SettingsShell({
           </nav>
           <Link
             href={`/org/${orgId}/integrations`}
-            className="mt-2 inline-flex min-h-10 items-center gap-2 rounded-[9px] border border-[var(--app-border)] px-3 text-sm text-[var(--app-text)] outline-none transition-colors hover:bg-[rgba(255,255,255,0.06)] focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]"
+            className="hidden min-h-10 items-center gap-2 rounded-[9px] border border-[var(--app-border)] px-3 text-sm text-[var(--app-text)] outline-none transition-colors hover:bg-[rgba(255,255,255,0.06)] focus-visible:ring-2 focus-visible:ring-[var(--brand-300)] xl:mt-2 xl:inline-flex"
           >
             <Sparkles aria-hidden="true" className="size-4" />
             Integrations

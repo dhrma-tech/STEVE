@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { dataResponse, errorResponse } from "@/lib/api/responses";
-import { AuthError, ForbiddenError, requireOrgAdmin, requireOrgMember } from "@/lib/auth/session";
+import { requireOrgAdmin, requireOrgMember } from "@/lib/auth/session";
 import { getCompanyOnboardingState } from "@/lib/onboarding/company";
 import { prisma } from "@/lib/db/client";
+import { routeError } from "@/lib/api/route-errors";
 
 const patchOrgSchema = z.object({
   name: z.string().trim().min(2).max(80).optional(),
@@ -49,15 +50,5 @@ export async function PATCH(request: Request, context: RouteContext) {
   } catch (error) {
     return routeError(error);
   }
-}
-
-function routeError(error: unknown) {
-  if (error instanceof AuthError) {
-    return errorResponse("UNAUTHENTICATED", error.message, 401);
-  }
-  if (error instanceof ForbiddenError) {
-    return errorResponse("FORBIDDEN", error.message, 403);
-  }
-  throw error;
 }
 

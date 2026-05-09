@@ -4,7 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowDownToLine } from "lucide-react";
 import type { HowToChapter } from "@/data/how-to-content";
-import { buttonClassName } from "@/components/ui/button";
+import { Button, buttonClassName } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { FeatureCallout } from "@/components/ui/card";
 import { ChapterArt } from "@/components/marketing/pixel-art";
 
@@ -36,10 +37,18 @@ export function HowToRenderer({ chapter }: { chapter: HowToChapter }) {
   return (
     <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)]">
       <aside className="lg:sticky lg:top-[116px] lg:self-start">
-        <details className="rounded-[14px] border border-[var(--color-border-card)] bg-[var(--color-surface-raised)] p-4 lg:hidden">
-          <summary className="cursor-pointer font-medium">Guide sections</summary>
-          <Toc chapter={chapter} active={active} className="mt-4" />
-        </details>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="ghost" className="w-full justify-between rounded-[14px] border border-[var(--color-border-card)] bg-[var(--color-surface-raised)] p-4 lg:hidden">
+              <span className="font-medium">Guide sections</span>
+              <ArrowDownToLine aria-hidden="true" className="size-4 opacity-50" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="fixed inset-x-0 bottom-0 top-auto translate-y-0 rounded-b-none rounded-t-[20px] p-6 max-w-none w-full border-x-0 border-b-0 animate-[mm-footer-in_260ms_ease-out]">
+            <DialogTitle>Guide sections</DialogTitle>
+            <Toc chapter={chapter} active={active} className="mt-4" />
+          </DialogContent>
+        </Dialog>
         <div className="hidden rounded-[14px] border border-[var(--color-border-card)] bg-[var(--color-surface-raised)] p-4 lg:block">
           <Toc chapter={chapter} active={active} />
         </div>

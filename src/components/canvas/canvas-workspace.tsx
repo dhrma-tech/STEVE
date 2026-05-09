@@ -24,6 +24,7 @@ import { WorkspacePreviewCard } from "@/components/canvas/workspace-preview-card
 import { DepartmentBoardDialog } from "@/components/departments/department-board";
 import { CanvasSidePanel } from "@/components/side-panel/canvas-side-panel";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils/cn";
 import type { CanvasData, CanvasDepartment } from "@/lib/canvas/data";
 
 type CanvasWorkspaceProps = {
@@ -152,7 +153,10 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
   return (
     <ReactFlowProvider>
       <main className="flex min-h-[calc(100dvh-68px)] flex-col bg-[var(--app-canvas)] text-[var(--app-text)] lg:flex-row">
-        <section className="relative min-h-[620px] min-w-0 flex-1 overflow-hidden">
+        <section className={cn(
+          "relative min-w-0 flex-1 overflow-hidden transition-all duration-300",
+          selectedDepartment ? "h-[200px] lg:h-auto" : "h-[calc(100dvh-140px)] lg:h-auto"
+        )}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -195,7 +199,7 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
             </Panel>
           </ReactFlow>
 
-          <div className="pointer-events-none absolute inset-0">
+          <div className="pointer-events-none absolute inset-0 hidden xl:block">
             {data.departments.slice(0, 4).map((department, index) => (
               <WorkspacePreviewCard
                 key={department.id}
@@ -207,19 +211,24 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
           </div>
         </section>
 
-        <CanvasSidePanel
-          data={data}
-          selectedDepartment={selectedDepartment}
-          activeTab={activeTab}
-          onActiveTabChange={setActiveTab}
-          onOpenRoadmap={() => setRoadmapVisible(true)}
-          onClearDepartment={() => setSelectedNodeId(null)}
-          onOpenDepartmentBoard={setBoardDepartment}
-          onLaunchDepartmentAgent={launchDepartmentAgent}
-          selectedTaskId={initialTaskId}
-          selectedAgentId={initialAgentId}
-          onLaunchTaskSession={launchSession}
-        />
+        <div className={cn(
+          "flex-none transition-all duration-300 lg:w-[390px] xl:w-[430px]",
+          selectedDepartment ? "flex-1" : "h-0 overflow-hidden lg:h-auto lg:overflow-visible"
+        )}>
+          <CanvasSidePanel
+            data={data}
+            selectedDepartment={selectedDepartment}
+            activeTab={activeTab}
+            onActiveTabChange={setActiveTab}
+            onOpenRoadmap={() => setRoadmapVisible(true)}
+            onClearDepartment={() => setSelectedNodeId(null)}
+            onOpenDepartmentBoard={setBoardDepartment}
+            onLaunchDepartmentAgent={launchDepartmentAgent}
+            selectedTaskId={initialTaskId}
+            selectedAgentId={initialAgentId}
+            onLaunchTaskSession={launchSession}
+          />
+        </div>
       </main>
       <QueryShells
         data={data}

@@ -323,11 +323,133 @@
   }
 }
 
+/* ─── node selection "pop" on the React Flow canvas ─── */
+@keyframes node-select-pop {
+  0% {
+    transform: scale(0.94);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+
+  55% {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.08);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+/* ─── side panel / tab content entrance ─── */
+@keyframes panel-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes tab-content-fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── agent status pulse ring (CSS fallback for reduced-motion) ─── */
+@keyframes agent-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(134, 239, 172, 0.55);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px rgba(134, 239, 172, 0);
+  }
+}
+
+/* ─── numeric counter tick-up ─── */
+@keyframes counter-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── canvas cofounder node idle breath ─── */
+@keyframes node-breath {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.12));
+  }
+
+  50% {
+    filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.3));
+  }
+}
+
+/* ─── dialog / modal entrance ─── */
+@keyframes modal-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.93) translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modal-exit {
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+}
+
+/* ─── utility classes ─── */
 .motion-safe-shimmer {
   background-size: 200% 100%;
   animation: shimmer 1.9s ease-in-out infinite;
 }
 
+.animate-node-select-pop {
+  animation: node-select-pop 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-panel-slide-in {
+  animation: panel-slide-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-tab-content-fade {
+  animation: tab-content-fade 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-node-breath {
+  animation: node-breath 3.2s ease-in-out infinite;
+}
+
+.animate-modal-enter {
+  animation: modal-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ─── reduced motion: disable all non-essential animations ─── */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

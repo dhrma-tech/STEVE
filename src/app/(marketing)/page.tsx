@@ -36,16 +36,16 @@ export default function HomePage() {
               Activate departments, build a roadmap, launch tasks, review agent work, and keep every company system in one operating surface.
             </p>
             <div className="flex flex-wrap gap-3 opacity-0 animate-[float-btn-spring_760ms_ease-out_900ms_forwards]">
-              <Link href="/login" className={buttonClassName({ variant: "light" })}>
+              <Link href="/login" className={buttonClassName({ variant: "dark" })}>
                 Run a company
               </Link>
-              <Link href="/resources/introducing-cofounder-2" className={buttonClassName({ variant: "dark" })}>
+              <Link href="/resources/introducing-cofounder-2" className={buttonClassName({ variant: "ghost", className: "text-white hover:text-white" })}>
                 <Play aria-hidden="true" className="size-4" />
                 Check out the launch
               </Link>
             </div>
           </div>
-          <div className="ml-auto mt-8 hidden md:block">
+          <div className="ml-auto mt-8 hidden lg:block">
             <NotificationWheel />
           </div>
         </div>

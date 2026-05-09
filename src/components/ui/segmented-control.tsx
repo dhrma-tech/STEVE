@@ -21,7 +21,7 @@ export function SegmentedControl({ items, className, itemClassName, surface = "l
     <TabsPrimitive.Root className={className} {...props}>
       <TabsPrimitive.List
         className={cn(
-          "inline-flex rounded-[8px] border-[0.8px] p-1",
+          "flex w-full overflow-x-auto rounded-[8px] border-[0.8px] p-1 scrollbar-none",
           surface === "dark"
             ? "border-[var(--app-border)] bg-[rgba(255,255,255,0.06)]"
             : "border-[rgba(38,35,35,0.04)] bg-[rgba(231,231,227,0.4)]"
@@ -33,7 +33,7 @@ export function SegmentedControl({ items, className, itemClassName, surface = "l
             value={item.value}
             disabled={item.disabled}
             className={cn(
-              "min-h-8 rounded-[6px] px-3 py-[7px] text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--brand-300)] disabled:pointer-events-none disabled:opacity-45",
+              "min-h-8 flex-1 rounded-[6px] px-3 py-[7px] text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--brand-300)] disabled:pointer-events-none disabled:opacity-45",
               surface === "dark"
                 ? "text-[var(--app-text-50)] data-[state=active]:bg-[var(--app-primary-light)] data-[state=active]:text-[var(--app-black-base)]"
                 : "text-[var(--color-ink-muted)] data-[state=active]:bg-[var(--color-surface)] data-[state=active]:text-[var(--color-ink-strongest)]",

@@ -1,8 +1,9 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { dataResponse, errorResponse } from "@/lib/api/responses";
-import { AuthError, requireUser } from "@/lib/auth/session";
+import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
+import { routeError } from "@/lib/api/route-errors";
 
 const createOrgSchema = z.object({
   name: z.string().trim().min(2).max(80)
@@ -64,10 +65,7 @@ export async function POST(request: Request) {
       }
     });
   } catch (error) {
-    if (error instanceof AuthError) {
-      return errorResponse("UNAUTHENTICATED", error.message, 401);
-    }
-    throw error;
+    return routeError(error);
   }
 }
 

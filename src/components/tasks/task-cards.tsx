@@ -3,6 +3,7 @@
 import { CalendarDays, CheckSquare, MessageCircle, Paperclip, ShieldAlert } from "lucide-react";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Stagger, StaggerItem } from "@/components/motion/stagger";
 import type { TaskSummary, TaskWorkspacePayload } from "@/components/tasks/types";
 import { taskTypeLabel } from "@/data/tasks";
 import { cn } from "@/lib/utils/cn";
@@ -21,11 +22,13 @@ export function TaskList({
   }
 
   return (
-    <div className="grid gap-2">
+    <Stagger className="grid gap-2">
       {tasks.map((task) => (
-        <TaskRow key={task.id} task={task} selected={selectedTaskId === task.id} onSelect={() => onSelectTask(task.id)} />
+        <StaggerItem key={task.id}>
+          <TaskRow task={task} selected={selectedTaskId === task.id} onSelect={() => onSelectTask(task.id)} />
+        </StaggerItem>
       ))}
-    </div>
+    </Stagger>
   );
 }
 

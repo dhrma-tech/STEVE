@@ -12,6 +12,7 @@ body {
   -webkit-font-smoothing: antialiased;
   font-synthesis: none;
   font-variation-settings: "ital" 0;
+  overflow-x: hidden;
 }
 
 button,

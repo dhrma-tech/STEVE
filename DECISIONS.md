@@ -70,3 +70,4 @@
 - [ASSUMPTION-20] Live provider credentials for Stripe, Vercel, Supabase, Postiz, Apify, email/domain, analytics, and monitoring are absent locally - Phase 13 uses explicit sandbox adapter states backed by integration records.
 - [DECISION-49] Store provider settings in `Integration.configJson`, provider event history in `IntegrationEvent`, and write-only secret metadata in `Secret` - this satisfies settings/integration flows without a post-freeze schema change.
 - [DECISION-50] Require exact typed confirmations for destructive settings actions - own Supabase import and own GitHub repo switch need deliberate confirmation and auditable `AuditLog` entries.
+- [DECISION-51] Mark project as 100% built and graduation-ready after Phase 17 - all 17 implementation phases and the final graduation audit are complete, and the production build passes exit 0.

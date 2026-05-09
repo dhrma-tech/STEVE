@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Building2, MessageSquare, RefreshCw } from "lucide-react";
+import { Bot, Briefcase, Building2, FileText, Home, MessageSquare, RefreshCw } from "lucide-react";
 import { AgentControlCenter } from "@/components/agents/agent-control-center";
 import { ChatWorkspace } from "@/components/chat/chat-workspace";
 import { DepartmentDetailPanel } from "@/components/departments/department-detail-panel";
@@ -58,7 +58,7 @@ export function CanvasSidePanel({
   }
 
   return (
-    <aside className="flex min-h-[520px] w-full shrink-0 flex-col border-t border-[var(--app-border)] bg-[var(--app-panel)] text-[var(--app-text)] lg:min-h-0 lg:w-[390px] lg:border-l lg:border-t-0 xl:w-[430px]">
+    <aside className="animate-panel-slide-in flex min-h-[520px] w-full shrink-0 flex-col border-t border-[var(--app-border)] bg-[var(--app-panel)] text-[var(--app-text)] lg:min-h-0 lg:w-[390px] lg:border-l lg:border-t-0 xl:w-[430px]">
       {selectedDepartment ? (
         <DepartmentDetailPanel
           orgId={data.organization.id}
@@ -69,17 +69,32 @@ export function CanvasSidePanel({
         />
       ) : (
         <Tabs value={activeTab} onValueChange={onActiveTabChange} className="flex min-h-0 flex-1 flex-col">
-          <div className="border-b border-[var(--app-border)] p-3">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="home" className="px-2 text-xs">Home</TabsTrigger>
-              <TabsTrigger value="cofounder" className="px-2 text-xs">AI</TabsTrigger>
-              <TabsTrigger value="company" className="px-2 text-xs">Co</TabsTrigger>
-              <TabsTrigger value="tasks" className="px-2 text-xs">Tasks</TabsTrigger>
-              <TabsTrigger value="library" className="px-2 text-xs">Files</TabsTrigger>
+          <div className="border-b border-[var(--app-border)] p-2">
+            <TabsList className="flex w-full gap-1 overflow-x-auto scrollbar-none">
+              <TabsTrigger value="home" className="flex-1 gap-2 px-2 text-xs">
+                <Home className="size-3.5" />
+                <span className="hidden sm:inline">Home</span>
+              </TabsTrigger>
+              <TabsTrigger value="cofounder" className="flex-1 gap-2 px-2 text-xs">
+                <Bot className="size-3.5" />
+                <span className="hidden sm:inline">AI</span>
+              </TabsTrigger>
+              <TabsTrigger value="company" className="flex-1 gap-2 px-2 text-xs">
+                <Building2 className="size-3.5" />
+                <span className="hidden sm:inline">Co</span>
+              </TabsTrigger>
+              <TabsTrigger value="tasks" className="flex-1 gap-2 px-2 text-xs">
+                <Briefcase className="size-3.5" />
+                <span className="hidden sm:inline">Tasks</span>
+              </TabsTrigger>
+              <TabsTrigger value="library" className="flex-1 gap-2 px-2 text-xs">
+                <FileText className="size-3.5" />
+                <span className="hidden sm:inline">Files</span>
+              </TabsTrigger>
             </TabsList>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
-            <TabsContent value="home" className="mt-0 grid gap-4">
+            <TabsContent value="home" className="mt-0 grid gap-4 animate-tab-content-fade">
               <PanelHeading eyebrow="Home" title={greeting(data.organization.name)} icon={<MessageSquare aria-hidden="true" className="size-4" />} />
               <section className="grid gap-3 rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
                 <div className="flex items-center justify-between gap-3">
@@ -119,11 +134,11 @@ export function CanvasSidePanel({
               <Textarea surface="dark" label="Ask Cofounder" placeholder="What should we do next?" />
             </TabsContent>
 
-            <TabsContent value="cofounder" className="mt-0 grid gap-4">
+            <TabsContent value="cofounder" className="mt-0 grid gap-4 animate-tab-content-fade">
               <ChatWorkspace orgId={data.organization.id} initialKind="cofounder" compact />
             </TabsContent>
 
-            <TabsContent value="company" className="mt-0 grid gap-4">
+            <TabsContent value="company" className="mt-0 grid gap-4 animate-tab-content-fade">
               <PanelHeading eyebrow="Company" title={data.organization.name} icon={<Building2 aria-hidden="true" className="size-4" />} />
               <StackStatus label="Domain" status="sandbox" />
               <StackStatus label="Email" status="sandbox" />
@@ -137,7 +152,7 @@ export function CanvasSidePanel({
               />
             </TabsContent>
 
-            <TabsContent value="tasks" className="mt-0 grid gap-4">
+            <TabsContent value="tasks" className="mt-0 grid gap-4 animate-tab-content-fade">
               <TaskWorkspace
                 orgId={data.organization.id}
                 initialTaskId={selectedTaskId}
@@ -146,7 +161,7 @@ export function CanvasSidePanel({
               />
             </TabsContent>
 
-            <TabsContent value="library" className="mt-0 grid gap-4">
+            <TabsContent value="library" className="mt-0 grid gap-4 animate-tab-content-fade">
               <FileLibrary orgId={data.organization.id} compact />
             </TabsContent>
           </div>

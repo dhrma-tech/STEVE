@@ -2,6 +2,7 @@
 
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils/cn";
 
 export function DepartmentNode({ data, selected }: NodeProps) {
   const nodeData = data as {
@@ -15,7 +16,10 @@ export function DepartmentNode({ data, selected }: NodeProps) {
 
   return (
     <div
-      className="grid w-[190px] gap-3 rounded-[14px] border bg-[rgba(37,37,43,0.92)] p-3 text-[var(--app-text)] shadow-[rgba(0,0,0,0.28)_0_16px_50px] backdrop-blur transition-transform"
+      className={cn(
+        "grid w-[190px] gap-3 rounded-[14px] border bg-[rgba(37,37,43,0.92)] p-3 text-[var(--app-text)] shadow-[rgba(0,0,0,0.28)_0_16px_50px] backdrop-blur transition-[border-color,box-shadow] duration-200",
+        selected && "animate-node-select-pop"
+      )}
       style={{
         borderColor: selected ? nodeData.color : "rgba(255,255,255,0.12)",
         boxShadow: selected ? `0 0 0 1px ${nodeData.color}, rgba(0,0,0,0.28) 0 16px 50px` : undefined

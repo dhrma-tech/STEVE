@@ -35,11 +35,11 @@ export function MarketingNav() {
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-[201] h-[90.8px] transition-colors",
+        "fixed inset-x-0 top-0 z-[201] h-[90.8px] w-full overflow-hidden transition-colors",
         scrolled ? "border-b-[0.8px] border-[#e8e7e6] bg-[var(--background)]" : "bg-transparent"
       )}
     >
-      <MarketingNavContainer className="h-full justify-between">
+      <MarketingNavContainer className="h-full max-w-full justify-between">
         <Link href="/" className="text-[18px] font-medium tracking-[0px] text-[var(--foreground)]" aria-label="Cofounder home">
           Cofounder
         </Link>
