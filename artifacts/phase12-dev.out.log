@@ -1,0 +1,12 @@
+
+> steve-cofounder@0.1.0 dev C:\Users\ACER\OneDrive\Music\Documents\Playground\STEVE
+> next dev "-p" "3010"
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3010
+- Network:       http://192.168.29.221:3010
+- Environments: .env
+✓ Ready in 596ms
+
+[?25h
+ ELIFECYCLE  Command failed with exit code 4294967295.

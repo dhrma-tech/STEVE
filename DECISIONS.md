@@ -1,0 +1,72 @@
+# DECISIONS.md
+
+- [DECISION-01] Use `C:\Users\ACER\OneDrive\Music\Documents\Playground\STEVE` as the product repository root - this is the cloned target repo requested by the user and it is currently empty.
+- [DECISION-02] Use source confidence precedence [VERIFIED] > [OBSERVED] > [INFERRED] > [UNKNOWN] - the documents explicitly label evidence and the precision gap-fill corrects earlier reports.
+- [DECISION-03] Keep all proprietary Cofounder assets out of the implementation - the UI/UX source instructs not to copy exact artwork, wordmark, or licensed Neoris font.
+- [ASSUMPTION-01] Missing tails in three source files are unavailable - each file ends abruptly in the local copy, so missing content will be logged as unknown rather than invented.
+- [ASSUMPTION-02] Implement `/terms` and alias `/terms-of-service` - the sources disagree on the legal route.
+- [ASSUMPTION-03] Implement internal `/docs` while preserving footer/docs intent - the sources disagree between `/docs` and external `https://docs.cofounder.co/`.
+- [ASSUMPTION-04] Use the verified centered auth screen as primary - the precision gap-fill gives DevTools-verified login layout details that override the inferred split-screen description.
+- [ASSUMPTION-05] Use verified white translucent hero glass pills - the precision gap-fill explicitly corrects the older dark-green badge reading.
+- [ASSUMPTION-06] Build all 8 departments as entities while reflecting locked/coming-soon availability where the notes show it - this reconciles the product promise with observed app states.
+- [ASSUMPTION-07] Use local sandbox adapters when external credentials are absent - real GitHub, Supabase, Vercel, Stripe, Postiz, Apify, domain, email, analytics, and monitoring integrations need credentials not present in the repository.
+- [DECISION-04] Use a single Next.js TypeScript application rather than a monorepo - the repository is empty and the product needs public routes, app routes, APIs, and shared UI without monorepo overhead.
+- [DECISION-05] Use React Flow for the orbital canvas - the source notes verify React Flow classes and custom node types in the logged-in app.
+- [DECISION-06] Use route-handler REST APIs instead of tRPC - the notes provide endpoint-style API examples and route handlers keep the contract in `docs/api-spec.md` explicit.
+- [DECISION-07] Use Prisma migrations for schema discipline - the user requires schema freeze and migration logging after Phase 1.
+- [DECISION-08] Use SQLite for credential-free local development while keeping a relational, PostgreSQL-compatible logical schema - local verification should not depend on an installed Postgres/Supabase instance, but production architecture remains Supabase/Postgres-oriented.
+- [DECISION-09] Use sandbox provider adapters by default - required integrations need credentials not present in the repo, and the product must remain fully navigable/testable locally.
+- [DECISION-10] Use pnpm as the package manager - pnpm is installed locally and creates a deterministic lockfile while keeping installs efficient.
+- [DECISION-11] Pin initial package versions from npm lookup on 2026-05-08 - avoids guessing current framework versions.
+- [DECISION-12] Store logical enum and JSON fields as text in the local SQLite Prisma schema - SQLite lacks the same native enum/json behavior expected from production Postgres/Supabase, so Zod/application validation will enforce the frozen logical schema while local migrations remain runnable.
+- [DECISION-13] Apply the Prisma-generated SQLite migration through a local script - `prisma migrate dev` crashes with a blank schema-engine error in this Windows/Node 24 environment, while `prisma migrate diff` successfully renders the SQL. The migration remains Prisma-generated and checked in.
+- [DECISION-14] Use Prisma 7.8.0 plus `@prisma/adapter-better-sqlite3` - Prisma 6 schema-engine crashed under Node 24, and Prisma 7 requires an explicit driver adapter for direct SQLite client connections.
+- [DECISION-15] Approve pnpm build scripts only for required native/tooling packages - Prisma engines, better-sqlite3, esbuild, sharp, and unrs-resolver need postinstall builds for local verification.
+- [DECISION-16] Use Radix UI primitives for dialogs, menus, tabs, accordions, selects, switches, sliders, avatars, progress, and tooltips - these controls need keyboard and focus behavior that should not be hand-rolled.
+- [DECISION-17] Use `lucide-react` as the icon set - it is broad enough for tool buttons and matches the design-system instruction to use an existing icon library.
+- [DECISION-18] Use `framer-motion` behind local motion wrappers - this keeps reduced-motion behavior centralized while allowing the public-site and app animations required by the notes.
+- [ASSUMPTION-08] Use Google-hosted Plus Jakarta Sans, Figtree, IBM Plex Mono, and Pixelify Sans; keep `Departure Mono` first in the mono stack only if a licensed local asset is later supplied - the notes require Departure Mono for pricing numerals but no font file or license is present in the repo.
+- [DECISION-19] Disable Next typed routes during phase-gated implementation - public CTAs must point to later-phase routes such as `/login` before those routes are built, and typed routes would fail compilation until every future route exists.
+- [DECISION-20] Create original public visuals with CSS pixel-art and interface mockups - the notes require original assets and prohibit copied Cofounder artwork, wordmarks, and licensed fonts.
+- [DECISION-21] Use `/terms` as canonical and redirect `/terms-of-service` - resolves the route conflict logged in `OPEN-QUESTIONS.md`.
+- [ASSUMPTION-09] Public pricing calculator formulas are local sandbox estimates - the source notes list required breakdown categories but do not provide exact math.
+- [ASSUMPTION-10] Legal and docs pages are content shells derived from product surfaces - exact reviewed legal copy and full docs copy were not present in the source notes.
+- [DECISION-22] Use signed first-party HMAC cookies for local sessions - the frozen schema has no session table, and this preserves credential-free auth without a post-freeze schema change.
+- [DECISION-23] Implement GitHub OAuth as provider mode with a state cookie and callback exchange, with sandbox fallback only when GitHub credentials are absent - satisfies the GitHub auth surface while keeping local development testable.
+- [DECISION-24] Add `PATCH /api/onboarding/profile` for partial personal onboarding progress - the spec requires resumed onboarding, and the existing user profile columns can persist each step without schema changes.
+- [DECISION-25] Use deterministic sandbox generators for company questions, business plan, department activation, and brand kits - no AI provider credentials or exact prompt contracts are present, so required artifacts remain stable and verifiable.
+- [DECISION-26] Store design onboarding selections, references, generated brand kit, and feedback in existing `OnboardingAnswer` records under `design_*` keys - avoids a post-freeze schema change while preserving auditable onboarding state.
+- [ASSUMPTION-11] GitHub OAuth credentials and a registered callback URL are absent locally - provider mode is implemented, but local verification uses clearly labeled sandbox auth until credentials are supplied.
+- [ASSUMPTION-12] Exact AI wording and brand-kit output are unspecified - sandbox outputs provide the required structures without inventing provider behavior.
+- [DECISION-27] Derive inbox notifications from existing organization, roadmap, task, file, integration, and billing records; store read markers in `AuditLog` - the frozen schema has notification preferences but no notification item table.
+- [DECISION-28] Use `Ctrl+K` / `Meta+K` for the command palette - matches common app-shell search behavior and keeps global search reachable from keyboard.
+- [DECISION-29] Use a compact bottom mobile nav with Canvas, Roadmap, Tasks, Agents, Inbox, and Command actions - preserves the required bottom-left inbox/new-task affordances in a narrow viewport without adding another drawer.
+- [DECISION-30] Exclude `.next/dev` generated validator files from TypeScript checks while leaving Next's generated include in place - Next dev adds those files automatically, and the dev-only validator can conflict with phase-gated dynamic routes while production `.next/types` remains checked.
+- [ASSUMPTION-13] Inbox item persistence is read-state only until a dedicated notification/event table is specified - derived items are stable enough for Phase 5 shell behavior and avoid a schema migration.
+- [DECISION-31] Add `@xyflow/react` 12.10.2 for the workspace canvas - React Flow is verified in the source notes and provides pan, zoom, nodes, edges, controls, and minimap behavior.
+- [DECISION-32] Use deterministic circular department node positions around the Cofounder node - all 8 departments need to be visible immediately and the same graph must be reproducible across sessions.
+- [DECISION-33] Hide the generic Phase 5 summary side panel on `/canvas` and use a route-specific canvas side panel - canvas selection needs to drive department detail state, tabs, roadmap shell, and session shell in the same workspace view.
+- [DECISION-34] Keep Phase 6 roadmap and agent-session query handling as functional shells - the implementation plan explicitly defers the full roadmap engine to Phase 8 and full agent workspace to Phase 10.
+- [DECISION-35] Use deterministic generated CSS cover assets for departments - the notes require original or generated cover imagery, and the repo has no licensed/local department image files.
+- [DECISION-36] Keep Support, Operations, Finance, and Legal inspectable while displaying coming-soon availability - this follows [ASSUMPTION-06] and preserves all 8 departments as core entities until Phase 8 unlock logic exists.
+- [ASSUMPTION-14] Department setup prompt and context-tab copy is deterministic product copy derived from department responsibilities - exact prompt text is not present in the notes.
+- [DECISION-37] Normalize legacy `/assets/departments/*.webp` cover paths to generated cover keys at serialization - keeps existing local organizations compatible with Phase 7 covers without a schema change or data migration.
+- [ASSUMPTION-15] Use the source-listed stage order plus documented "each completed item unlocks next items" behavior to define roadmap dependencies - exact edge-by-edge dependency data is not present in the notes.
+- [DECISION-38] Idempotently sync roadmap stages, items, and dependency edges before roadmap reads/writes - this retrofits existing local organizations to the Phase 8 tech tree without a schema migration.
+- [DECISION-39] Render Mature as an empty source-gap stage shell - the notes name the Mature stage but do not list its items.
+- [DECISION-40] Use `roadmapDefinitions` work types as the launch defaults - those definitions already encode agent/user/approval intent for seeded roadmap items.
+- [ASSUMPTION-16] Implement the new-task app dropdown as an execution target selector - the notes require an app dropdown but do not define an App table or option list, so deterministic targets (`staging`, `production`, `repository`, `integration`) keep the flow explicit.
+- [DECISION-41] Use status columns for board view and a compact week-strip for calendar view - Phase 9 task views must fit the canvas side panel and mobile widths without losing status or due-date context.
+- [DECISION-42] Limit optimistic UI behavior to post-mutation refreshes - subtasks, comments, attachments, approvals, and task sessions touch multiple existing tables, so server-confirmed refreshes are safer than speculative local writes.
+- [DECISION-43] Use deterministic sandbox execution actions for Phase 10 agent runs - local verification has no external queue/agent provider, and the architecture specifies simulated actions/logs for agent execution.
+- [ASSUMPTION-17] Agent marketplace skills are deterministic department/integration capabilities - the notes require a marketplace/skills surface but do not provide a canonical provider catalog.
+- [DECISION-44] Keep a repeatable Phase 10 Chrome CDP smoke runner in `artifacts/phase10-browser-smoke.cjs` - the in-app browser runtime failed in this session, and a reusable local browser check verifies the agent center and workspace console state without adding test dependencies.
+- [DECISION-45] Implement Phase 11 chat as request/response APIs with an optimistic streaming/typing UI and SSE-ready metadata - no websocket/SSE provider is specified, and this keeps chat verifiable in local sandbox mode.
+- [ASSUMPTION-18] Persist chat message attachments in `ChatMessage.metadataJson.fileIds` plus existing `File` rows when users pick local files - the frozen schema has no chat-message/file join table.
+- [DECISION-46] Keep a repeatable Phase 11 Chrome CDP smoke runner in `artifacts/phase11-browser-smoke.cjs` - the Browser plugin runtime remained unavailable, and local CDP verifies the rendered chat surface and console state without adding dependencies.
+- [ASSUMPTION-19] File binary storage provider and exact object-storage path are unspecified in the notes - local Phase 12 stores logical `storageKey` values plus safe preview text in `File.metadataJson` without adding a schema table.
+- [DECISION-47] Use `orgs/{orgId}/files/...` logical storage keys for library uploads and versions - this matches the frozen `storageKey` field and keeps future object-storage adapters replaceable without a migration.
+- [DECISION-48] Support inline previews for text, markdown, JSON, and CSV, with metadata previews for image, PDF, spreadsheet, presentation, document, and unknown files - this covers common file types while avoiding invented binary rendering infrastructure.
+- [ASSUMPTION-20] Live provider credentials for Stripe, Vercel, Supabase, Postiz, Apify, email/domain, analytics, and monitoring are absent locally - Phase 13 uses explicit sandbox adapter states backed by integration records.
+- [DECISION-49] Store provider settings in `Integration.configJson`, provider event history in `IntegrationEvent`, and write-only secret metadata in `Secret` - this satisfies settings/integration flows without a post-freeze schema change.
+- [DECISION-50] Require exact typed confirmations for destructive settings actions - own Supabase import and own GitHub repo switch need deliberate confirmation and auditable `AuditLog` entries.

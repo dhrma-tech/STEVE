@@ -1,0 +1,9 @@
+(node:13084) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 unpipe listeners added to [SyncWriteStream]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13084) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 error listeners added to [SyncWriteStream]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(node:13084) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 close listeners added to [SyncWriteStream]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(node:13084) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 finish listeners added to [SyncWriteStream]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(node:13084) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 unpipe listeners added to [SyncWriteStream]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(node:13084) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 error listeners added to [SyncWriteStream]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(node:13084) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 close listeners added to [SyncWriteStream]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(node:13084) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 finish listeners added to [SyncWriteStream]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit

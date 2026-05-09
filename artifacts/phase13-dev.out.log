@@ -1,0 +1,54 @@
+
+> steve-cofounder@0.1.0 dev C:\Users\ACER\OneDrive\Music\Documents\Playground\STEVE
+> next dev "-p" "3010"
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3010
+- Network:       http://192.168.29.221:3010
+- Environments: .env
+✓ Ready in 691ms
+
+○ Compiling /login ...
+ GET /login 200 in 4.0s (next.js: 3.5s, application-code: 555ms)
+ POST /api/auth/sandbox-login 200 in 977ms (next.js: 724ms, application-code: 253ms)
+ PATCH /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/preferences 200 in 1684ms (next.js: 1583ms, application-code: 101ms)
+ PATCH /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/ai 200 in 1022ms (next.js: 970ms, application-code: 53ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/env-files 201 in 1147ms (next.js: 1025ms, application-code: 123ms)
+ PATCH /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/notifications 200 in 1014ms (next.js: 967ms, application-code: 47ms)
+ PATCH /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/organization 200 in 1100ms (next.js: 1030ms, application-code: 69ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/organization/context-import 201 in 1067ms (next.js: 1031ms, application-code: 36ms)
+ GET /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/inbox 200 in 1143ms (next.js: 1118ms, application-code: 26ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/inbox/domains 201 in 1137ms (next.js: 1093ms, application-code: 44ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/inbox/agent-addresses 201 in 1146ms (next.js: 1098ms, application-code: 48ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/billing/upgrade 200 in 1247ms (next.js: 1160ms, application-code: 88ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/integrations/stripe/connect 200 in 1080ms (next.js: 980ms, application-code: 100ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/integrations/apify/connect 200 in 112ms (next.js: 10ms, application-code: 102ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/integrations/apify/check 200 in 1263ms (next.js: 1160ms, application-code: 103ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/integrations/apify/disconnect 200 in 1133ms (next.js: 1041ms, application-code: 93ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/integrations/postiz/channels 201 in 1133ms (next.js: 1013ms, application-code: 120ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/advanced/import-supabase 200 in 1170ms (next.js: 1056ms, application-code: 114ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/advanced/switch-repo 200 in 1205ms (next.js: 1127ms, application-code: 78ms)
+ GET /org/cmowffj6g0001xkstjbhqhiwq/settings/preferences 200 in 2.4s (next.js: 1948ms, application-code: 404ms)
+ GET /login 200 in 105ms (next.js: 4ms, application-code: 100ms)
+ POST /api/auth/sandbox-login 200 in 43ms (next.js: 4ms, application-code: 39ms)
+ PATCH /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/preferences 200 in 55ms (next.js: 14ms, application-code: 41ms)
+ PATCH /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/ai 200 in 49ms (next.js: 17ms, application-code: 32ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/env-files 201 in 124ms (next.js: 13ms, application-code: 111ms)
+ PATCH /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/notifications 200 in 52ms (next.js: 14ms, application-code: 38ms)
+ PATCH /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/organization 200 in 74ms (next.js: 15ms, application-code: 59ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/organization/context-import 201 in 66ms (next.js: 15ms, application-code: 51ms)
+ GET /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/inbox 200 in 35ms (next.js: 17ms, application-code: 18ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/inbox/domains 201 in 62ms (next.js: 17ms, application-code: 46ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/inbox/agent-addresses 201 in 62ms (next.js: 21ms, application-code: 41ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/billing/upgrade 200 in 61ms (next.js: 17ms, application-code: 44ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/integrations/stripe/connect 200 in 252ms (next.js: 21ms, application-code: 232ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/integrations/apify/connect 200 in 234ms (next.js: 5ms, application-code: 229ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/integrations/apify/check 200 in 201ms (next.js: 21ms, application-code: 180ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/integrations/apify/disconnect 200 in 205ms (next.js: 26ms, application-code: 180ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/integrations/postiz/channels 201 in 183ms (next.js: 24ms, application-code: 160ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/advanced/import-supabase 200 in 210ms (next.js: 38ms, application-code: 172ms)
+ POST /api/orgs/cmowffj6g0001xkstjbhqhiwq/settings/advanced/switch-repo 200 in 187ms (next.js: 24ms, application-code: 164ms)
+ GET /org/cmowffj6g0001xkstjbhqhiwq/settings/preferences 200 in 920ms (next.js: 30ms, application-code: 891ms)
+ GET /org/cmowffj6g0001xkstjbhqhiwq/settings/billing 200 in 956ms (next.js: 7ms, application-code: 949ms)
+ GET /org/cmowffj6g0001xkstjbhqhiwq/integrations 200 in 2.0s (next.js: 1564ms, application-code: 468ms)
+ GET /org/cmowffj6g0001xkstjbhqhiwq/integrations/postiz 200 in 1563ms (next.js: 1251ms, application-code: 313ms)
