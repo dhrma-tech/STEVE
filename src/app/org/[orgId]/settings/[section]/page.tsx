@@ -27,8 +27,8 @@ import {
 } from "@/lib/settings/data";
 
 export const metadata: Metadata = {
-  title: "Settings - Cofounder",
-  description: "Workspace settings, billing, payments, support, notifications, and provider configuration."
+  title: "Settings",
+  description: "Workspace settings — billing, payments, support, notifications, integrations, and advanced controls."
 };
 
 type SettingsSectionPageProps = {
@@ -46,7 +46,7 @@ const sectionCopy: Record<SettingsSection, { title: string; description: string 
   },
   "env-files": {
     title: "Env Files & Secrets",
-    description: "Upload env files, write secrets, push sanitized metadata to Vercel sandbox, and keep values write-only."
+    description: "Upload env files, store secrets, and push sanitized values to your deployment. All credentials are write-only."
   },
   notifications: {
     title: "Notifications",

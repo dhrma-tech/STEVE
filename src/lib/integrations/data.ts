@@ -254,7 +254,7 @@ export async function getPostizIntegration(orgId: string) {
     publishing: {
       status: detail.integration.status,
       mode: detail.integration.mode,
-      queueLabel: detail.integration.status === "connected" ? "Ready for social publishing tasks" : "Connect sandbox channels to unlock social publishing"
+      queueLabel: detail.integration.status === "connected" ? "Ready for social publishing tasks" : "Connect a channel to unlock social publishing"
     }
   };
 }

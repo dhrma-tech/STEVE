@@ -25,7 +25,7 @@ import { ToggleField } from "@/components/ui/toggle";
 type ApiPayload<T> = { data?: T; error?: { message: string } };
 
 export function SettingsPanel({ children }: { children: React.ReactNode }) {
-  return <div className="grid gap-4 rounded-[12px] border border-[var(--app-border)] bg-[var(--app-panel)] p-4">{children}</div>;
+  return <div className="grid gap-4 rounded-[12px] border border-[var(--border-8)] bg-[var(--background-settings)] p-4">{children}</div>;
 }
 
 export function SectionHeader({ title, detail }: { title: string; detail?: string }) {
@@ -33,7 +33,7 @@ export function SectionHeader({ title, detail }: { title: string; detail?: strin
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h3 className="text-base font-medium">{title}</h3>
-        {detail ? <p className="mt-1 text-sm leading-6 text-[var(--app-text-50)]">{detail}</p> : null}
+        {detail ? <p className="mt-1 text-sm leading-6 text-[var(--foreground-50)]">{detail}</p> : null}
       </div>
     </div>
   );
@@ -110,7 +110,7 @@ export function PreferencesSettingsForm({ orgId, initialData }: { orgId: string;
       <FileUpload
         surface="dark"
         label="Upload profile photo"
-        description="WebP only, max 5MB. Local sandbox stores a safe avatar reference."
+        description="WebP only, max 5MB."
         accept="image/webp"
         maxFiles={1}
         disabled={busy}
@@ -122,9 +122,9 @@ export function PreferencesSettingsForm({ orgId, initialData }: { orgId: string;
           <Save aria-hidden="true" className="size-4" />
           Save preferences
         </Button>
-        <DangerNote label="Delete account" detail="Destructive account deletion is reserved for the final audit pass and requires a dedicated confirmation flow." />
+        <DangerNote label="Delete account" detail="Permanently deletes your account and removes you from every organization. This action cannot be undone." />
       </div>
-      {data.vercel ? <KeyValueRows rows={[["Vercel project", String(data.vercel.config.project ?? "managed sandbox")], ["Vercel status", data.vercel.status]]} /> : null}
+      {data.vercel ? <KeyValueRows rows={[["Vercel project", String(data.vercel.config.project ?? "Managed by Cofounder")], ["Vercel status", data.vercel.status]]} /> : null}
     </SettingsPanel>
   );
 }
@@ -173,9 +173,9 @@ export function AiSettingsForm({ orgId, initialData }: { orgId: string; initialD
           value={data.aiModel}
           onValueChange={(value) => patch({ aiModel: value })}
           options={[
-            { value: "claude-sonnet-sandbox", label: "Claude Sonnet sandbox" },
-            { value: "gpt-5.4-sandbox", label: "GPT-5.4 sandbox" },
-            { value: "gpt-5.4-mini-sandbox", label: "GPT-5.4 Mini sandbox" }
+            { value: "claude-sonnet-sandbox", label: "Claude Sonnet 4.6" },
+            { value: "gpt-5.4-sandbox", label: "GPT-5.4" },
+            { value: "gpt-5.4-mini-sandbox", label: "GPT-5.4 Mini" }
           ]}
         />
       </div>
@@ -210,7 +210,7 @@ export function EnvFilesSettingsPanel({ orgId, initialData }: { orgId: string; i
     });
     if (payload.data) {
       setData(payload.data);
-      setMessage(".env metadata saved and pushed to Vercel sandbox.");
+      setMessage("Env file saved and pushed to Vercel.");
     } else {
       setMessage(payload.error?.message ?? "Env file could not be saved.");
     }
@@ -319,7 +319,7 @@ export function OrganizationSettingsForm({ orgId, initialData }: { orgId: string
         <Save aria-hidden="true" className="size-4" />
         Save organization
       </Button>
-      <div className="grid gap-3 rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+      <div className="grid gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
         <SectionHeader title="Context import" />
         <SelectField
           surface="dark"
@@ -428,7 +428,7 @@ export function AdvancedSettingsPanel({ orgId, initialData }: { orgId: string; i
         <Button variant="danger" onClick={() => setAction("repo")}>Switch own repo</Button>
       </div>
       {action ? (
-        <div className="grid gap-3 rounded-[10px] border border-[rgba(239,68,68,0.38)] bg-[rgba(239,68,68,0.08)] p-3">
+        <div className="grid gap-3 rounded-[10px] border border-[var(--tt-color-text-red-contrast)] bg-[var(--tt-color-text-red-contrast)] p-3">
           <SectionHeader title="Destructive confirmation" detail={`Type ${action === "supabase" ? data.confirmations.importSupabase : data.confirmations.switchRepo} before confirming.`} />
           <Input
             surface="dark"
@@ -439,7 +439,7 @@ export function AdvancedSettingsPanel({ orgId, initialData }: { orgId: string; i
           />
           <div className="flex flex-wrap gap-2">
             <Button variant="danger" onClick={confirm}>Confirm</Button>
-            <Button variant="ghost" className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" onClick={() => setAction(null)}>Cancel</Button>
+            <Button variant="ghost" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={() => setAction(null)}>Cancel</Button>
           </div>
         </div>
       ) : null}
@@ -461,12 +461,12 @@ export function PaymentsSettingsPanel({ orgId, initialData }: { orgId: string; i
   }
   return (
     <SettingsPanel>
-      <SectionHeader title="Stripe payments" detail="Test keys, live keys, webhook status, and mode-specific payment readiness." />
-      <KeyValueRows rows={[["Status", data.integration.status], ["Mode", data.integration.mode], ["Test mode", String(data.integration.config.testMode ?? "needs_keys")], ["Live mode", String(data.integration.config.liveMode ?? "not_configured")], ["Webhook", String(data.integration.config.webhookStatus ?? "sandbox")]]} />
+      <SectionHeader title="Stripe payments" detail="Connect Stripe test and live keys to start accepting payments through your workspace." />
+      <KeyValueRows rows={[["Status", data.integration.status], ["Mode", data.integration.mode], ["Test mode", String(data.integration.config.testMode ?? "needs_keys")], ["Live mode", String(data.integration.config.liveMode ?? "not_configured")], ["Webhook", String(data.integration.config.webhookStatus ?? "not configured")]]} />
       <SecretList secrets={data.secrets.map((secret) => ({ ...secret, integration: { id: data.integration.id, provider: "stripe", status: data.integration.status }, isWriteOnly: true, valuePreview: "••••••••", createdAt: secret.updatedAt, rotatedAt: null }))} />
       <div className="flex flex-wrap gap-2">
-        <Button variant="app" onClick={() => action("connect")}>Connect sandbox</Button>
-        <Button variant="ghost" className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" onClick={() => action("check")}><RefreshCw aria-hidden="true" className="size-4" />Check</Button>
+        <Button variant="app" onClick={() => action("connect")}>Connect Stripe</Button>
+        <Button variant="ghost" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={() => action("check")}><RefreshCw aria-hidden="true" className="size-4" />Check</Button>
         <Button variant="danger" onClick={() => action("disconnect")}>Disconnect</Button>
       </div>
       <StatusLine message={message} />
@@ -488,13 +488,13 @@ function UsageStrip({ used, included, remaining }: { used: number; included: num
 }
 
 function KeyValueRows({ rows, emptyLabel = "No records." }: { rows: Array<[string, string]>; emptyLabel?: string }) {
-  if (!rows.length) return <p className="rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3 text-sm text-[var(--app-text-50)]">{emptyLabel}</p>;
+  if (!rows.length) return <p className="rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3 text-sm text-[var(--foreground-50)]">{emptyLabel}</p>;
   return (
-    <div className="grid overflow-hidden rounded-[10px] border border-[var(--app-border)]">
+    <div className="grid overflow-hidden rounded-[10px] border border-[var(--border-10)]">
       {rows.map(([label, value]) => (
-        <div key={`${label}-${value}`} className="flex items-center justify-between gap-3 border-b border-[var(--app-border)] bg-[rgba(255,255,255,0.035)] px-3 py-2 text-sm last:border-b-0">
-          <span className="min-w-0 truncate text-[var(--app-text-50)]">{label}</span>
-          <span className="min-w-0 truncate text-right text-[var(--app-text)]">{value}</span>
+        <div key={`${label}-${value}`} className="flex items-center justify-between gap-3 border-b border-[var(--border-10)] bg-[var(--foreground-3)] px-3 py-2 text-sm last:border-b-0">
+          <span className="min-w-0 truncate text-[var(--foreground-50)]">{label}</span>
+          <span className="min-w-0 truncate text-right text-[var(--foreground-80)]">{value}</span>
         </div>
       ))}
     </div>
@@ -504,8 +504,8 @@ function KeyValueRows({ rows, emptyLabel = "No records." }: { rows: Array<[strin
 function StatusLine({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <p className="flex items-center gap-2 text-sm text-[var(--app-text-50)]">
-      <CheckCircle2 aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+    <p className="flex items-center gap-2 text-sm text-[var(--foreground-50)]">
+      <CheckCircle2 aria-hidden="true" className="size-4 text-[var(--success-100)]" />
       {message}
     </p>
   );
@@ -513,17 +513,17 @@ function StatusLine({ message }: { message: string | null }) {
 
 function DangerNote({ label, detail }: { label: string; detail: string }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-[8px] border border-[rgba(239,68,68,0.38)] px-3 py-2 text-sm text-red-100">
+    <span className="inline-flex items-center gap-2 rounded-[8px] border border-[var(--tt-color-text-red-contrast)] px-3 py-2 text-sm text-[var(--destructive)]">
       <AlertTriangle aria-hidden="true" className="size-4" />
       <span className="font-medium">{label}</span>
-      <span className="hidden text-red-100/65 md:inline">{detail}</span>
+      <span className="hidden text-[var(--foreground-50)] md:inline">{detail}</span>
     </span>
   );
 }
 
 export function ExternalLinkRow({ href, label }: { href: string; label: string }) {
   return (
-    <a href={href} className="inline-flex items-center gap-2 text-sm text-[var(--app-primary-light)]">
+    <a href={href} className="inline-flex items-center gap-2 text-sm text-[var(--tt-color-text-blue)]">
       <ExternalLink aria-hidden="true" className="size-4" />
       {label}
     </a>
@@ -536,7 +536,7 @@ export function CopyButton({ value }: { value: string }) {
     <Button
       variant="ghost"
       size="sm"
-      className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]"
+      className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]"
       onClick={async () => {
         await navigator.clipboard.writeText(value);
         setCopied(true);

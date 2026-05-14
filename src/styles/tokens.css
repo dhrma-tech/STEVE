@@ -1,3 +1,29 @@
+/* ============================================================
+   Cofounder Design Tokens — Slice 1
+   Spec source of truth: report100.txt, Section V (dark-mode token
+   system, 19 groups, ~319 variables).
+
+   Activation model:
+     - `html.dark` is the default active class (set in layout.tsx).
+     - All Section V tokens live on `html.dark` so they are active
+       whenever the app shell is mounted.
+     - `:root` retains the pre-Slice-1 token surface (light-mode
+       marketing/auth defaults plus legacy aliases) so the 98
+       existing files that reference those names continue to
+       resolve until later slices re-skin them to Section V.
+
+   Section C typography variables are declared at the bottom; the
+   font-face values themselves are injected by next/font in
+   layout.tsx.
+   ============================================================ */
+
+/* ============================================================
+   :root — legacy / light-mode fallback surface
+   Preserved verbatim from the pre-Slice-1 tokens.css so existing
+   components keep rendering until later slices migrate them to
+   Section V tokens. To be removed in a later slice once every
+   component references Section V tokens directly.
+   ============================================================ */
 :root {
   --background: #f5f5f2;
   --foreground: #171717;
@@ -37,9 +63,11 @@
   --app-primary-light: #eeeee8e6;
   --app-workspace-glass: #202024a8;
   --app-workspace-raised: #26262aeb;
+
   --brand-500: #6229ff;
   --brand-400: #7a52ff;
   --brand-300: #9d8aff;
+
   --success: #34a853;
   --running: #3b82f6;
   --warning: #f59e0b;
@@ -57,8 +85,545 @@
   --blur-lg: 16px;
 
   --spacing: 0.25rem;
-  --font-sans: var(--font-plus-jakarta), "Inter", system-ui, sans-serif;
-  --font-app: var(--font-figtree), var(--font-plus-jakarta), system-ui, sans-serif;
-  --font-mono: "Departure Mono", var(--font-ibm-plex-mono), ui-monospace, monospace;
-  --font-pixel: var(--font-pixelify), var(--font-ibm-plex-mono), ui-monospace, monospace;
+
+  /* Legacy font-family aliases — point at the new Section C font
+     variables so existing globals.css / components inherit the
+     correct typefaces without code changes. */
+  --font-sans: var(--font-figtree), "Inter", system-ui, sans-serif;
+  --font-app: var(--font-figtree), system-ui, sans-serif;
+  --font-mono:
+    var(--font-departure-mono), var(--font-ibm-plex-mono), ui-monospace, monospace;
+  --font-pixel: var(--font-pixelify-sans), var(--font-ibm-plex-mono), ui-monospace, monospace;
+}
+
+/* ============================================================
+   html.dark — Section V (verbatim, 19 groups, ~319 variables)
+   Default active class for the application shell.
+   ============================================================ */
+html.dark {
+  /* ---------- Group 1 — Primitive Globals ---------- */
+  --white: #fff;
+  --black: #0e0e11;
+  --transparent: #fff0;
+
+  /* ---------- Group 2 — Semantic Background / Surface Tokens ---------- */
+  --background: rgb(30, 30, 35);
+  /* Section I — settings section card bg (Section B Dark Mode table: "Input bg (settings)").
+     Not named in the Section V variable reference; created analogously to --border-subtle.
+     See DECISION-56. */
+  --background-settings: rgb(37, 37, 43);
+  --background-l0: rgb(30, 30, 35);
+  --background-l-negative-50-100: #1d1d22;
+  --background-l0-0: #1e1e2300;
+  --background-l0-85: #1e1e23d9;
+  --background-l0-80: #1e1e23cc;
+  --background-l0-50: #1e1e2380;
+  --background-sidepanel: #29292e;
+  --background-screen: #27272b;
+  --background-created-task-card: linear-gradient(180deg, #ffffff0a 0%, #ffffff04 100%);
+  --background-created-task-card-hover: linear-gradient(180deg, #ffffff0f 0%, #ffffff06 100%);
+  --card: lab(1.98454% 0 0);
+  --popover: lab(1.98454% 0 0);
+  --muted: lab(5.26802% 0 0);
+  --secondary: lab(5.26802% 0 0);
+  --accent: lab(5.26802% 0 0);
+  --sidebar-accent: lab(5.26802% 0 0);
+  --tt-bg-color: #070709;
+  --tt-sidebar-bg-color: #111113;
+  --tt-card-bg-color: #0e0e10;
+  --logo-background: #f4f4f3;
+
+  /* ---------- Group 3 — Foreground / Text Tokens ---------- */
+  --foreground: lab(98.26% 0 0);
+  --foreground-100: #fff;
+  --foreground-90: #ffffffe6;
+  --foreground-80: #fffc;
+  --foreground-70: #ffffffb3;
+  --foreground-60: #fff9;
+  --foreground-50: #ffffff80;
+  --foreground-40: #fff6;
+  --foreground-30: #ffffff4d;
+  --foreground-20: #fff3;
+  --foreground-15: #ffffff26;
+  --foreground-10: #ffffff1a;
+  --foreground-8: #ffffff14;
+  --foreground-5: #ffffff0d;
+  --foreground-3: #ffffff08;
+  --card-foreground: lab(98.26% 0 0);
+  --popover-foreground: lab(98.26% 0 0);
+  --muted-foreground: lab(66.128% 0 0);
+  --secondary-foreground: lab(98.26% 0 0);
+  --accent-foreground: lab(98.26% 0 0);
+  --primary: lab(90.952% 0 0);
+  --primary-foreground: lab(7.78201% 0 0);
+  --destructive: lab(63.7053% 60.745 31.3109);
+  --destructive-foreground: lab(100% 0 0);
+  --artifact-code-foreground: #f1a06f;
+  --logo-tag: #000;
+
+  /* ---------- Group 4 — Foreground Inverse Tokens ---------- */
+  --foreground-inverse-10: #0000001a;
+  --foreground-inverse-20: #0003;
+  --foreground-inverse-30: #0000004d;
+  --foreground-inverse-40: #0006;
+  --foreground-inverse-50: #00000080;
+  --foreground-inverse-60: #0009;
+  --foreground-inverse-70: #000000b3;
+  --foreground-inverse-80: #000c;
+
+  /* ---------- Group 5 — Border Tokens ---------- */
+  --border: lab(100% 0 0 / 0.1);
+  --border-5: #ffffff0d;
+  --border-8: #ffffff14;
+  --border-10: #ffffff1a;
+  --border-20: #fff3;
+  --border-30: #ffffff4d;
+  --border-40: #fff6;
+  --border-50: #ffffff80;
+  --border-60: #fff9;
+  --border-70: #ffffffb3;
+  --border-80: #fffc;
+  --border-90: #ffffffe6;
+  --border-100: #fff;
+  --input: lab(100% 0 0 / 0.15);
+  --ring: lab(48.496% 0 0);
+  --tt-border-color: #eeeef61c;
+  --tt-border-color-tint: #e7e7f312;
+  --tt-card-border-color: #e8e8fd0d;
+  --radius: 0.625rem;
+
+  /* ---------- Group 6 — Semantic Color Text Tokens ---------- */
+  --tt-color-text-gray: #9c9c9c;
+  --tt-color-text-brown: #b9856e;
+  --tt-color-text-orange: #c77d48;
+  --tt-color-text-yellow: #ca994e;
+  --tt-color-text-green: #519e71;
+  --tt-color-text-blue: #3699d3;
+  --tt-color-text-purple: #9e69d3;
+  --tt-color-text-pink: #d15796;
+  --tt-color-text-red: #df5553;
+
+  /* ---------- Group 7 — Semantic Color Contrast (Background) Tokens ---------- */
+  --tt-color-text-gray-contrast: #ffffff17;
+  --tt-color-text-brown-contrast: #b9674640;
+  --tt-color-text-orange-contrast: #e97d2533;
+  --tt-color-text-yellow-contrast: #b3823d33;
+  --tt-color-text-green-contrast: #2d9a6533;
+  --tt-color-text-blue-contrast: #327da933;
+  --tt-color-text-purple-contrast: #9b60d229;
+  --tt-color-text-pink-contrast: #dc4c913d;
+  --tt-color-text-red-contrast: #dd555540;
+
+  /* ---------- Group 8 — Highlight / Block Color Tokens ---------- */
+  --tt-color-highlight-yellow: #6b6524;
+  --tt-color-highlight-green: #509568;
+  --tt-color-highlight-blue: #6e92aa;
+  --tt-color-highlight-purple: #583e74;
+  --tt-color-highlight-red: #743e42;
+  --tt-color-highlight-gray: #2f2f2f;
+  --tt-color-highlight-brown: #4a3228;
+  --tt-color-highlight-orange: #5c3b23;
+  --tt-color-highlight-pink: #4e2c3c;
+  --tt-color-highlight-yellow-contrast: #58531e;
+  --tt-color-highlight-green-contrast: #47855d;
+  --tt-color-highlight-blue-contrast: #5e86a1;
+  --tt-color-highlight-purple-contrast: #4c3564;
+  --tt-color-highlight-red-contrast: #643539;
+  --tt-color-highlight-gray-contrast: #ffffff18;
+  --tt-color-highlight-brown-contrast: #b8654540;
+  --tt-color-highlight-orange-contrast: #e97e2533;
+  --tt-color-highlight-pink-contrast: #dc4c9138;
+
+  /* ---------- Group 9 — Brand Color Base Tokens ---------- */
+  --tt-color-green-base: #01fe73;
+  --tt-color-yellow-base: #fd0;
+  --tt-color-red-base: #ff3014;
+  --tt-brand-color-50: #efeeff;
+  --tt-brand-color-100: #dedbff;
+  --tt-brand-color-200: #c3bdff;
+  --tt-brand-color-300: #9d8aff;
+  --tt-brand-color-400: #7a52ff;
+  --tt-brand-color-500: #6229ff;
+  --tt-brand-color-600: #5400e5;
+  --tt-brand-color-700: #4b00cc;
+  --tt-brand-color-800: #380099;
+  --tt-brand-color-900: #2b1966;
+  --tt-brand-color-950: #0d002e;
+
+  /* ---------- Group 10 — UI State / Functional Color Tokens ---------- */
+  --focused: #7bb9ff;
+  --alert: #ff672f;
+  --caret: #879e3e;
+  --success: #34a853;
+  --success-100: #34a853;
+  --success-40: #34a85366;
+  --success-30: #34a8534d;
+  --success-5: #34a8530d;
+  --tt-accent-contrast: 8%;
+  --tt-destructive-contrast: 8%;
+  --tt-foreground-contrast: 8%;
+  --tt-cursor-color: #7a52ff;
+  --tt-selection-color: #7a52ff33;
+  --tt-scrollbar-color: #eeeef61c;
+
+  /* ---------- Group 11 — Chart / Data Visualization Tokens ---------- */
+  --chart-green-500: #7bd85b;
+  --chart-green-500-20: #7bd85b33;
+  --chart-green-700-20: #34a85333;
+  --chart-orange-500: #ff672f;
+
+  /* ---------- Group 12 — Radius Tokens ---------- */
+  --tt-radius-xxs: 0.125rem;
+  --tt-radius-xs: 0.25rem;
+  --tt-radius-sm: 0.375rem;
+  --tt-radius-md: 0.5rem;
+  --tt-radius-lg: 0.75rem;
+  --tt-radius-xl: 1rem;
+
+  /* ---------- Group 13 — Transition Duration Tokens ---------- */
+  --tt-transition-duration-short: 0.1s;
+  --tt-transition-duration-default: 0.2s;
+  --tt-transition-duration-long: 0.64s;
+
+  /* ---------- Group 14 — Transition Easing Tokens ---------- */
+  --tt-transition-easing-default: cubic-bezier(0.46, 0.03, 0.52, 0.96);
+  --tt-transition-easing-cubic: cubic-bezier(0.65, 0.05, 0.36, 1);
+  --tt-transition-easing-quart: cubic-bezier(0.77, 0, 0.18, 1);
+  --tt-transition-easing-circ: cubic-bezier(0.79, 0.14, 0.15, 0.86);
+  --tt-transition-easing-back: cubic-bezier(0.68, -0.55, 0.27, 1.55);
+
+  /* ---------- Group 15 — Shadow Tokens ---------- */
+  --tt-shadow-elevated-md:
+    0px 16px 48px 0px #00000080,
+    0px 12px 24px 0px #0000003d,
+    0px 6px 8px 0px #00000038,
+    0px 2px 3px 0px #0000001f;
+
+  --shadow-button-sm:
+    0px 2px 2px 0px #0003,
+    inset 0px 0.75px 0px 0px #fff3,
+    inset 0px 0px 0.357143px 1.07143px #fff3,
+    inset 0px 0px 0px 0.5px #000;
+
+  --shadow-button-md:
+    inset 0px 0.75px 0px 0px #fff3,
+    0px 1px 2px 0px #00000024,
+    0px 3px 3px 0px #00000021,
+    0px 7px 4px 0px #0000001f,
+    inset 0px 0px 0.357143px 1.07143px #fff3,
+    inset 0px 0px 0px 0.5px #000;
+
+  --shadow-button-lg:
+    inset 0px 0.75px 0px 0px #fff3,
+    inset 0px 0px 0.357143px 1.07143px #fff3,
+    0px 2px 3px 0px #00000029,
+    0px 6px 6px 0px #00000026,
+    0px 14px 8px 0px #00000021,
+    0px 25px 10px 0px #0000001c,
+    inset 0px 0px 0px 0.5px #000;
+
+  --shadows-dark-buttons-md: var(--shadow-button-md);
+  --shadows-dark-buttons-lg: var(--shadow-button-lg);
+
+  --shadows-dark-buttons-inverse-md:
+    inset 0px 1.5px 0px 0px #ffffff80,
+    inset 0px 0px 0.357143px 1.07143px #ffffff26,
+    inset 0px 0px 0.357143px 1.07143px #fff3,
+    0px 1px 2px 0px #00000030,
+    0px 3px 3px 0px #00000024,
+    0px 7px 4px 0px #00000012,
+    0px 13px 5px 0px #00000008;
+
+  --shadows-light-buttons-sm:
+    inset 0px 0.75px 0px 0px #fff,
+    inset 0px 0px 0.357143px 1.07143px #fff,
+    0px 3px 3px 0px #00000008,
+    inset 0px 0px 0.357143px 1.07143px #fff;
+
+  --shadows-light-buttons-md:
+    inset 0px 0.75px 0px 0px #fff,
+    inset 0px 0px 0.357143px 1.07143px #fff,
+    0px 1px 2px 0px #0000000a,
+    0px 3px 3px 0px #00000008,
+    0px 7px 4px 0px #00000005,
+    inset 0px 0px 0.357143px 1.07143px #fff;
+
+  --shadows-light-buttons-lg:
+    inset 0px 1.5px 0px 0px #fff,
+    inset 0px 0px 0.357143px 1.07143px #ffffff59,
+    inset 0px 0px 0.357143px 1.07143px #fff,
+    0px 2px 3px 0px #0000000f,
+    0px 6px 6px 0px #0000000d,
+    0px 14px 8px 0px #00000008;
+
+  --shadow-inset-010:
+    0 0 0 1px #0006 inset,
+    0 -0.5px 0.5px 0 #0003,
+    0 1px 1px 0 #ffffff14,
+    0 0 0.5px 2px #ffffff0a inset;
+
+  --shadow-inset-150:
+    0 0 0 0.5px #00000059 inset,
+    0 0 2.5px 0 #00000080 inset,
+    0 -1px 1px 0 #ffffff0f inset,
+    0 3px 3px 0 #0006 inset;
+
+  --shadow-outset-010:
+    0 -1px 0 0 #ffffff08,
+    0 1px 1px 0 #0000000d,
+    0 1px 1px 0 #ffffff0a,
+    0 0 1.25px 0 #0009 inset;
+
+  --shadow-outset-025:
+    0 1px 1px 0 #ffffff0d inset,
+    0 -1px 1px 0 #0000001a inset,
+    0 0.5px 0 0 #0006,
+    0 1px 1px 0 #ffffff0d,
+    0 0 2px 0 #0009;
+
+  --shadow-outset-050:
+    0 0 0.357px 1.071px #ffffff17 inset,
+    0 0 0 1px #00000061,
+    0 -3px 3px 0 #0000004d,
+    0 3px 3px 0 #ffffff14,
+    0 0 14px 0 #00000017,
+    0 16px 20px 0 #00000014,
+    0 8px 12px 0 #00000017;
+
+  --shadow-outset-100:
+    inset 0 0 0 1px #ffffff1a,
+    0 0 0 1px #0006,
+    0 0 20px 0 #00000024,
+    0 23px 28px 0 #0000001c,
+    0 10px 20px 0 #0000001f,
+    0 3px 11px 0 #00000021;
+
+  --shadow-outset-150:
+    0 0 0.357px 1.071px #ffffff1f inset,
+    0 0 0 1px #00000073,
+    0 0 20px 0 #0000001f,
+    0 36px 28px 0 #0000001a,
+    0 25px 25px 0 #0000001c,
+    0 15px 15px 0 #0000001a;
+
+  --shadow-outset-150-selected:
+    0 0 0.357px 1.071px #ffffff26 inset,
+    0 0 0 1.25px color-mix(in srgb, #7bb9ff 80%, transparent),
+    0 0 0 8px color-mix(in srgb, #7bb9ff 10%, transparent),
+    0 0 0 1px #00000073,
+    0 0 20px 0 #0000001f,
+    0 36px 28px 0 #0000001a,
+    0 25px 25px 0 #0000001c,
+    0 15px 15px 0 #0000001a;
+
+  --shadow-dept-agent-node-dark:
+    0 4px 2px 0 #b1b1b108 inset,
+    0 0 0 1px #ffffff1a inset,
+    0 0 0 1px #0006,
+    0 0 20px 0 #00000024,
+    0 65px 45px 0 #0000001c,
+    0 50px 35px 0 #0000001f,
+    0 40px 25px 0 #00000021;
+
+  --shadow-dept-agent-node-selected-dark:
+    0 4px 2px 0 #b1b1b108 inset,
+    0 0 0 1px #ffffff1a inset,
+    0 0 0 1px #0006,
+    0 0 20px 0 #00000024,
+    0 65px 45px 0 #0000001c,
+    0 50px 35px 0 #0000001f,
+    0 40px 25px 0 #00000021,
+    0px 0px 0px 2.8px color-mix(in srgb, #7bb9ff 80%, transparent),
+    0px 0px 0px 12px color-mix(in srgb, #7bb9ff 10%, transparent);
+
+  --shadow-dept-agent-node-light:
+    inset 0px 0px 0px 1px white,
+    0px 0px 0px 1px #00000014,
+    0px 0px 20px #00000008,
+    0px 65px 45px #00000005,
+    0px 50px 35px #00000005,
+    0px 40px 25px #00000003;
+
+  --shadow-created-task-card:
+    inset 0 0 0 0.5px #ffffff12,
+    inset 0 1px 0 0 #ffffff0f,
+    0 0 1px 0 #00000080;
+
+  --surface-shadow-review-panel-dark:
+    0 0 0 1px #0006,
+    0 0 20px 0 #00000024,
+    0 65px 45px 0 #0000001c,
+    0 50px 35px 0 #0000001f,
+    0 40px 25px 0 #00000021;
+
+  --surface-shadow-artifact-content-dark:
+    0 0 0 0.5px #0006,
+    0 3px 5px 0 #0000000f,
+    0 10px 14px -10px #0000003d,
+    0 18px 18px -16px #00000038,
+    inset 0 0 0 1px #ffffff1a;
+
+  --surface-shadow-artifact-content-light:
+    0 0 0 0.5px #00000014,
+    0 3px 5px 0 #0000000a,
+    0 10px 12px -10px #0f172a1f,
+    0 18px 18px -18px #0f172a1a,
+    inset 0 0 0 1px #ffffffeb;
+
+  /* ---------- Group 16 — Filter / Icon Shadow Tokens ---------- */
+  --filter-dot-rim: drop-shadow(0 0.696px 0 #ffffff59);
+  --text-shadow:
+    inset 0px 0.5px 0px 0px #fff3,
+    inset 0px -0.5px 0px 0px #00000040;
+  --icon-shadow:
+    inset 0px 0.6px 0px 0px #ffffff8c,
+    0px 0.6px 0px 0px #0000008c;
+  --icon-shadow-highlight: 0px 0.6px 0px 0px #0000008c;
+  --icon-shadow-inset: inset 0px 0.6px 0px 0px #ffffff8c;
+
+  /* ---------- Group 17 — Screen Reflectance Tokens ---------- */
+  --screen-reflectance-start: #fff4;
+  --screen-reflectance-end: #fff0;
+
+  /* ---------- Group 18 — React Tooltip Primitive Tokens ---------- */
+  --rt-color-dark: #222;
+  --rt-color-white: #fff;
+  --rt-opacity: 0.9;
+
+  /* ---------- Group 19 — Miscellaneous App-Specific Tokens ----------
+     --caret, --logo-background, --logo-tag are already declared in
+     their primary groups above (matching Section V's listing where
+     they appear under both Group 19 and their earlier groups). */
+}
+
+/* ============================================================
+   Section C — Typography Composed Family Stacks
+
+   Each --font-* variable below is the spec-aligned composed
+   family stack from Section C, e.g.:
+     --font-figtree-stack:
+        var(--font-figtree), "Figtree Fallback", sans-serif;
+
+   The raw next/font variables (--font-figtree, --font-ppmondwest,
+   --font-ibm-plex-mono, --font-departure-mono, --font-pixelify-sans,
+   --font-eb-garamond) are injected on <body> by next/font in
+   layout.tsx. ppmondwest and Departure Mono have no Google Fonts
+   source; layout.tsx wires them as font-family literals so they
+   render if locally installed and gracefully fall back to the
+   declared system stack otherwise. See checkpoint-1.md.
+   ============================================================ */
+:root {
+  /* Literal font-family defaults for the two proprietary faces that
+     are not on Google Fonts (ppmondwest, Departure Mono). next/font
+     does not inject values for these names, so we seed the CSS
+     variables with the family literals — they resolve to a locally
+     installed copy of the font where available, and otherwise the
+     stack's fallback applies. */
+  --font-ppmondwest: "ppmondwest";
+  --font-departure-mono: "Departure Mono";
+
+  /* Section C — composed family stacks (verbatim) */
+  --font-figtree-stack: var(--font-figtree), "Figtree Fallback", sans-serif;
+  --font-ppmondwest-stack: var(--font-ppmondwest), "ppmondwest", serif;
+  --font-ibm-plex-mono-stack:
+    var(--font-ibm-plex-mono), "IBM Plex Mono Fallback", ui-monospace, monospace;
+  --font-departure-mono-stack: var(--font-departure-mono), "Departure Mono", ui-monospace, monospace;
+  --font-pixelify-sans-stack: var(--font-pixelify-sans), "Pixelify Sans", sans-serif;
+  --font-eb-garamond-stack: var(--font-eb-garamond), "EB Garamond", Georgia, serif;
+}
+
+/* ============================================================
+   html:not(.dark) — Light-mode token overrides (Slice 3)
+   Source: report100.txt, Section B "Light Mode (Auth / Onboarding
+   System)" color palette.
+
+   Activation: middleware sets <html class="light"> for marketing
+   and auth routes (/, /login, /onboarding, /pricing, etc.).
+   The html:not(.dark) selector catches any route where .dark is
+   absent, keeping the legacy :root shim in sync.
+
+   Only tokens that differ from their dark-mode counterparts are
+   declared here. Tokens with no light-mode equivalent (shadow
+   stacks, brand scales, transition curves, etc.) are inherited
+   from :root or html.dark and left unchanged.
+   ============================================================ */
+html:not(.dark) {
+  /* ---------- Section B — Background / Surface ---------- */
+  --background: rgb(241, 241, 238);
+  --background-l0: rgb(251, 251, 248);
+  --background-screen: rgb(242, 242, 238);
+
+  /* ---------- Section B — Foreground / Text ---------- */
+  --foreground: rgb(32, 32, 32);
+  --foreground-60: rgba(32, 32, 32, 0.6);
+  --foreground-50: rgba(32, 32, 32, 0.5);
+  --foreground-10: rgba(32, 32, 32, 0.1);
+
+  /*
+   * The remaining --foreground-* steps (80, 70, 40, 30, 20, 15, 8, 5, 3)
+   * are not explicitly listed in Section B; they are proportional dark-ink
+   * steps kept for components that reference them on light surfaces.
+   */
+  --foreground-80: rgba(32, 32, 32, 0.8);
+  --foreground-70: rgba(32, 32, 32, 0.7);
+  --foreground-40: rgba(32, 32, 32, 0.4);
+  --foreground-30: rgba(32, 32, 32, 0.3);
+  --foreground-20: rgba(32, 32, 32, 0.2);
+  --foreground-15: rgba(32, 32, 32, 0.15);
+  --foreground-8:  rgba(32, 32, 32, 0.08);
+  --foreground-5:  rgba(32, 32, 32, 0.05);
+  --foreground-3:  rgba(32, 32, 32, 0.03);
+
+  /* ---------- Section B — Borders ---------- */
+  --border: rgba(0, 0, 0, 0.2);             /* input borders */
+  --border-subtle: rgba(0, 0, 0, 0.06);     /* ghost button borders */
+  --input: rgba(0, 0, 0, 0.2);             /* same as --border on light */
+
+  /*
+   * Proportional dark-ink border steps for components not yet migrated
+   * to semantic names.
+   */
+  --border-10: rgba(0, 0, 0, 0.1);
+  --border-15: rgba(0, 0, 0, 0.15);
+  --border-20: rgba(0, 0, 0, 0.2);
+
+  /* ---------- Section B — Card / Popover surfaces ---------- */
+  --card: rgb(251, 251, 248);
+  --card-foreground: rgb(32, 32, 32);
+  --popover: rgb(251, 251, 248);
+  --popover-foreground: rgb(32, 32, 32);
+  --muted: rgba(32, 32, 32, 0.05);
+  --muted-foreground: rgba(32, 32, 32, 0.5);
+
+  /* ---------- Section B — Primary action (submit/accept buttons) ---------- */
+  --primary: rgb(79, 79, 79);               /* "Submit dark" from Section B */
+  --primary-foreground: rgba(255, 255, 255, 0.8);
+
+  /* ---------- Section B — Semantic color overrides ---------- */
+  /* Blue accent for recommended badges, info links */
+  --tt-color-text-blue: rgb(29, 112, 217);
+  --tt-color-text-blue-contrast: rgb(218, 233, 251);
+
+  /* ---------- Section B — Warm accent tones ---------- */
+  /* Used for dept onboarding overlay bg and near-black text */
+  --onboarding-warm-bg: #F4F2ED;
+  --onboarding-warm-text: #1A1916;
+
+  /* ---------- Section B — Selection color ---------- */
+  --tt-selection-color: rgba(29, 112, 217, 0.2);
+  --tt-cursor-color: rgb(29, 112, 217);
+
+  /* ---------- Foreground-inverse (flipped on light) ---------- */
+  --foreground-inverse-10: rgba(255, 255, 255, 0.1);
+  --foreground-inverse-20: rgba(255, 255, 255, 0.2);
+  --foreground-inverse-30: rgba(255, 255, 255, 0.3);
+  --foreground-inverse-40: rgba(255, 255, 255, 0.4);
+  --foreground-inverse-50: rgba(255, 255, 255, 0.5);
+  --foreground-inverse-60: rgba(255, 255, 255, 0.6);
+  --foreground-inverse-70: rgba(255, 255, 255, 0.7);
+  --foreground-inverse-80: rgba(255, 255, 255, 0.8);
+
+  /* ---------- Ring / focus (blue accent on light surfaces) ---------- */
+  --focused: rgb(29, 112, 217);
+  --ring: rgba(29, 112, 217, 0.4);
 }

@@ -44,7 +44,7 @@ export function TaskBoard({
   return (
     <div className="grid gap-3 xl:grid-cols-2">
       {board.map((column) => (
-        <section key={column.status} className="grid gap-2 rounded-[12px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-3">
+        <section key={column.status} className="grid gap-2 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-medium">{column.label}</h3>
             <Badge variant="neutral">{column.tasks.length}</Badge>
@@ -56,7 +56,7 @@ export function TaskBoard({
               ))}
             </div>
           ) : (
-            <p className="py-4 text-xs text-[var(--app-text-50)]">No tasks</p>
+            <p className="py-4 text-xs text-[var(--foreground-50)]">No tasks</p>
           )}
         </section>
       ))}
@@ -77,11 +77,11 @@ export function TaskCalendar({
     <div className="grid gap-3">
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
         {calendar.days.map((day) => (
-          <section key={day.key} className="rounded-[12px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-3">
+          <section key={day.key} className="rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <h3 className="text-sm font-medium">{day.label}</h3>
-                <p className="mt-1 text-xs text-[var(--app-text-50)]">{day.date}</p>
+                <p className="mt-1 text-xs text-[var(--foreground-50)]">{day.date}</p>
               </div>
               <Badge variant={day.tasks.length ? "running" : "neutral"}>{day.tasks.length}</Badge>
             </div>
@@ -91,16 +91,16 @@ export function TaskCalendar({
                   <TaskRow compact key={task.id} task={task} selected={selectedTaskId === task.id} onSelect={() => onSelectTask(task.id)} />
                 ))
               ) : (
-                <p className="text-xs text-[var(--app-text-50)]">Open</p>
+                <p className="text-xs text-[var(--foreground-50)]">Open</p>
               )}
             </div>
           </section>
         ))}
       </div>
 
-      <section className="grid gap-2 rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+      <section className="grid gap-2 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
         <div className="flex items-center gap-2">
-          <CalendarDays aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+          <CalendarDays aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
           <h3 className="text-sm font-medium">Unscheduled</h3>
         </div>
         {calendar.unscheduled.length ? (
@@ -108,7 +108,7 @@ export function TaskCalendar({
             <TaskRow compact key={task.id} task={task} selected={selectedTaskId === task.id} onSelect={() => onSelectTask(task.id)} />
           ))
         ) : (
-          <p className="text-xs text-[var(--app-text-50)]">No unscheduled active tasks</p>
+          <p className="text-xs text-[var(--foreground-50)]">No unscheduled active tasks</p>
         )}
       </section>
     </div>
@@ -130,8 +130,8 @@ function TaskRow({
     <button
       type="button"
       className={cn(
-        "grid w-full gap-3 rounded-[10px] border p-3 text-left outline-none transition-[background,border-color,transform] animate-[task-row-in_180ms_ease-out] hover:bg-[rgba(255,255,255,0.07)] focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]",
-        selected ? "border-[var(--app-primary-light)] bg-[rgba(255,255,255,0.08)]" : "border-[var(--app-border)] bg-[rgba(255,255,255,0.04)]",
+        "grid w-full gap-3 rounded-[10px] border p-3 text-left outline-none transition-[background,border-color,transform] animate-[task-row-in_180ms_ease-out] hover:bg-[var(--foreground-8)] focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
+        selected ? "border-[var(--primary)] bg-[var(--foreground-8)]" : "border-[var(--border-10)] bg-[var(--foreground-3)]",
         compact && "gap-2 p-2.5"
       )}
       onClick={onSelect}
@@ -139,7 +139,7 @@ function TaskRow({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="truncate text-sm font-medium">{task.title}</h3>
-          <p className="mt-1 truncate text-xs text-[var(--app-text-50)]">
+          <p className="mt-1 truncate text-xs text-[var(--foreground-50)]">
             {[task.department?.name, task.agent?.name ?? task.assignedUser?.name, taskTypeLabel(task.type)].filter(Boolean).join(" / ")}
           </p>
         </div>
@@ -147,11 +147,11 @@ function TaskRow({
       </div>
 
       {!compact ? (
-        <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--app-text-50)]">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--foreground-50)]">
           <span>{relativeDate(task.updatedAt)}</span>
           {task.dueAt ? <span>Due {shortDate(task.dueAt)}</span> : null}
           {task.pendingApproval ? (
-            <span className="inline-flex items-center gap-1 text-[#ffd27c]">
+            <span className="inline-flex items-center gap-1 text-[var(--alert)]">
               <ShieldAlert aria-hidden="true" className="size-3.5" />
               Approval
             </span>

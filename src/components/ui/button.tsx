@@ -4,17 +4,28 @@ import { cn } from "@/lib/utils/cn";
 export type ButtonVariant = "light" | "dark" | "brand" | "ghost" | "app" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
+/*
+ * Variants align to Section J tier semantics:
+ *   light  — Section J "light surface" pill for marketing/auth (Slice 3: now uses Section B tokens)
+ *   dark   — marketing dark gradient CTA (Section J Tier 6 canvas CTA style on light bg)
+ *   brand  — brand-tinted CTA (uses --tt-brand-color-*)
+ *   ghost  — Tier 3 ghost on light surface (Slice 3: now uses Section B tokens)
+ *   app    — Tier 1 dark-mode primary (near-white solid, dark text) per Section J Tier 1
+ *   danger — Tier 5 destructive per Section J Tier 5 (transparent + red text + border)
+ */
 const variantClasses: Record<ButtonVariant, string> = {
   light:
-    "border-[0.8px] border-[rgba(32,32,32,0.1)] bg-[var(--color-surface)] text-[var(--foreground)] shadow-[rgba(0,0,0,0.06)_0_2px_3px,rgba(255,255,255,0.35)_0_0_0.357px_1.5px_inset,#fff_0_2px_0_inset] hover:bg-[var(--color-surface-raised)]",
+    "border-[0.8px] border-[var(--border-10)] bg-[var(--background-l0)] text-[var(--foreground)] shadow-[var(--shadows-light-buttons-md)] hover:brightness-[1.02] active:brightness-[0.98]",
   dark:
-    "border-[0.8px] border-[#383838] bg-[linear-gradient(rgba(32,32,32,0.1),rgba(32,32,32,0.1)),linear-gradient(#4f4f4f,rgba(32,32,32,0.85))] text-white shadow-[rgba(0,0,0,0.22)_0_12px_28px] hover:brightness-110",
-  brand: "border-[0.8px] border-[rgba(255,255,255,0.12)] bg-[var(--brand-500)] text-white hover:bg-[var(--brand-400)]",
+    "border-[0.8px] border-[rgba(0,0,0,0.5)] bg-[var(--primary)] text-[var(--primary-foreground)] shadow-[var(--shadows-light-buttons-lg)] hover:brightness-110",
+  brand:
+    "border-[0.8px] border-[var(--border-15)] bg-[var(--tt-brand-color-500)] text-white hover:bg-[var(--tt-brand-color-400)]",
   ghost:
-    "border-[0.8px] border-transparent bg-transparent text-[var(--color-ink-strong)] hover:border-[var(--color-border-pill)] hover:bg-[rgba(231,231,227,0.45)]",
+    "border-[0.8px] border-[var(--border-subtle,rgba(0,0,0,0.06))] bg-transparent text-[var(--foreground-60)] hover:border-[var(--border-20)] hover:bg-[var(--foreground-8)]",
   app:
-    "border-[0.8px] border-[var(--app-border)] bg-[var(--app-primary-light)] text-[var(--app-black-base)] hover:bg-white",
-  danger: "border-[0.8px] border-[rgba(239,68,68,0.38)] bg-[rgba(239,68,68,0.12)] text-red-100 hover:bg-[rgba(239,68,68,0.2)]"
+    "border-[0.8px] border-[var(--border-90)] bg-[var(--primary)] text-[var(--primary-foreground)] shadow-[var(--shadow-button-md)] hover:brightness-[1.04] active:brightness-[0.96]",
+  danger:
+    "border-[0.8px] border-[var(--border-10)] bg-transparent text-[var(--destructive)] hover:bg-[var(--tt-color-text-red-contrast)]"
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -41,7 +52,7 @@ export function buttonClassName({
   className?: string;
 } = {}) {
   return cn(
-    "inline-flex shrink-0 items-center justify-center rounded-[8px] font-normal outline-none transition-[background,border-color,box-shadow,filter,color] focus-visible:ring-2 focus-visible:ring-[var(--brand-300)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] disabled:pointer-events-none disabled:opacity-50",
+    "inline-flex shrink-0 items-center justify-center rounded-[8px] font-normal outline-none transition-[background,border-color,box-shadow,filter,color] duration-[var(--tt-transition-duration-short)] ease-[var(--tt-transition-easing-default)] focus-visible:ring-2 focus-visible:ring-[var(--focused)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] disabled:pointer-events-none disabled:opacity-50",
     sizeClasses[size],
     variantClasses[variant],
     fullWidth && "w-full",

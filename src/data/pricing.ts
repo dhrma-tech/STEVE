@@ -33,14 +33,14 @@ export const pricingPlans: PricingPlan[] = [
     usageIncluded: "Usage billed separately",
     cta: "Run a company",
     highlighted: true,
-    features: ["8 department system", "Agent tasks and approvals", "Roadmap and tech tree", "Managed integrations with sandbox fallback"]
+    features: ["8 department system", "Agent tasks and approvals", "Roadmap and tech tree", "All managed integrations included"]
   },
   {
     id: "team",
     name: "Team Plan",
     price: "50",
     period: "/month",
-    description: "A collaboration plan for teams. The source notes mark this plan as coming soon.",
+    description: "Multiplayer, shared billing, and SOC 2 for teams ready to run together. Coming soon.",
     usageIncluded: "Coming soon",
     cta: "Join waitlist",
     comingSoon: true,
@@ -51,35 +51,35 @@ export const pricingPlans: PricingPlan[] = [
 export const pricingFaq = [
   {
     question: "How does the trial work?",
-    answer: "The Free Trial lasts 7 days and includes $15 of usage so a founder can run the onboarding and first task loops before upgrading."
+    answer: "The Free Trial lasts 7 days and includes $15 of usage so you can run onboarding, activate departments, and complete your first agent task before deciding to upgrade."
   },
   {
     question: "What does Pro cost?",
-    answer: "Cofounder Pro starts at $20 per month plus usage. Usage is shown by category so token, compute, database, support, ad spend, and data purchasing remain visible."
+    answer: "Cofounder Pro starts at $20 per month plus usage. We show usage by category — tokens, compute, database, support, ad spend, data purchasing — so you always know what you're paying for."
   },
   {
     question: "What are managed services?",
-    answer: "Managed services represent the workspace's GitHub, Supabase, Vercel, Stripe, Postiz, email, and provider surfaces. Local development uses sandbox adapters until real credentials are supplied."
+    answer: "We provision and operate your GitHub repo, Supabase database, Vercel deployments, Stripe billing, Postiz publishing, email, and other providers on your behalf. You don't need accounts of your own to ship — but you can connect or graduate to your own at any time."
   },
   {
     question: "Can I graduate my data?",
-    answer: "Yes. The notes require a data graduation path for managed GitHub, Supabase, and Vercel assets so founders can own and move their infrastructure."
+    answer: "Yes. From Settings → Advanced you can switch your workspace to your own GitHub repo, import your own Supabase project, and move every managed asset into accounts you control."
   },
   {
     question: "How is Team different from Pro?",
-    answer: "Team is priced at $50/month and marked coming soon in the source notes. It is represented as a visible plan without active checkout."
+    answer: "Team adds multiplayer for shared organizations, SOC 2-compliant infrastructure, priority support, and consolidated billing. It is launching soon — join the waitlist from the pricing page."
   },
   {
     question: "What use cases fit Cofounder?",
-    answer: "The product is built around creating and operating a company with AI departments for engineering, marketing, sales, design, support, operations, finance, and legal."
+    answer: "Solo founders and small teams who want to build, launch, and run a company without hiring a full staff. Cofounder ships agents for engineering, marketing, sales, design, support, operations, finance, and legal."
   },
   {
     question: "Does it help with sales and marketing?",
-    answer: "Yes. The public site and app specs include social publishing, outbound email, prospects, campaign reports, ICP work, and content systems."
+    answer: "Yes. Connect Postiz for social publishing, send outbound email from agent inboxes, enrich and qualify prospects, run campaigns, and track open rates inside the workspace."
   },
   {
-    question: "Can I use existing codebases or BYOK?",
-    answer: "Existing repo and Supabase import appear as advanced settings. BYOK is not surfaced unless explicitly marked as not supported."
+    question: "Can I use my own repo?",
+    answer: "Yes. Bring your own GitHub repository and Supabase project from Settings → Advanced. We do not currently support bring-your-own-key (BYOK) for AI models — usage runs through our metered Claude tier."
   }
 ];
 

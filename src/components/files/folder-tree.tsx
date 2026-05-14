@@ -111,16 +111,16 @@ function FolderButton({
     <button
       type="button"
       className={cn(
-        "flex min-h-10 items-center justify-between gap-2 rounded-[9px] border px-2.5 py-2 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]",
+        "flex min-h-10 items-center justify-between gap-2 rounded-[9px] border px-2.5 py-2 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
         active
-          ? "border-[rgba(216,255,122,0.46)] bg-[rgba(216,255,122,0.12)] text-[var(--app-text)]"
-          : "border-transparent bg-transparent text-[var(--app-text-50)] hover:border-[var(--app-border)] hover:bg-[rgba(255,255,255,0.05)]"
+          ? "border-[rgba(216,255,122,0.46)] bg-[rgba(216,255,122,0.12)] text-[var(--foreground-80)]"
+          : "border-transparent bg-transparent text-[var(--foreground-50)] hover:border-[var(--border-10)] hover:bg-[var(--foreground-5)]"
       )}
       style={{ paddingLeft: 10 + depth * 14 }}
       onClick={onClick}
     >
       <span className="flex min-w-0 items-center gap-2">
-        <span className="shrink-0 text-[var(--app-primary-light)]">{icon}</span>
+        <span className="shrink-0 text-[var(--foreground-80)]">{icon}</span>
         <span className="truncate">{label}</span>
         {badge ? <Badge variant="neutral">{badge}</Badge> : null}
       </span>

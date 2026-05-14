@@ -1,6 +1,22 @@
-import { errorResponse } from "@/lib/api/responses";
+import { errorResponse, type ApiErrorCode } from "@/lib/api/responses";
 import { AuthError, ForbiddenError } from "@/lib/auth/session";
-import { AppError, isAppError } from "@/lib/utils/error";
+import { isAppError } from "@/lib/utils/error";
+
+const KNOWN_API_ERROR_CODES = new Set<ApiErrorCode>([
+  "UNAUTHENTICATED",
+  "FORBIDDEN",
+  "NOT_FOUND",
+  "VALIDATION_ERROR",
+  "CONFLICT",
+  "INTERNAL",
+]);
+
+function normalizeCode(code: string | undefined): ApiErrorCode {
+  if (code && (KNOWN_API_ERROR_CODES as Set<string>).has(code)) {
+    return code as ApiErrorCode;
+  }
+  return "INTERNAL";
+}
 
 export function routeError(error: unknown) {
   if (error instanceof AuthError) {
@@ -10,7 +26,7 @@ export function routeError(error: unknown) {
     return errorResponse("FORBIDDEN", error.message, 403);
   }
   if (isAppError(error)) {
-     return errorResponse((error.code as any) ?? "INTERNAL", error.message, error.statusCode, error.details);
+    return errorResponse(normalizeCode(error.code), error.message, error.statusCode, error.details);
   }
 
   // Handle Prisma errors

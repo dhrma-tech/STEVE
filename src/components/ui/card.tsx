@@ -6,8 +6,8 @@ export type CardVariant = "marketing" | "app" | "deep" | "blue";
 
 const variantClasses: Record<CardVariant, string> = {
   marketing: "border-[0.8px] border-[var(--color-border-card)] bg-[var(--color-surface-raised)] text-[var(--color-ink)]",
-  app: "border-[0.8px] border-[var(--app-border)] bg-[var(--app-workspace-raised)] text-[var(--app-text)]",
-  deep: "border-[0.8px] border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text)]",
+  app: "border-[0.8px] border-[var(--border-10)] bg-[var(--background-sidepanel)] text-[var(--foreground-80)]",
+  deep: "border-[0.8px] border-[var(--border-10)] bg-[var(--card)] text-[var(--foreground-80)]",
   blue: "border-[0.8px] border-[var(--feature-blue-border)] bg-[var(--feature-blue-bg)] text-[var(--color-ink)]"
 };
 
@@ -125,7 +125,7 @@ export function FeatureCallout({ label, title, description, className, children,
 export function AppPanel({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <section
-      className={cn("rounded-[14px] border-[0.8px] border-[var(--app-border)] bg-[var(--app-workspace-raised)] text-[var(--app-text)] shadow-[rgba(0,0,0,0.18)_0_18px_48px]", className)}
+      className={cn("rounded-[14px] border-[0.8px] border-[var(--border-10)] bg-[var(--background-sidepanel)] text-[var(--foreground-80)] shadow-[var(--shadow-outset-100)]", className)}
       {...props}
     />
   );

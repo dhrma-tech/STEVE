@@ -10,20 +10,20 @@ export function ChapterGrid() {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {chapters.map((chapter, index) => (
-        <Link key={chapter.href} href={chapter.href} className="group outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]">
+        <Link key={chapter.href} href={chapter.href} className="group outline-none focus-visible:ring-2 focus-visible:ring-[var(--focused)]">
           <Card className="h-full overflow-hidden p-3 transition-transform group-hover:-translate-y-1">
             <ChapterArt tone={tones[index]} />
             <div className="grid gap-3 p-2 pt-4">
               <div className="flex items-center justify-between">
-                <span className="rounded-full border border-[var(--color-border-pill)] px-2 py-1 font-mono text-[8px] font-medium leading-[11.6px] text-[var(--color-ink-muted)]">
+                <span className="rounded-full border border-[var(--border-subtle)] px-2 py-1 font-mono text-[8px] font-medium leading-[11.6px] text-[var(--foreground-60)]">
                   {chapter.label}
                 </span>
-                <span className="inline-flex items-center gap-1 font-mono text-xs font-medium text-[var(--color-ink-muted)]">
+                <span className="inline-flex items-center gap-1 font-mono text-xs font-medium text-[var(--foreground-60)]">
                   Read <ArrowRight aria-hidden="true" className="size-3" />
                 </span>
               </div>
               <h3 className="text-xl font-medium tracking-[0px] text-[var(--foreground)]">{chapter.title}</h3>
-              <p className="text-sm leading-6 text-[var(--color-ink-muted)]">{chapter.description}</p>
+              <p className="text-sm leading-6 text-[var(--foreground-60)]">{chapter.description}</p>
             </div>
           </Card>
         </Link>

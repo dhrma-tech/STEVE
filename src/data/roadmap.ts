@@ -42,7 +42,7 @@ export const roadmapStageDescriptions: Record<string, string> = {
   gtm: "Content, social, outreach, and acquisition experiments.",
   launch: "Deployment, launch website, expanded content, and opportunity qualification.",
   scale: "Monitoring, SEO, community, deals, accounts, billing, and support readiness.",
-  mature: "Mature-stage items are not specified in the source notes."
+  mature: "Long-term company operations — coming as your company grows past launch."
 };
 
 export const roadmapDependencyPairs = [

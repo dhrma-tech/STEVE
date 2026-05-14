@@ -5,8 +5,8 @@ import { getSession, requireOrgMember } from "@/lib/auth/session";
 import { getCompanyOnboardingState } from "@/lib/onboarding/company";
 
 export const metadata: Metadata = {
-  title: "Company onboarding - Cofounder",
-  description: "Answer company questions, generate a business plan, activate departments, and configure design setup."
+  title: "Company onboarding",
+  description: "Describe your company, generate a business plan, and activate your eight departments."
 };
 
 type PageProps = {

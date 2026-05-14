@@ -22,9 +22,9 @@ export const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-10 w-full items-center justify-between rounded-[8px] border-[0.8px] px-3 text-[15px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--brand-300)] disabled:cursor-not-allowed disabled:opacity-50",
+      "flex h-10 w-full items-center justify-between rounded-[8px] border-[0.8px] px-3 text-[15px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focused)] disabled:cursor-not-allowed disabled:opacity-50",
       surface === "dark"
-        ? "border-[var(--app-input-border)] bg-[rgba(255,255,255,0.06)] text-[var(--app-text)]"
+        ? "border-[var(--input)] bg-[var(--foreground-5)] text-[var(--foreground-80)]"
         : "border-[var(--color-border-pill)] bg-[var(--color-surface-raised)] text-[var(--foreground)]",
       className
     )}
@@ -49,7 +49,7 @@ export const SelectContent = React.forwardRef<
       position={position}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 max-h-[320px] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-[8px] border border-[var(--app-border)] bg-[var(--app-black-base)] text-[var(--app-text)] shadow-[rgba(0,0,0,0.28)_0_16px_38px]",
+        "z-50 max-h-[320px] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-[8px] border border-[var(--border-10)] bg-[var(--popover)] text-[var(--popover-foreground)] shadow-[var(--shadow-outset-100)]",
         className
       )}
       {...props}
@@ -68,7 +68,7 @@ export const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex min-h-9 cursor-default select-none items-center rounded-[6px] py-2 pl-9 pr-3 text-sm outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-[rgba(255,255,255,0.08)] data-[disabled]:opacity-45",
+      "relative flex min-h-9 cursor-default select-none items-center rounded-[6px] py-2 pl-9 pr-3 text-sm outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-[var(--foreground-8)] data-[disabled]:opacity-45",
       className
     )}
     {...props}
@@ -94,7 +94,7 @@ export interface SelectFieldProps extends React.ComponentPropsWithoutRef<typeof 
 
 export function SelectField({ label, placeholder = "Select", options, surface = "light", className, ...props }: SelectFieldProps) {
   return (
-    <label className={cn("grid gap-2 text-sm", surface === "dark" ? "text-[var(--app-text)]" : "text-[var(--color-ink-strong)]", className)}>
+    <label className={cn("grid gap-2 text-sm", surface === "dark" ? "text-[var(--foreground-80)]" : "text-[var(--color-ink-strong)]", className)}>
       {label ? <span className="font-medium">{label}</span> : null}
       <SelectPrimitive.Root {...props}>
         <SelectTrigger surface={surface}>

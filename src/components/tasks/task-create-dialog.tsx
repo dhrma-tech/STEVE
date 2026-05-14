@@ -177,14 +177,14 @@ export function TaskCreateDialog({
       <DialogContent className="max-h-[92dvh] max-w-[760px] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+            <Sparkles aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
             New task
           </DialogTitle>
         </DialogHeader>
 
         <div className="grid gap-4">
           {error ? (
-            <div className="rounded-[10px] border border-[rgba(239,68,68,0.36)] bg-[rgba(239,68,68,0.12)] p-3 text-sm text-red-100">
+            <div className="rounded-[10px] border border-[var(--tt-color-text-red-contrast)] bg-[var(--tt-color-text-red-contrast)] p-3 text-sm text-[var(--destructive)]">
               {error}
             </div>
           ) : null}
@@ -228,7 +228,7 @@ export function TaskCreateDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" onClick={() => onOpenChange(false)} disabled={submitting}>
+          <Button variant="ghost" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={() => onOpenChange(false)} disabled={submitting}>
             Cancel
           </Button>
           <Button variant="app" onClick={submit} disabled={!canSubmit}>

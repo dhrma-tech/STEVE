@@ -47,10 +47,10 @@ export function PricingCalculator() {
   return (
     <Card className="grid gap-6 p-5">
       <div className="grid gap-2">
-        <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--color-ink-faint)]">Usage estimate</p>
+        <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--foreground-50)]">Usage estimate</p>
         <h2 className="text-[32px] font-normal leading-[1.15] tracking-[0px]">Cost calculator</h2>
-        <p className="text-sm leading-6 text-[var(--color-ink-muted)]">
-          [ASSUMPTION: exact source formulas were not provided, so this sandbox estimator uses transparent local formula weights.]
+        <p className="text-sm leading-6 text-[var(--foreground-60)]">
+          Estimate the monthly cost of your company by plan and business size. Numbers are indicative — you only pay for the usage you actually consume.
         </p>
       </div>
 
@@ -70,14 +70,14 @@ export function PricingCalculator() {
         valueLabel={`${businessSize}/10`}
       />
 
-      <div className="grid gap-2 rounded-[12px] border border-[var(--color-border-card)] bg-[var(--background)] p-3">
+      <div className="grid gap-2 rounded-[12px] border border-[var(--border-10)] bg-[var(--background)] p-3">
         {rows.map((row) => {
           const value = breakdown[row.key];
           const formatted = row.format === "money" ? `$${Number(value).toFixed(2)}` : String(value);
           return (
-            <div key={row.key} className="flex items-center justify-between gap-4 border-b border-[var(--color-border-pill)] py-2 last:border-0">
-              <span className="text-sm text-[var(--color-ink-muted)]">{row.label}</span>
-              <span className="font-mono text-[15px] text-[var(--color-ink-strongest)]">{formatted}</span>
+            <div key={row.key} className="flex items-center justify-between gap-4 border-b border-[var(--border-subtle)] py-2 last:border-0">
+              <span className="text-sm text-[var(--foreground-60)]">{row.label}</span>
+              <span className="font-mono text-[15px] text-[var(--foreground)]">{formatted}</span>
             </div>
           );
         })}

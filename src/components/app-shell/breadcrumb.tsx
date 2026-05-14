@@ -10,11 +10,11 @@ export function AppBreadcrumb({ shell }: { shell: OrgShellData }) {
   const parts = buildParts({ pathname, shell, searchParams });
 
   return (
-    <nav aria-label="Breadcrumb" className="hidden min-w-0 items-center gap-1 text-sm text-[var(--app-text-50)] md:flex">
+    <nav aria-label="Breadcrumb" className="hidden min-w-0 items-center gap-1 text-sm text-[var(--foreground-50)] md:flex">
       {parts.map((part, index) => (
         <span key={`${part}-${index}`} className="flex min-w-0 items-center gap-1">
           {index > 0 ? <ChevronRight aria-hidden="true" className="size-4 shrink-0 opacity-55" /> : null}
-          <span className={index === parts.length - 1 ? "truncate text-[var(--app-text)]" : "truncate"}>{part}</span>
+          <span className={index === parts.length - 1 ? "truncate text-[var(--foreground-80)]" : "truncate"}>{part}</span>
         </span>
       ))}
     </nav>

@@ -24,12 +24,12 @@ export function RoadmapStageBoard({
           <section
             key={stage.id}
             data-roadmap-stage={stage.key}
-            className="flex w-[286px] shrink-0 flex-col rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.035)]"
+            className="flex w-[286px] shrink-0 flex-col rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)]"
           >
-            <header className="grid gap-3 border-b border-[var(--app-border)] p-3">
+            <header className="grid gap-3 border-b border-[var(--border-10)] p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">{stage.name}</p>
+                  <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">{stage.name}</p>
                   <h2 className="mt-1 text-base font-medium">{stage.completeCount}/{stage.itemCount || 1} complete</h2>
                 </div>
                 <Badge variant={stage.sourceStatus === "open_source_gap" ? "warning" : stage.progress === 100 ? "success" : "neutral"}>
@@ -37,7 +37,7 @@ export function RoadmapStageBoard({
                 </Badge>
               </div>
               <Progress value={stage.progress} />
-              <p className="line-clamp-2 text-xs leading-5 text-[var(--app-text-50)]">{stage.description}</p>
+              <p className="line-clamp-2 text-xs leading-5 text-[var(--foreground-50)]">{stage.description}</p>
             </header>
 
             <div className="relative grid gap-3 p-3">
@@ -48,13 +48,13 @@ export function RoadmapStageBoard({
                     <div key={item.id} className="relative grid gap-2 pl-6">
                       <span
                         aria-hidden="true"
-                        className="absolute left-0 top-9 grid size-3 place-items-center rounded-full border border-[var(--app-border)] bg-[var(--app-black-base)]"
+                        className="absolute left-0 top-9 grid size-3 place-items-center rounded-full border border-[var(--border-10)] bg-[var(--card)]"
                       >
-                        {index < stage.items.length - 1 ? <span className="size-1 rounded-full bg-[var(--app-text-50)]" /> : null}
+                        {index < stage.items.length - 1 ? <span className="size-1 rounded-full bg-[var(--foreground-50)]" /> : null}
                       </span>
                       <RoadmapCard item={item} selected={selectedItemId === item.id} onSelect={() => onSelectItem(item)} />
                       {item.unlocks.length ? (
-                        <div className="flex items-center gap-1 pl-2 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">
+                        <div className="flex items-center gap-1 pl-2 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">
                           <ArrowRight aria-hidden="true" className="size-3" />
                           unlocks {item.unlocks.length}
                         </div>
@@ -63,13 +63,13 @@ export function RoadmapStageBoard({
                   ))}
                 </>
               ) : (
-                <div className="grid min-h-[220px] place-items-center rounded-[10px] border border-dashed border-[var(--app-border)] bg-[rgba(255,255,255,0.025)] p-4 text-center">
+                <div className="grid min-h-[220px] place-items-center rounded-[10px] border border-dashed border-[var(--border-10)] bg-[var(--foreground-3)] p-4 text-center">
                   <div className="grid gap-2">
-                    <span className="mx-auto grid size-10 place-items-center rounded-[9px] bg-[rgba(245,158,11,0.12)] text-[var(--warning)]">
+                    <span className="mx-auto grid size-10 place-items-center rounded-[9px] bg-[var(--tt-color-text-yellow-contrast)] text-[var(--alert)]">
                       <AlertCircle aria-hidden="true" className="size-5" />
                     </span>
-                    <h3 className="text-sm font-medium">Mature stage shell</h3>
-                    <p className="text-xs leading-5 text-[var(--app-text-50)]">The source notes name Mature but do not list items.</p>
+                    <h3 className="text-sm font-medium">Coming soon</h3>
+                    <p className="text-xs leading-5 text-[var(--foreground-50)]">Mature-stage milestones unlock once your company ships its first launch.</p>
                   </div>
                 </div>
               )}

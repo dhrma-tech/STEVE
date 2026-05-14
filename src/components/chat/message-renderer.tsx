@@ -34,18 +34,18 @@ export function ChatMessageBubble({ message }: { message: ChatMessage }) {
   }
 
   return (
-    <article className={cn("grid gap-2 rounded-[12px] border p-3", isUser ? "border-[var(--app-primary-light)] bg-[rgba(255,255,255,0.08)]" : "border-[var(--app-border)] bg-[rgba(255,255,255,0.04)]")}>
+    <article className={cn("grid gap-2 rounded-[12px] border p-3", isUser ? "border-[var(--primary)] bg-[var(--foreground-8)]" : "border-[var(--border-10)] bg-[var(--foreground-3)]")}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="grid size-7 shrink-0 place-items-center rounded-[8px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.06)] text-[var(--app-primary-light)]">
+          <span className="grid size-7 shrink-0 place-items-center rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-80)]">
             {isUser ? <UserRound aria-hidden="true" className="size-3.5" /> : <Bot aria-hidden="true" className="size-3.5" />}
           </span>
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{senderName}</p>
-            <p className="text-[11px] text-[var(--app-text-50)]">{formatDateTime(message.createdAt)}</p>
+            <p className="text-[11px] text-[var(--foreground-50)]">{formatDateTime(message.createdAt)}</p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" onClick={() => navigator.clipboard?.writeText(message.body)}>
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={() => navigator.clipboard?.writeText(message.body)}>
           <Clipboard aria-hidden="true" className="size-3.5" />
         </Button>
       </div>
@@ -62,12 +62,12 @@ export function ChatMessageBubble({ message }: { message: ChatMessage }) {
       {metadata.attachments?.length ? (
         <div className="grid gap-2">
           {metadata.attachments.map((file) => (
-            <div key={file.id} className="flex items-center justify-between gap-2 rounded-[8px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] px-2 py-1.5 text-xs">
+            <div key={file.id} className="flex items-center justify-between gap-2 rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] px-2 py-1.5 text-xs">
               <span className="inline-flex min-w-0 items-center gap-1">
-                <FileText aria-hidden="true" className="size-3.5 text-[var(--app-primary-light)]" />
+                <FileText aria-hidden="true" className="size-3.5 text-[var(--foreground-80)]" />
                 <span className="truncate">{file.name}</span>
               </span>
-              <span className="text-[var(--app-text-50)]">{file.visibility}</span>
+              <span className="text-[var(--foreground-50)]">{file.visibility}</span>
             </div>
           ))}
         </div>
@@ -78,15 +78,15 @@ export function ChatMessageBubble({ message }: { message: ChatMessage }) {
 
 function ActionLogMessage({ message }: { message: ChatMessage }) {
   return (
-    <article className="rounded-[10px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.16)] p-3">
+    <article className="rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-inverse-20)] p-3">
       <div className="flex items-center justify-between gap-2">
         <span className="inline-flex min-w-0 items-center gap-2 text-sm">
-          <TerminalSquare aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+          <TerminalSquare aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
           <span className="truncate">{message.body}</span>
         </span>
         <Badge variant="success">log</Badge>
       </div>
-      <p className="mt-1 text-[11px] text-[var(--app-text-50)]">{formatDateTime(message.createdAt)}</p>
+      <p className="mt-1 text-[11px] text-[var(--foreground-50)]">{formatDateTime(message.createdAt)}</p>
     </article>
   );
 }
@@ -99,8 +99,8 @@ function RichMessage({ body }: { body: string }) {
         const key = `${index}-${part.slice(0, 14)}`;
         if (index % 2 === 1) {
           return (
-            <pre key={key} className="overflow-x-auto rounded-[8px] bg-black/35 p-3 font-mono text-xs text-[var(--app-text)]">
-              <span className="mb-2 flex items-center gap-2 text-[var(--app-text-50)]">
+            <pre key={key} className="overflow-x-auto rounded-[8px] bg-[var(--foreground-inverse-30)] p-3 font-mono text-xs text-[var(--foreground-80)]">
+              <span className="mb-2 flex items-center gap-2 text-[var(--foreground-50)]">
                 <Code2 aria-hidden="true" className="size-3.5" />
                 code
               </span>
@@ -124,8 +124,8 @@ function renderParagraphs(value: string, keyPrefix: string) {
     const before = value.slice(lastIndex, match.index);
     if (before.trim()) segments.push(<p key={`${keyPrefix}-p-${lastIndex}`}>{linkify(before)}</p>);
     segments.push(
-      <div key={`${keyPrefix}-thinking-${match.index}`} className="rounded-[8px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-2 text-xs leading-5 text-[var(--app-text-50)]">
-        <span className="mb-1 inline-flex items-center gap-1 text-[var(--app-primary-light)]">
+      <div key={`${keyPrefix}-thinking-${match.index}`} className="rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-2 text-xs leading-5 text-[var(--foreground-50)]">
+        <span className="mb-1 inline-flex items-center gap-1 text-[var(--foreground-80)]">
           <CheckCircle2 aria-hidden="true" className="size-3.5" />
           thinking
         </span>
@@ -150,7 +150,7 @@ function linkify(value: string) {
   const pieces = value.split(urlPattern);
   return pieces.map((piece, index) =>
     piece.match(/^https?:\/\//) ? (
-      <a key={`${piece}-${index}`} className="text-[var(--app-primary-light)] underline" href={piece} target="_blank" rel="noreferrer">{piece}</a>
+      <a key={`${piece}-${index}`} className="text-[var(--tt-color-text-blue)] underline" href={piece} target="_blank" rel="noreferrer">{piece}</a>
     ) : (
       <React.Fragment key={`${piece}-${index}`}>{piece}</React.Fragment>
     )
@@ -159,11 +159,11 @@ function linkify(value: string) {
 
 function TypingIndicator() {
   return (
-    <div className="flex items-center gap-2 rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3 text-sm text-[var(--app-text-50)]">
+    <div className="flex items-center gap-2 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3 text-sm text-[var(--foreground-50)]">
       <span className="flex gap-1">
-        <span className="size-1.5 animate-pulse rounded-full bg-[var(--app-primary-light)]" />
-        <span className="size-1.5 animate-pulse rounded-full bg-[var(--app-primary-light)] [animation-delay:120ms]" />
-        <span className="size-1.5 animate-pulse rounded-full bg-[var(--app-primary-light)] [animation-delay:240ms]" />
+        <span className="size-1.5 animate-typing-dot rounded-full bg-[var(--foreground-50)]" />
+        <span className="size-1.5 animate-typing-dot rounded-full bg-[var(--foreground-50)] [animation-delay:160ms]" />
+        <span className="size-1.5 animate-typing-dot rounded-full bg-[var(--foreground-50)] [animation-delay:320ms]" />
       </span>
       Cofounder is writing
     </div>

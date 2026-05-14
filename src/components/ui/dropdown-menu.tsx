@@ -21,7 +21,7 @@ export const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 min-w-48 overflow-hidden rounded-[8px] border border-[var(--app-border)] bg-[var(--app-black-base)] p-1 text-[var(--app-text)] shadow-[rgba(0,0,0,0.28)_0_16px_38px] data-[state=open]:animate-[notif-pop_160ms_ease-out]",
+        "z-50 min-w-48 overflow-hidden rounded-[8px] border border-[var(--border-10)] bg-[var(--popover)] p-1 text-[var(--popover-foreground)] shadow-[var(--shadow-outset-100)] data-[state=open]:animate-[notif-pop_160ms_ease-out]",
         className
       )}
       {...props}
@@ -38,7 +38,7 @@ export const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex min-h-9 cursor-default select-none items-center rounded-[6px] px-2 py-2 text-sm outline-none transition-colors focus:bg-[rgba(255,255,255,0.08)] data-[disabled]:pointer-events-none data-[disabled]:opacity-45",
+      "relative flex min-h-9 cursor-default select-none items-center rounded-[6px] px-2 py-2 text-sm outline-none transition-colors focus:bg-[var(--foreground-8)] data-[disabled]:pointer-events-none data-[disabled]:opacity-45",
       inset && "pl-8",
       className
     )}
@@ -54,7 +54,7 @@ export const DropdownMenuCheckboxItem = React.forwardRef<
 >(({ className, children, checked, ...props }, ref) => (
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
-    className={cn("relative flex min-h-9 cursor-default select-none items-center rounded-[6px] py-2 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-[rgba(255,255,255,0.08)] data-[disabled]:pointer-events-none data-[disabled]:opacity-45", className)}
+    className={cn("relative flex min-h-9 cursor-default select-none items-center rounded-[6px] py-2 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-[var(--foreground-8)] data-[disabled]:pointer-events-none data-[disabled]:opacity-45", className)}
     checked={checked}
     {...props}
   >
@@ -75,7 +75,7 @@ export const DropdownMenuRadioItem = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <DropdownMenuPrimitive.RadioItem
     ref={ref}
-    className={cn("relative flex min-h-9 cursor-default select-none items-center rounded-[6px] py-2 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-[rgba(255,255,255,0.08)] data-[disabled]:pointer-events-none data-[disabled]:opacity-45", className)}
+    className={cn("relative flex min-h-9 cursor-default select-none items-center rounded-[6px] py-2 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-[var(--foreground-8)] data-[disabled]:pointer-events-none data-[disabled]:opacity-45", className)}
     {...props}
   >
     <span className="absolute left-2 flex size-4 items-center justify-center">
@@ -93,7 +93,7 @@ export const DropdownMenuLabel = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Label>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & { inset?: boolean }
 >(({ className, inset, ...props }, ref) => (
-  <DropdownMenuPrimitive.Label ref={ref} className={cn("px-2 py-1.5 text-xs font-medium uppercase tracking-[0.08em] text-[var(--app-text-50)]", inset && "pl-8", className)} {...props} />
+  <DropdownMenuPrimitive.Label ref={ref} className={cn("px-2 py-1.5 text-xs font-medium uppercase tracking-[0.08em] text-[var(--foreground-50)]", inset && "pl-8", className)} {...props} />
 ));
 
 DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName;
@@ -102,7 +102,7 @@ export const DropdownMenuSeparator = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
 >(({ className, ...props }, ref) => (
-  <DropdownMenuPrimitive.Separator ref={ref} className={cn("-mx-1 my-1 h-px bg-[var(--app-border)]", className)} {...props} />
+  <DropdownMenuPrimitive.Separator ref={ref} className={cn("-mx-1 my-1 h-px bg-[var(--border-10)]", className)} {...props} />
 ));
 
 DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
@@ -113,7 +113,7 @@ export const DropdownMenuSubTrigger = React.forwardRef<
 >(({ className, inset, children, ...props }, ref) => (
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
-    className={cn("flex min-h-9 cursor-default select-none items-center rounded-[6px] px-2 py-2 text-sm outline-none transition-colors focus:bg-[rgba(255,255,255,0.08)] data-[state=open]:bg-[rgba(255,255,255,0.08)]", inset && "pl-8", className)}
+    className={cn("flex min-h-9 cursor-default select-none items-center rounded-[6px] px-2 py-2 text-sm outline-none transition-colors focus:bg-[var(--foreground-8)] data-[state=open]:bg-[var(--foreground-8)]", inset && "pl-8", className)}
     {...props}
   >
     {children}
@@ -129,7 +129,7 @@ export const DropdownMenuSubContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
-    className={cn("z-50 min-w-44 overflow-hidden rounded-[8px] border border-[var(--app-border)] bg-[var(--app-black-base)] p-1 text-[var(--app-text)] shadow-[rgba(0,0,0,0.28)_0_16px_38px]", className)}
+    className={cn("z-50 min-w-44 overflow-hidden rounded-[8px] border border-[var(--border-10)] bg-[var(--popover)] p-1 text-[var(--popover-foreground)] shadow-[var(--shadow-outset-100)]", className)}
     {...props}
   />
 ));

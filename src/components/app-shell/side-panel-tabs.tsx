@@ -11,9 +11,9 @@ export function SidePanelTabs({ shell }: { shell: OrgShellData }) {
   const progress = shell.counts.roadmapTotal ? Math.round((shell.counts.roadmapComplete / shell.counts.roadmapTotal) * 100) : 0;
 
   return (
-    <aside className="hidden min-h-0 w-[360px] shrink-0 border-l border-[var(--app-border)] bg-[var(--app-panel)] xl:block">
+    <aside className="hidden min-h-0 w-[360px] shrink-0 border-l border-[var(--border-10)] bg-[var(--background-sidepanel)] xl:block">
       <Tabs defaultValue="home" className="flex h-full flex-col">
-        <div className="border-b border-[var(--app-border)] p-3">
+        <div className="border-b border-[var(--border-10)] p-3">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="home" className="px-2 text-xs">Home</TabsTrigger>
             <TabsTrigger value="cofounder" className="px-2 text-xs">AI</TabsTrigger>
@@ -25,10 +25,10 @@ export function SidePanelTabs({ shell }: { shell: OrgShellData }) {
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <TabsContent value="home" className="mt-0 grid gap-4">
             <PanelHeader icon={<CheckCircle2 aria-hidden="true" className="size-4" />} title={greeting()} label="Home" />
-            <section className="grid gap-2 rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+            <section className="grid gap-2 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
               <div className="flex items-center justify-between text-sm">
                 <span>Roadmap progress</span>
-                <span className="text-[var(--app-text-50)]">{shell.counts.roadmapComplete}/{shell.counts.roadmapTotal}</span>
+                <span className="text-[var(--foreground-50)]">{shell.counts.roadmapComplete}/{shell.counts.roadmapTotal}</span>
               </div>
               <Progress value={progress} />
             </section>
@@ -36,7 +36,7 @@ export function SidePanelTabs({ shell }: { shell: OrgShellData }) {
           </TabsContent>
           <TabsContent value="cofounder" className="mt-0 grid gap-4">
             <PanelHeader icon={<Bot aria-hidden="true" className="size-4" />} title="Cofounder" label="Assistant" />
-            <p className="text-sm leading-6 text-[var(--app-text-50)]">
+            <p className="text-sm leading-6 text-[var(--foreground-50)]">
               Cofounder has organization context, roadmap state, departments, files, and activation history ready for chat wiring.
             </p>
             <StatusRows rows={[["Mode", shell.user.isSandbox ? "sandbox" : "provider"], ["Agents", String(shell.counts.agents)], ["Departments", String(shell.counts.departments)]]} />
@@ -76,9 +76,9 @@ export function SidePanelTabs({ shell }: { shell: OrgShellData }) {
 function PanelHeader({ icon, title, label }: { icon: ReactNode; title: string; label: string }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="grid size-9 place-items-center rounded-[9px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.06)] text-[var(--app-primary-light)]">{icon}</span>
+      <span className="grid size-9 place-items-center rounded-[9px] border border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-80)]">{icon}</span>
       <div>
-        <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">{label}</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">{label}</p>
         <h2 className="text-lg font-medium tracking-[0px]">{title}</h2>
       </div>
     </div>
@@ -94,9 +94,9 @@ function MetricGrid({ shell }: { shell: OrgShellData }) {
         ["Active tasks", shell.counts.activeTasks],
         ["Files", shell.counts.files]
       ].map(([label, value]) => (
-        <div key={label} className="rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+        <div key={label} className="rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
           <p className="text-2xl leading-none">{value}</p>
-          <p className="mt-2 text-xs text-[var(--app-text-50)]">{label}</p>
+          <p className="mt-2 text-xs text-[var(--foreground-50)]">{label}</p>
         </div>
       ))}
     </div>
@@ -107,9 +107,9 @@ function StatusRows({ rows }: { rows: Array<[string, string]> }) {
   return (
     <div className="grid gap-2">
       {rows.map(([label, value]) => (
-        <div key={label} className="flex items-center justify-between gap-3 border-b border-[var(--app-border)] py-2 text-sm last:border-b-0">
-          <span className="text-[var(--app-text-50)]">{label}</span>
-          <span className="text-right text-[var(--app-text)]">{value}</span>
+        <div key={label} className="flex items-center justify-between gap-3 border-b border-[var(--border-10)] py-2 text-sm last:border-b-0">
+          <span className="text-[var(--foreground-50)]">{label}</span>
+          <span className="text-right text-[var(--foreground-80)]">{value}</span>
         </div>
       ))}
     </div>

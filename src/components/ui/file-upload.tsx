@@ -56,11 +56,11 @@ export function FileUpload({
         handleFiles(event.dataTransfer.files);
       }}
       className={cn(
-        "grid min-h-36 cursor-pointer place-items-center gap-3 rounded-[14px] border-[0.8px] border-dashed p-5 text-center outline-none transition-colors focus-within:ring-2 focus-within:ring-[var(--brand-300)]",
+        "grid min-h-36 cursor-pointer place-items-center gap-3 rounded-[14px] border-[0.8px] border-dashed p-5 text-center outline-none transition-colors focus-within:ring-2 focus-within:ring-[var(--focused)]",
         surface === "dark"
-          ? "border-[var(--app-input-border)] bg-[rgba(255,255,255,0.04)] text-[var(--app-text)]"
+          ? "border-[var(--input)] bg-[var(--foreground-3)] text-[var(--foreground-80)]"
           : "border-[var(--color-border-pill)] bg-[var(--color-surface-raised)] text-[var(--foreground)]",
-        isDragging && "border-[var(--brand-300)] bg-[rgba(98,41,255,0.14)]",
+        isDragging && "border-[var(--focused)] bg-[var(--tt-color-text-blue-contrast)]",
         disabled && "cursor-not-allowed opacity-50",
         className
       )}

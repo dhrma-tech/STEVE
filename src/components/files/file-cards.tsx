@@ -33,21 +33,21 @@ export function FileList({
           key={file.id}
           type="button"
           className={cn(
-            "grid gap-2 rounded-[10px] border p-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]",
+            "grid gap-2 rounded-[10px] border p-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
             selectedFileId === file.id
               ? "border-[rgba(216,255,122,0.46)] bg-[rgba(216,255,122,0.1)]"
-              : "border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.07)]"
+              : "border-[var(--border-10)] bg-[var(--foreground-3)] hover:bg-[var(--foreground-8)]"
           )}
           onClick={() => onSelectFile(file.id)}
         >
           <span className="flex items-start justify-between gap-3">
             <span className="flex min-w-0 items-start gap-2">
-              <span className="grid size-9 shrink-0 place-items-center rounded-[8px] bg-[rgba(255,255,255,0.07)] text-[var(--app-primary-light)]">
+              <span className="grid size-9 shrink-0 place-items-center rounded-[8px] bg-[var(--foreground-8)] text-[var(--foreground-80)]">
                 {iconForFile(file)}
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-sm font-medium text-[var(--app-text)]">{file.name}</span>
-                <span className="mt-1 block truncate text-xs text-[var(--app-text-50)]">
+                <span className="block truncate text-sm font-medium text-[var(--foreground-80)]">{file.name}</span>
+                <span className="mt-1 block truncate text-xs text-[var(--foreground-50)]">
                   {file.folder?.name ?? "Workspace"} / {formatBytes(file.sizeBytes)} / {formatDate(file.updatedAt)}
                 </span>
               </span>

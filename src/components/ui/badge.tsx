@@ -4,12 +4,18 @@ import { cn } from "@/lib/utils/cn";
 export type BadgeVariant = "neutral" | "success" | "running" | "warning" | "danger" | "brand";
 
 const variantClasses: Record<BadgeVariant, string> = {
-  neutral: "border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.07)] text-[var(--app-text-50)]",
-  success: "border-[rgba(52,168,83,0.35)] bg-[rgba(52,168,83,0.14)] text-[#9df0b4]",
-  running: "border-[rgba(59,130,246,0.35)] bg-[rgba(59,130,246,0.14)] text-[#9bc2ff]",
-  warning: "border-[rgba(245,158,11,0.38)] bg-[rgba(245,158,11,0.14)] text-[#ffd27c]",
-  danger: "border-[rgba(239,68,68,0.38)] bg-[rgba(239,68,68,0.14)] text-[#ffabab]",
-  brand: "border-[rgba(157,138,255,0.38)] bg-[rgba(98,41,255,0.18)] text-[var(--brand-300)]"
+  neutral:
+    "border-[var(--border-15)] bg-[var(--foreground-8)] text-[var(--foreground-60)]",
+  success:
+    "border-[var(--success-40)] bg-[var(--success-30)] text-[var(--success-100)]",
+  running:
+    "border-[rgba(59,130,246,0.35)] bg-[rgba(59,130,246,0.14)] text-[var(--tt-color-text-blue)]",
+  warning:
+    "border-[var(--tt-color-text-yellow-contrast)] bg-[var(--tt-color-text-yellow-contrast)] text-[var(--tt-color-text-yellow)]",
+  danger:
+    "border-[var(--tt-color-text-red-contrast)] bg-[var(--tt-color-text-red-contrast)] text-[var(--tt-color-text-red)]",
+  brand:
+    "border-[var(--tt-brand-color-300)]/40 bg-[var(--tt-brand-color-500)]/20 text-[var(--tt-brand-color-300)]"
 };
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
@@ -32,13 +38,13 @@ export function Badge({ className, variant = "neutral", ...props }: BadgeProps) 
 export type TaskStatus = "queued" | "running" | "finished_turn" | "ready_to_review" | "completed" | "blocked" | "canceled";
 
 const taskStatusMap: Record<TaskStatus, { label: string; variant: BadgeVariant; dot: string }> = {
-  queued: { label: "Queued", variant: "neutral", dot: "bg-[var(--app-text-30)]" },
+  queued: { label: "Queued", variant: "neutral", dot: "bg-[var(--foreground-30)]" },
   running: { label: "Running", variant: "running", dot: "bg-[var(--running)]" },
   finished_turn: { label: "Finished turn", variant: "running", dot: "bg-[var(--running)]" },
-  ready_to_review: { label: "Ready to review", variant: "warning", dot: "bg-[var(--warning)]" },
-  completed: { label: "Completed", variant: "success", dot: "bg-[var(--success)]" },
-  blocked: { label: "Blocked", variant: "danger", dot: "bg-[var(--danger)]" },
-  canceled: { label: "Canceled", variant: "neutral", dot: "bg-[var(--app-text-30)]" }
+  ready_to_review: { label: "Ready to review", variant: "warning", dot: "bg-[var(--tt-color-text-yellow)]" },
+  completed: { label: "Completed", variant: "success", dot: "bg-[var(--success-100)]" },
+  blocked: { label: "Blocked", variant: "danger", dot: "bg-[var(--destructive)]" },
+  canceled: { label: "Canceled", variant: "neutral", dot: "bg-[var(--foreground-30)]" }
 };
 
 export interface StatusBadgeProps extends Omit<BadgeProps, "variant"> {

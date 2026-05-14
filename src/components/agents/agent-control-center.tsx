@@ -124,16 +124,16 @@ export function AgentControlCenter({
     <div className="grid gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-[9px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.06)] text-[var(--app-primary-light)]">
+          <span className="grid size-9 place-items-center rounded-[9px] border border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-80)]">
             <Bot aria-hidden="true" className="size-4" />
           </span>
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">Agents</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">Agents</p>
             <h2 className="text-lg font-medium tracking-[0px]">Company team</h2>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="ghost" size="sm" className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" onClick={refresh}>
+          <Button variant="ghost" size="sm" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={refresh}>
             <RefreshCw aria-hidden="true" className="size-4" />
             Refresh
           </Button>
@@ -144,13 +144,13 @@ export function AgentControlCenter({
         </div>
       </div>
 
-      <div className="grid gap-3 rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+      <div className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
         <div className="flex items-center gap-2">
-          <Filter aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+          <Filter aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
           <h3 className="text-sm font-medium">Filters</h3>
         </div>
         <div className="relative">
-          <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--app-text-50)]" />
+          <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--foreground-50)]" />
           <Input surface="dark" label="Search agents" className="pl-9" value={query} onChange={(event) => setQuery(event.target.value)} />
         </div>
         <div className="grid gap-3 md:grid-cols-2">

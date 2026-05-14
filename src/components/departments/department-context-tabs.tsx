@@ -25,14 +25,14 @@ export function DepartmentContextTabs({ slug, context }: DepartmentContextTabsPr
       </TabsList>
       {visual.contextTabs.map((tab) => (
         <TabsContent key={tab.id} value={tab.id} className="mt-0">
-          <div className="grid gap-3 rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+          <div className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
             <div className="flex items-start gap-3">
-              <span className="grid size-9 shrink-0 place-items-center rounded-[9px] bg-[rgba(255,255,255,0.07)] text-[var(--app-primary-light)]">
+              <span className="grid size-9 shrink-0 place-items-center rounded-[9px] bg-[var(--foreground-8)] text-[var(--foreground-80)]">
                 <FileText aria-hidden="true" className="size-4" />
               </span>
               <div className="min-w-0">
                 <h3 className="text-sm font-medium">{tab.title}</h3>
-                <p className="mt-1 text-sm leading-6 text-[var(--app-text-50)]">{tab.body}</p>
+                <p className="mt-1 text-sm leading-6 text-[var(--foreground-50)]">{tab.body}</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -43,11 +43,11 @@ export function DepartmentContextTabs({ slug, context }: DepartmentContextTabsPr
               ))}
             </div>
             {tab.id === "department" && contextKeys.length ? (
-              <div className="grid gap-2 border-t border-[var(--app-border)] pt-3">
+              <div className="grid gap-2 border-t border-[var(--border-10)] pt-3">
                 {contextKeys.slice(0, 5).map((key) => (
                   <div key={key} className="flex items-center justify-between gap-3 text-xs">
-                    <span className="font-mono uppercase tracking-[0.08em] text-[var(--app-text-50)]">{key}</span>
-                    <span className="max-w-[18rem] truncate text-right text-[var(--app-text)]">{stringifyContextValue(context[key])}</span>
+                    <span className="font-mono uppercase tracking-[0.08em] text-[var(--foreground-50)]">{key}</span>
+                    <span className="max-w-[18rem] truncate text-right text-[var(--foreground-80)]">{stringifyContextValue(context[key])}</span>
                   </div>
                 ))}
               </div>

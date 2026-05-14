@@ -55,15 +55,15 @@ export function CommandPalette({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[720px] p-0" showClose={false}>
-        <DialogHeader className="border-b border-[var(--app-border)] p-4 pr-4">
+        <DialogHeader className="border-b border-[var(--border-10)] p-4 pr-4">
           <DialogTitle className="flex items-center gap-2 text-base">
-            <Command aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+            <Command aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
             Command palette
           </DialogTitle>
         </DialogHeader>
         <div className="grid gap-3 p-4">
           <div className="relative">
-            <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--app-text-50)]" />
+            <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--foreground-50)]" />
             <Input
               label="Search workspace"
               className="pl-9"
@@ -74,7 +74,7 @@ export function CommandPalette({
           </div>
           <div className="max-h-[54vh] overflow-y-auto">
             {loading ? (
-              <div className="flex items-center gap-2 px-1 py-8 text-sm text-[var(--app-text-50)]">
+              <div className="flex items-center gap-2 px-1 py-8 text-sm text-[var(--foreground-50)]">
                 <Loader2 aria-hidden="true" className="size-4 animate-spin" />
                 Searching
               </div>
@@ -82,20 +82,20 @@ export function CommandPalette({
               <div className="grid gap-4">
                 {populatedGroups.map((group) => (
                   <section key={group.type} className="grid gap-2">
-                    <h3 className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">{group.label}</h3>
+                    <h3 className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">{group.label}</h3>
                     <div className="grid gap-1">
                       {group.items.map((item) => (
                         <button
                           key={`${group.type}-${item.id}`}
                           type="button"
-                          className="grid gap-1 rounded-[8px] border border-transparent px-3 py-2 text-left outline-none transition-colors hover:border-[var(--app-border)] hover:bg-[rgba(255,255,255,0.06)] focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]"
+                          className="grid gap-1 rounded-[8px] border border-transparent px-3 py-2 text-left outline-none transition-colors hover:border-[var(--border-10)] hover:bg-[var(--foreground-5)] focus-visible:ring-2 focus-visible:ring-[var(--focused)]"
                           onClick={() => {
                             window.location.href = item.href;
                             onOpenChange(false);
                           }}
                         >
-                          <span className="text-sm text-[var(--app-text)]">{item.title}</span>
-                          <span className="text-xs text-[var(--app-text-50)]">{item.subtitle}</span>
+                          <span className="text-sm text-[var(--foreground-80)]">{item.title}</span>
+                          <span className="text-xs text-[var(--foreground-50)]">{item.subtitle}</span>
                         </button>
                       ))}
                     </div>

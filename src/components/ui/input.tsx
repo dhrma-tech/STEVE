@@ -17,7 +17,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       .join(" ");
 
     return (
-      <label className={cn("grid gap-2 text-sm", surface === "dark" ? "text-[var(--app-text)]" : "text-[var(--color-ink-strong)]")}>
+      <label className={cn("grid gap-2 text-sm", surface === "dark" ? "text-[var(--foreground-80)]" : "text-[var(--color-ink-strong)]")}>
         {label ? <span className="font-medium">{label}</span> : null}
         <input
           ref={ref}
@@ -25,22 +25,22 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           aria-invalid={Boolean(error)}
           aria-describedby={describedBy || undefined}
           className={cn(
-            "h-10 w-full rounded-[8px] border-[0.8px] px-3 text-[15px] outline-none transition-colors placeholder:text-current/40 focus-visible:ring-2 focus-visible:ring-[var(--brand-300)] disabled:cursor-not-allowed disabled:opacity-50",
+            "h-10 w-full rounded-[8px] border-[0.8px] px-3 text-[15px] outline-none transition-colors placeholder:text-current/40 focus-visible:ring-2 focus-visible:ring-[var(--focused)] disabled:cursor-not-allowed disabled:opacity-50",
             surface === "dark"
-              ? "border-[var(--app-input-border)] bg-[rgba(255,255,255,0.06)] text-[var(--app-text)] caret-[var(--caret)]"
-              : "border-[var(--color-border-pill)] bg-[var(--color-surface-raised)] text-[var(--foreground)] caret-[var(--brand-500)]",
-            error && "border-[var(--danger)]",
+              ? "border-[var(--input)] bg-[var(--foreground-5)] text-[var(--foreground-80)] caret-[var(--caret)]"
+              : "border-[var(--color-border-pill)] bg-[var(--color-surface-raised)] text-[var(--foreground)] caret-[var(--tt-brand-color-500)]",
+            error && "border-[var(--destructive)]",
             className
           )}
           {...props}
         />
         {description ? (
-          <span id={`${inputId}-description`} className={cn("text-xs leading-5", surface === "dark" ? "text-[var(--app-text-50)]" : "text-[var(--color-ink-faint)]")}>
+          <span id={`${inputId}-description`} className={cn("text-xs leading-5", surface === "dark" ? "text-[var(--foreground-50)]" : "text-[var(--color-ink-faint)]")}>
             {description}
           </span>
         ) : null}
         {error ? (
-          <span id={`${inputId}-error`} className="text-xs leading-5 text-[var(--danger)]">
+          <span id={`${inputId}-error`} className="text-xs leading-5 text-[var(--destructive)]">
             {error}
           </span>
         ) : null}

@@ -24,8 +24,8 @@ export function EmptyState({ icon, title, description, action, surface = "dark",
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       className={cn(
         "grid place-items-center gap-4 rounded-[18px] border-[0.8px] p-8 text-center shadow-sm",
-        surface === "dark" 
-          ? "border-[var(--app-border)] bg-[rgba(255,255,255,0.03)] text-[var(--app-text)]" 
+        surface === "dark"
+          ? "border-[var(--border-10)] bg-[var(--foreground-3)] text-[var(--foreground-80)]"
           : "border-[var(--color-border-card)] bg-[var(--color-surface-raised)] text-[var(--foreground)]",
         className
       )}

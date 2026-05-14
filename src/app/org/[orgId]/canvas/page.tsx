@@ -3,8 +3,8 @@ import { CanvasWorkspace } from "@/components/canvas/canvas-workspace";
 import { getCanvasData } from "@/lib/canvas/data";
 
 export const metadata: Metadata = {
-  title: "Canvas - Cofounder",
-  description: "Company workspace canvas with departments, roadmap, tasks, and files."
+  title: "Canvas",
+  description: "Your company workspace — departments, roadmap, tasks, files, and chat in one canvas."
 };
 
 type CanvasPageProps = {

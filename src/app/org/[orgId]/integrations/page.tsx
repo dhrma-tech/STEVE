@@ -3,8 +3,8 @@ import { IntegrationCenter } from "@/components/integrations/integration-center"
 import { getIntegrationsData } from "@/lib/integrations/data";
 
 export const metadata: Metadata = {
-  title: "Integrations - Cofounder",
-  description: "Workspace provider integrations and sandbox connection status."
+  title: "Integrations",
+  description: "Connect GitHub, Vercel, Supabase, Stripe, Postiz, and the other tools your company runs on."
 };
 
 type IntegrationsPageProps = {

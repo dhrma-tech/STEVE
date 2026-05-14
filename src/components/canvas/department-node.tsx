@@ -17,11 +17,11 @@ export function DepartmentNode({ data, selected }: NodeProps) {
   return (
     <div
       className={cn(
-        "grid w-[190px] gap-3 rounded-[14px] border bg-[rgba(37,37,43,0.92)] p-3 text-[var(--app-text)] shadow-[rgba(0,0,0,0.28)_0_16px_50px] backdrop-blur transition-[border-color,box-shadow] duration-200",
+        "grid w-[190px] gap-3 rounded-[14px] border bg-[var(--background-l0-85)] p-3 text-[var(--foreground-80)] shadow-[var(--shadow-dept-agent-node-dark)] backdrop-blur transition-[border-color,box-shadow] duration-200",
         selected && "animate-node-select-pop"
       )}
       style={{
-        borderColor: selected ? nodeData.color : "rgba(255,255,255,0.12)",
+        borderColor: selected ? nodeData.color : "var(--border-10)",
         boxShadow: selected ? `0 0 0 1px ${nodeData.color}, rgba(0,0,0,0.28) 0 16px 50px` : undefined
       }}
     >
@@ -35,9 +35,9 @@ export function DepartmentNode({ data, selected }: NodeProps) {
       </div>
       <div>
         <h3 className="font-medium tracking-[0px]">{nodeData.name}</h3>
-        <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--app-text-50)]">{nodeData.description}</p>
+        <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--foreground-50)]">{nodeData.description}</p>
       </div>
-      <div className="grid grid-cols-2 gap-2 text-xs text-[var(--app-text-50)]">
+      <div className="grid grid-cols-2 gap-2 text-xs text-[var(--foreground-50)]">
         <span>{nodeData.agents} agents</span>
         <span>{nodeData.tasks} tasks</span>
       </div>

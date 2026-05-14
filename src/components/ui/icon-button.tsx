@@ -9,10 +9,13 @@ type IconButtonSize = "sm" | "md" | "lg";
 
 const variantClasses: Record<IconButtonVariant, string> = {
   light:
-    "border-[0.8px] border-[rgba(32,32,32,0.1)] bg-[var(--color-surface)] text-[var(--foreground)] shadow-[rgba(0,0,0,0.06)_0_2px_3px,rgba(255,255,255,0.35)_0_0_0.357px_1.5px_inset,#fff_0_2px_0_inset] hover:bg-[var(--color-surface-raised)]",
-  app: "border-[0.8px] border-[var(--app-border)] bg-[rgba(255,255,255,0.06)] text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.1)]",
-  ghost: "border-[0.8px] border-transparent bg-transparent text-current hover:bg-[rgba(255,255,255,0.08)]",
-  danger: "border-[0.8px] border-[rgba(239,68,68,0.35)] bg-[rgba(239,68,68,0.1)] text-red-100 hover:bg-[rgba(239,68,68,0.18)]"
+    "border-[0.8px] border-[var(--border-10)] bg-[var(--background-l0)] text-[var(--foreground)] shadow-[var(--shadows-light-buttons-sm)] hover:brightness-[1.02]",
+  app:
+    "border-[0.8px] border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground)] hover:bg-[var(--foreground-10)]",
+  ghost:
+    "border-[0.8px] border-transparent bg-transparent text-current hover:bg-[var(--foreground-8)]",
+  danger:
+    "border-[0.8px] border-[var(--tt-color-text-red-contrast)] bg-[var(--tt-color-text-red-contrast)] text-[var(--destructive)] hover:bg-[var(--tt-color-text-red-contrast)]"
 };
 
 const sizeClasses: Record<IconButtonSize, string> = {
@@ -39,7 +42,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
             type={type}
             aria-label={label}
             className={cn(
-              "inline-flex shrink-0 items-center justify-center rounded-[8px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--brand-300)] disabled:pointer-events-none disabled:opacity-50",
+              "inline-flex shrink-0 items-center justify-center rounded-[8px] outline-none transition-colors duration-[var(--tt-transition-duration-short)] focus-visible:ring-2 focus-visible:ring-[var(--focused)] disabled:pointer-events-none disabled:opacity-50",
               variantClasses[variant],
               sizeClasses[size],
               className

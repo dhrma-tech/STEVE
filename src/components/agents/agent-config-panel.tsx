@@ -62,7 +62,7 @@ export function AgentConfigPanel({
 
   if (!agent) {
     return (
-      <section className="rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-4">
+      <section className="rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-4">
         <EmptyState surface="dark" title="Select an agent" description="Agent configuration, inbox, tasks, sessions, and launch controls appear here." />
       </section>
     );
@@ -110,18 +110,18 @@ export function AgentConfigPanel({
   }
 
   return (
-    <section className="grid gap-4 rounded-[12px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-4">
+    <section className="grid gap-4 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">{agent.department.name}</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">{agent.department.name}</p>
           <h2 className="mt-1 text-xl font-medium tracking-[0px]">{agent.name}</h2>
-          <p className="mt-2 text-sm leading-6 text-[var(--app-text-50)]">{agent.description ?? "No description set."}</p>
+          <p className="mt-2 text-sm leading-6 text-[var(--foreground-50)]">{agent.description ?? "No description set."}</p>
         </div>
         <Badge variant={agent.status === "running" ? "running" : agent.status === "idle" ? "success" : "warning"}>{agent.status}</Badge>
       </div>
 
       {error ? (
-        <div className="rounded-[10px] border border-[rgba(239,68,68,0.36)] bg-[rgba(239,68,68,0.12)] p-3 text-sm text-red-100">
+        <div className="rounded-[10px] border border-[var(--tt-color-text-red-contrast)] bg-[var(--tt-color-text-red-contrast)] p-3 text-sm text-[var(--destructive)]">
           {error}
         </div>
       ) : null}
@@ -131,7 +131,7 @@ export function AgentConfigPanel({
           {busy === "launch" ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <Play aria-hidden="true" className="size-4" />}
           Launch session
         </Button>
-        <Button variant="ghost" size="sm" className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" onClick={() => setEditing((value) => !value)}>
+        <Button variant="ghost" size="sm" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={() => setEditing((value) => !value)}>
           {editing ? "Close config" : "Edit config"}
         </Button>
       </div>
@@ -146,7 +146,7 @@ export function AgentConfigPanel({
       />
 
       {editing ? (
-        <div className="grid gap-3 rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+        <div className="grid gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
           <Input surface="dark" label="Name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
           <Input surface="dark" label="Description" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
           <div className="grid gap-3 md:grid-cols-2">
@@ -164,17 +164,17 @@ export function AgentConfigPanel({
         </div>
       ) : null}
 
-      <div className="grid gap-3 rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+      <div className="grid gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
         <div className="flex items-center gap-2">
-          <Inbox aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+          <Inbox aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
           <h3 className="text-sm font-medium">Inbox</h3>
         </div>
-        <div className="flex items-center justify-between gap-2 rounded-[8px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-2 text-sm">
+        <div className="flex items-center justify-between gap-2 rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-2 text-sm">
           <span className="truncate">{agent.inboxAddress ?? "No inbox address"}</span>
           <Button
             variant="ghost"
             size="sm"
-            className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]"
+            className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]"
             onClick={() => agent.inboxAddress && navigator.clipboard?.writeText(agent.inboxAddress)}
           >
             <Copy aria-hidden="true" className="size-4" />
@@ -183,9 +183,9 @@ export function AgentConfigPanel({
         </div>
       </div>
 
-      <div className="grid gap-3 rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+      <div className="grid gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
         <div className="flex items-center gap-2">
-          <TerminalSquare aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+          <TerminalSquare aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
           <h3 className="text-sm font-medium">Recent sessions</h3>
         </div>
         {agent.sessions.length ? (
@@ -194,31 +194,31 @@ export function AgentConfigPanel({
               <button
                 key={session.id}
                 type="button"
-                className="flex items-center justify-between gap-3 rounded-[8px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-2 text-left outline-none hover:bg-[rgba(255,255,255,0.06)] focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]"
+                className="flex items-center justify-between gap-3 rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-2 text-left outline-none hover:bg-[var(--foreground-5)] focus-visible:ring-2 focus-visible:ring-[var(--focused)]"
                 onClick={() => onLaunchSession(session.id)}
               >
                 <span className="min-w-0">
                   <span className="block truncate text-sm">{session.task?.title ?? session.id}</span>
-                  <span className="mt-1 block text-xs text-[var(--app-text-50)]">{formatMs(session.elapsedMs)}</span>
+                  <span className="mt-1 block text-xs text-[var(--foreground-50)]">{formatMs(session.elapsedMs)}</span>
                 </span>
                 <Badge variant={session.status === "running" ? "running" : session.status === "completed" ? "success" : "neutral"}>{session.status}</Badge>
               </button>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-[var(--app-text-50)]">No sessions yet</p>
+          <p className="text-xs text-[var(--foreground-50)]">No sessions yet</p>
         )}
       </div>
 
-      <div className="grid gap-3 rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+      <div className="grid gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
         <h3 className="text-sm font-medium">Agent tasks</h3>
         {agent.tasks.length ? (
           <div className="grid gap-2">
             {agent.tasks.map((task) => (
-              <div key={task.id} className="flex items-center justify-between gap-3 rounded-[8px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-2">
+              <div key={task.id} className="flex items-center justify-between gap-3 rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-2">
                 <span className="min-w-0">
                   <span className="block truncate text-sm">{task.title}</span>
-                  <span className="mt-1 block text-xs text-[var(--app-text-50)]">{task.type}</span>
+                  <span className="mt-1 block text-xs text-[var(--foreground-50)]">{task.type}</span>
                 </span>
                 <div className="flex gap-2">
                   <Badge variant={task.status === "running" ? "running" : task.status === "completed" ? "success" : "neutral"}>{task.status}</Badge>
@@ -230,7 +230,7 @@ export function AgentConfigPanel({
             ))}
           </div>
         ) : (
-          <p className="text-xs text-[var(--app-text-50)]">No assigned tasks</p>
+          <p className="text-xs text-[var(--foreground-50)]">No assigned tasks</p>
         )}
       </div>
     </section>

@@ -35,14 +35,14 @@ export const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-1/2 top-1/2 z-50 grid w-[calc(100vw-32px)] max-w-[560px] -translate-x-1/2 -translate-y-1/2 gap-5 rounded-[14px] border border-[var(--app-border)] bg-[var(--app-black-base)] p-5 text-[var(--app-text)] shadow-[rgba(0,0,0,0.36)_0_24px_80px] outline-none data-[state=closed]:animate-[modal-exit_180ms_ease-out] data-[state=open]:animate-[modal-enter_260ms_cubic-bezier(0.22,1,0.36,1)]",
+        "fixed left-1/2 top-1/2 z-50 grid w-[calc(100vw-32px)] max-w-[560px] -translate-x-1/2 -translate-y-1/2 gap-5 rounded-[14px] border border-[var(--border-10)] bg-[var(--popover)] p-5 text-[var(--popover-foreground)] shadow-[var(--shadow-outset-150)] outline-none data-[state=closed]:animate-[modal-exit_180ms_ease-out] data-[state=open]:animate-[modal-enter_260ms_cubic-bezier(0.22,1,0.36,1)]",
         className
       )}
       {...props}
     >
       {children}
       {showClose ? (
-        <DialogPrimitive.Close className="absolute right-3 top-3 inline-flex size-8 items-center justify-center rounded-[8px] text-[var(--app-text-50)] outline-none transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-[var(--app-text)] focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]" aria-label="Close dialog">
+        <DialogPrimitive.Close className="absolute right-3 top-3 inline-flex size-8 items-center justify-center rounded-[8px] text-[var(--foreground-50)] outline-none transition-colors hover:bg-[var(--foreground-8)] hover:text-[var(--foreground)] focus-visible:ring-2 focus-visible:ring-[var(--focused)]" aria-label="Close dialog">
           <X aria-hidden="true" className="size-4" />
         </DialogPrimitive.Close>
       ) : null}
@@ -73,7 +73,7 @@ export const DialogDescription = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
 >(({ className, ...props }, ref) => (
-  <DialogPrimitive.Description ref={ref} className={cn("text-sm leading-6 text-[var(--app-text-50)]", className)} {...props} />
+  <DialogPrimitive.Description ref={ref} className={cn("text-sm leading-6 text-[var(--foreground-50)]", className)} {...props} />
 ));
 
 DialogDescription.displayName = DialogPrimitive.Description.displayName;

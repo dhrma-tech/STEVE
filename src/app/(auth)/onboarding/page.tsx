@@ -5,8 +5,8 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 
 export const metadata: Metadata = {
-  title: "Onboarding - Cofounder",
-  description: "Personal onboarding before creating a company workspace."
+  title: "Welcome",
+  description: "A quick profile setup before you create your first company."
 };
 
 export default async function OnboardingPage() {

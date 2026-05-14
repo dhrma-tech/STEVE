@@ -132,19 +132,30 @@ export function ChatWorkspace({
     if (!thread) return false;
     setStreaming(true);
     setError(null);
+
+    const optimisticThread = appendOptimisticUserMessage(thread, input.body);
+    setThread(optimisticThread);
+
     try {
-      const response = await fetch(`/api/orgs/${orgId}/chat/threads/${thread.id}/messages`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(input)
+      const succeeded = await streamChatResponse({
+        orgId,
+        threadId: thread.id,
+        input,
+        onAssistantStart: () => {
+          setThread((current) => (current ? appendOptimisticAssistantMessage(current) : current));
+        },
+        onAssistantDelta: (delta) => {
+          setThread((current) => (current ? appendAssistantDelta(current, delta) : current));
+        },
+        onComplete: (finalThread) => {
+          setThread(finalThread);
+          refresh();
+        }
       });
-      const payload = (await response.json()) as ApiPayload<ChatThreadDetail>;
-      if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? "Message could not be sent.");
-      setThread(payload.data);
-      refresh();
-      return true;
+      return succeeded;
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Message could not be sent.");
+      setThread(thread);
       return false;
     } finally {
       setStreaming(false);
@@ -157,15 +168,15 @@ export function ChatWorkspace({
     <div className="grid gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-[9px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.06)] text-[var(--app-primary-light)]">
+          <span className="grid size-9 place-items-center rounded-[9px] border border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-80)]">
             <Bot aria-hidden="true" className="size-4" />
           </span>
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">Chat</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">Chat</p>
             <h2 className="text-lg font-medium tracking-[0px]">Cofounder chat</h2>
           </div>
         </div>
-        <Button variant="ghost" size="sm" className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" onClick={refresh}>
+        <Button variant="ghost" size="sm" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={refresh}>
           <RefreshCw aria-hidden="true" className="size-4" />
           Refresh
         </Button>
@@ -185,7 +196,7 @@ export function ChatWorkspace({
             onNewThread={createThread}
           />
 
-          <section className="grid gap-3 rounded-[12px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-3">
+          <section className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3">
             {detailLoading ? <LoadingState rows={8} label="Loading thread" /> : null}
             {!detailLoading && thread ? (
               <>
@@ -195,11 +206,11 @@ export function ChatWorkspace({
                       <h3 className="truncate text-base font-medium">{thread.title}</h3>
                       <Badge variant={thread.kind === "cofounder" ? "brand" : "neutral"}>{thread.kind}</Badge>
                     </div>
-                    <p className="mt-1 text-xs text-[var(--app-text-50)]">
+                    <p className="mt-1 text-xs text-[var(--foreground-50)]">
                       {thread.messageCount} messages{selectedSummary?.task ? ` / ${selectedSummary.task.title}` : ""}
                     </p>
                   </div>
-                  <Button variant="ghost" size="sm" className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" onClick={archiveThread}>
+                  <Button variant="ghost" size="sm" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={archiveThread}>
                     <Archive aria-hidden="true" className="size-4" />
                     Archive
                   </Button>
@@ -231,4 +242,144 @@ export function ChatWorkspace({
       ) : null}
     </div>
   );
+}
+
+type ChatMessage = ChatThreadDetail["messages"][number];
+
+const OPTIMISTIC_USER_ID = "optimistic:user";
+const OPTIMISTIC_ASSISTANT_ID = "optimistic:assistant";
+
+function appendOptimisticUserMessage(thread: ChatThreadDetail, body: string): ChatThreadDetail {
+  const filtered = thread.messages.filter((message) => !isOptimistic(message));
+  const optimistic: ChatMessage = {
+    id: OPTIMISTIC_USER_ID,
+    senderType: "user",
+    senderUser: null,
+    senderAgent: null,
+    body: body.trim(),
+    metadata: { kind: "user_message", optimistic: true },
+    createdAt: new Date().toISOString(),
+    editedAt: null
+  };
+  return {
+    ...thread,
+    messages: [...filtered, optimistic],
+    messageCount: filtered.length + 1
+  };
+}
+
+function appendOptimisticAssistantMessage(thread: ChatThreadDetail): ChatThreadDetail {
+  if (thread.messages.some((message) => message.id === OPTIMISTIC_ASSISTANT_ID)) return thread;
+  const optimistic: ChatMessage = {
+    id: OPTIMISTIC_ASSISTANT_ID,
+    senderType: "agent",
+    senderUser: null,
+    senderAgent: null,
+    body: "",
+    metadata: { kind: "ai_response", optimistic: true, streaming: true },
+    createdAt: new Date().toISOString(),
+    editedAt: null
+  };
+  return {
+    ...thread,
+    messages: [...thread.messages, optimistic],
+    messageCount: thread.messageCount + 1
+  };
+}
+
+function appendAssistantDelta(thread: ChatThreadDetail, delta: string): ChatThreadDetail {
+  return {
+    ...thread,
+    messages: thread.messages.map((message) =>
+      message.id === OPTIMISTIC_ASSISTANT_ID ? { ...message, body: message.body + delta } : message
+    )
+  };
+}
+
+function isOptimistic(message: ChatMessage) {
+  return message.id === OPTIMISTIC_USER_ID || message.id === OPTIMISTIC_ASSISTANT_ID;
+}
+
+type StreamArgs = {
+  orgId: string;
+  threadId: string;
+  input: { body: string; mentions: string[]; attachmentNames: string[] };
+  onAssistantStart: () => void;
+  onAssistantDelta: (delta: string) => void;
+  onComplete: (thread: ChatThreadDetail) => void;
+};
+
+async function streamChatResponse({ orgId, threadId, input, onAssistantStart, onAssistantDelta, onComplete }: StreamArgs) {
+  const response = await fetch(`/api/orgs/${orgId}/chat/threads/${threadId}/messages/stream`, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "text/event-stream" },
+    body: JSON.stringify(input)
+  });
+
+  if (!response.ok || !response.body) {
+    const fallback = await response.json().catch(() => ({} as { error?: { message?: string } }));
+    throw new Error(fallback?.error?.message ?? "Message could not be sent.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let assistantStarted = false;
+  let completed = false;
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let separator: number;
+    while ((separator = buffer.indexOf("\n\n")) >= 0) {
+      const rawEvent = buffer.slice(0, separator);
+      buffer = buffer.slice(separator + 2);
+      const parsed = parseSseEvent(rawEvent);
+      if (!parsed) continue;
+
+      if (parsed.event === "thinking" || parsed.event === "token") {
+        if (!assistantStarted) {
+          assistantStarted = true;
+          onAssistantStart();
+        }
+      }
+
+      if (parsed.event === "token") {
+        const delta = typeof parsed.data?.delta === "string" ? parsed.data.delta : "";
+        if (delta) onAssistantDelta(delta);
+      } else if (parsed.event === "complete") {
+        const data = parsed.data as { thread?: ChatThreadDetail } | undefined;
+        if (data?.thread) {
+          completed = true;
+          onComplete(data.thread);
+        }
+      } else if (parsed.event === "error") {
+        const message = typeof parsed.data?.message === "string" ? parsed.data.message : "Stream failed.";
+        throw new Error(message);
+      }
+    }
+  }
+
+  if (!completed) {
+    throw new Error("Stream ended before completion.");
+  }
+  return true;
+}
+
+function parseSseEvent(raw: string): { event: string; data: Record<string, unknown> | undefined } | null {
+  const lines = raw.split("\n");
+  let event = "message";
+  let dataLine = "";
+  for (const line of lines) {
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    else if (line.startsWith("data:")) dataLine += line.slice(5).trim();
+  }
+  if (!dataLine) return { event, data: undefined };
+  try {
+    return { event, data: JSON.parse(dataLine) as Record<string, unknown> };
+  } catch {
+    return null;
+  }
 }

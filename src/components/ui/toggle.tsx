@@ -12,7 +12,7 @@ export const Switch = React.forwardRef<
   <SwitchPrimitive.Root
     ref={ref}
     className={cn(
-      "relative h-6 w-11 rounded-full border-[0.8px] border-[var(--app-border)] bg-[rgba(255,255,255,0.1)] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--brand-300)] data-[state=checked]:bg-[var(--brand-500)]",
+      "relative h-6 w-11 rounded-full border-[0.8px] border-[var(--border-10)] bg-[var(--foreground-8)] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focused)] data-[state=checked]:bg-[var(--success-30)]",
       className
     )}
     {...props}
@@ -30,10 +30,10 @@ export interface ToggleFieldProps extends React.ComponentPropsWithoutRef<typeof 
 
 export function ToggleField({ label, description, className, ...props }: ToggleFieldProps) {
   return (
-    <label className={cn("flex items-start justify-between gap-4 rounded-[8px] border-[0.8px] border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3 text-[var(--app-text)]", className)}>
+    <label className={cn("flex items-start justify-between gap-4 rounded-[8px] border-[0.8px] border-[var(--border-10)] bg-[var(--foreground-3)] p-3 text-[var(--foreground-80)]", className)}>
       <span className="grid gap-1">
         <span className="text-sm font-medium">{label}</span>
-        {description ? <span className="text-xs leading-5 text-[var(--app-text-50)]">{description}</span> : null}
+        {description ? <span className="text-xs leading-5 text-[var(--foreground-50)]">{description}</span> : null}
       </span>
       <Switch {...props} />
     </label>
@@ -47,7 +47,7 @@ export const ToggleButton = React.forwardRef<
   <TogglePrimitive.Root
     ref={ref}
     className={cn(
-      "inline-flex h-9 items-center justify-center rounded-[8px] border-[0.8px] border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] px-3 text-sm text-[var(--app-text-80)] outline-none transition-colors hover:bg-[rgba(255,255,255,0.08)] focus-visible:ring-2 focus-visible:ring-[var(--brand-300)] data-[state=on]:bg-[var(--app-primary-light)] data-[state=on]:text-[var(--app-black-base)]",
+      "inline-flex h-9 items-center justify-center rounded-[8px] border-[0.8px] border-[var(--border-10)] bg-[var(--foreground-3)] px-3 text-sm text-[var(--foreground-80)] outline-none transition-colors hover:bg-[var(--foreground-8)] focus-visible:ring-2 focus-visible:ring-[var(--focused)] data-[state=on]:bg-[var(--primary)] data-[state=on]:text-[var(--primary-foreground)]",
       className
     )}
     {...props}

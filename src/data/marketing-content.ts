@@ -219,7 +219,7 @@ export const heroNotifications = [
 export const legalShellSections = [
   "Account, organization, and onboarding data",
   "Company context, files, and generated business plan",
-  "Managed integration status and sandbox adapters",
+  "Managed integration status",
   "Billing, usage, and plan information",
   "Security, data graduation, and destructive action approvals"
 ];
@@ -227,19 +227,19 @@ export const legalShellSections = [
 export const launchArticleSections = [
   {
     heading: "A company as an operating system",
-    body: "Cofounder 2 is described in the source notes as a product where the founder sees departments, tasks, roadmap progress, files, and chat as one company workspace."
+    body: "Cofounder treats your business the way a real company is treated: departments, tasks, roadmap progress, files, and chat all live in one workspace so the founder can see — and direct — every part of the operation."
   },
   {
     heading: "Eight departments, one central Cofounder",
-    body: "Engineering, Marketing, Sales, Design, Support, Operations, Finance, and Legal are modeled as departments around a central Cofounder agent."
+    body: "Engineering, Marketing, Sales, Design, Support, Operations, Finance, and Legal each ship as a first-class department with its own agents and context, orbiting a central Cofounder agent that keeps everything coherent."
   },
   {
     heading: "Roadmap before random work",
-    body: "The roadmap and tech tree organize company-building into stages, dependencies, approval points, and agent-launchable work."
+    body: "The roadmap and tech tree turn company-building into a structured sequence: stages, dependencies, approval points, and agent-launchable work. You always know what to do next — and what it unlocks."
   },
   {
     heading: "Managed services with a graduation path",
-    body: "The product surfaces managed GitHub, Supabase, Vercel, Stripe, Postiz, domain, email, and provider status while keeping data ownership visible."
+    body: "We provision and run GitHub, Supabase, Vercel, Stripe, Postiz, domains, and email on your behalf so you can ship from day one. When you outgrow managed, graduate every asset into accounts you own — without lock-in."
   }
 ];
 

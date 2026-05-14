@@ -17,8 +17,16 @@ import { IconButton } from "@/components/ui/icon-button";
 import { MarketingNavContainer } from "@/components/ui/container";
 import { cn } from "@/lib/utils/cn";
 
-export function MarketingNav() {
+type MarketingNavProps = {
+  signedIn?: boolean;
+  workspaceHref?: string;
+};
+
+export function MarketingNav({ signedIn = false, workspaceHref = "/login" }: MarketingNavProps) {
   const pathname = usePathname();
+  const primaryCtaHref = signedIn ? workspaceHref : "/login";
+  const primaryCtaLabel = signedIn ? "Go to workspace" : "Run a company";
+  const loginLabel = signedIn ? "Open workspace" : "Log in";
   const [scrolled, setScrolled] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [howToOpen, setHowToOpen] = React.useState(false);
@@ -49,8 +57,8 @@ export function MarketingNav() {
             <DropdownMenuTrigger
               onPointerEnter={() => setHowToOpen(true)}
               className={cn(
-                "inline-flex h-9 items-center gap-1 rounded-full px-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]",
-                pathname.startsWith("/how-to") ? "bg-[var(--foreground)] text-white" : "text-[var(--color-ink-strong)] hover:bg-white/55"
+                "inline-flex h-9 items-center gap-1 rounded-full px-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
+                pathname.startsWith("/how-to") ? "bg-[var(--foreground)] text-white" : "text-[var(--foreground-80)] hover:bg-white/55"
               )}
             >
               How To
@@ -67,11 +75,11 @@ export function MarketingNav() {
 
           {marketingNav.howTo.map((item) => (
             <React.Fragment key={item.href}>
-              <span className="text-[var(--color-ink-faint)]">|</span>
+              <span className="text-[var(--foreground-50)]">|</span>
               <Link
                 href={item.href}
                 className={cn(
-                  "rounded-full px-3 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]",
+                  "rounded-full px-3 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
                   isActive(item.href) ? "bg-[var(--foreground)] text-white" : "hover:bg-white/55"
                 )}
               >
@@ -82,11 +90,11 @@ export function MarketingNav() {
 
           {marketingNav.primary.map((item) => (
             <React.Fragment key={item.href}>
-              <span className="text-[var(--color-ink-faint)]">|</span>
+              <span className="text-[var(--foreground-50)]">|</span>
               <Link
                 href={item.href}
                 className={cn(
-                  "rounded-full px-3 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]",
+                  "rounded-full px-3 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
                   isActive(item.href) ? "bg-[var(--foreground)] text-white" : "hover:bg-white/55"
                 )}
               >
@@ -97,11 +105,11 @@ export function MarketingNav() {
         </nav>
 
         <div className="hidden items-center gap-2 lg:flex">
-          <Link href="/login" className="rounded-[8px] px-3 py-2 text-[15px] text-[var(--color-ink-strong)] outline-none hover:bg-white/45 focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]">
-            Log in
+          <Link href={primaryCtaHref} className="rounded-[8px] px-3 py-2 text-[15px] text-[var(--foreground-80)] outline-none hover:bg-white/45 focus-visible:ring-2 focus-visible:ring-[var(--focused)]">
+            {loginLabel}
           </Link>
-          <Link href="/login" aria-label="Run a company" className={buttonClassName({ variant: "light" })}>
-            Run a company
+          <Link href={primaryCtaHref} aria-label={primaryCtaLabel} className={buttonClassName({ variant: "light" })}>
+            {primaryCtaLabel}
           </Link>
         </div>
 
@@ -119,16 +127,16 @@ export function MarketingNav() {
             </div>
             <nav className="mt-12 grid gap-4 text-3xl font-normal">
               {[...marketingNav.howTo, ...marketingNav.primary].map((item) => (
-                <Link key={item.href} href={item.href} className="animate-[mm-link-in_260ms_ease-out] rounded-[8px] py-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]" onClick={() => setMobileOpen(false)}>
+                <Link key={item.href} href={item.href} className="animate-[mm-link-in_260ms_ease-out] rounded-[8px] py-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--focused)]" onClick={() => setMobileOpen(false)}>
                   {item.label}
                 </Link>
               ))}
             </nav>
             <div className="mt-auto grid gap-3 animate-[mm-footer-in_260ms_ease-out]">
-              <Link href="/login" className={buttonClassName({ variant: "dark", fullWidth: true })} onClick={() => setMobileOpen(false)}>
-                Run a company
+              <Link href={primaryCtaHref} className={buttonClassName({ variant: "dark", fullWidth: true })} onClick={() => setMobileOpen(false)}>
+                {primaryCtaLabel}
               </Link>
-              <Link href="/resources/introducing-cofounder-2" className="text-center text-sm text-[var(--color-ink-muted)]" onClick={() => setMobileOpen(false)}>
+              <Link href="/resources/introducing-cofounder-2" className="text-center text-sm text-[var(--foreground-60)]" onClick={() => setMobileOpen(false)}>
                 Check out the launch
               </Link>
             </div>

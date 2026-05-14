@@ -2,6 +2,7 @@ import { z } from "zod";
 import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { destinationForSession, getSession, setSessionCookie } from "@/lib/auth/session";
 import { findOrCreateSandboxUser } from "@/lib/auth/sandbox";
+import { isSandboxLoginEnabled } from "@/lib/auth/policy";
 
 const sandboxLoginSchema = z.object({
   displayName: z.string().trim().min(1, "Display name is required").max(80),
@@ -9,6 +10,10 @@ const sandboxLoginSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (!isSandboxLoginEnabled()) {
+    return errorResponse("NOT_FOUND", "Not found.", 404);
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = sandboxLoginSchema.safeParse(body);
 

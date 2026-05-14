@@ -116,20 +116,20 @@ export function FileLibrary({
     <div className={cn("grid gap-4", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-[9px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.06)] text-[var(--app-primary-light)]">
+          <span className="grid size-9 place-items-center rounded-[9px] border border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-80)]">
             <Files aria-hidden="true" className="size-4" />
           </span>
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">Library</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">Library</p>
             <h2 className="text-lg font-medium tracking-[0px]">Files</h2>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="ghost" size="sm" className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" onClick={refresh}>
+          <Button variant="ghost" size="sm" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={refresh}>
             <RefreshCw aria-hidden="true" className="size-4" />
             Refresh
           </Button>
-          <Button variant="ghost" size="sm" className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" onClick={createFolder} disabled={!data}>
+          <Button variant="ghost" size="sm" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={createFolder} disabled={!data}>
             <FolderPlus aria-hidden="true" className="size-4" />
             Folder
           </Button>
@@ -149,9 +149,9 @@ export function FileLibrary({
         </div>
       ) : null}
 
-      <section className="grid gap-3 rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+      <section className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
         <div className="flex items-center gap-2">
-          <Search aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+          <Search aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
           <h3 className="text-sm font-medium">Find and organize</h3>
         </div>
         <Input surface="dark" label="Search files" placeholder="Business Plan" value={query} onChange={(event) => setQuery(event.target.value)} />
@@ -163,7 +163,7 @@ export function FileLibrary({
 
       {data && !loading ? (
         <div className={cn("grid gap-4", compact ? "" : "xl:grid-cols-[280px_minmax(0,1fr)_360px]")}>
-          <section className="grid content-start gap-3 rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+          <section className="grid content-start gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-medium">Folders</h3>
               <Badge variant="neutral">{data.folders.length}</Badge>
@@ -211,8 +211,8 @@ export function FileLibrary({
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
-      <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">{label}</p>
+    <div className="rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">{label}</p>
       <p className="mt-1 text-lg font-medium tabular-nums">{value}</p>
     </div>
   );

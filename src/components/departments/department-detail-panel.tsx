@@ -30,7 +30,7 @@ export function DepartmentDetailPanel({
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-4">
-      <Button variant="ghost" size="sm" onClick={onBack} className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]">
+      <Button variant="ghost" size="sm" onClick={onBack} className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]">
         <ArrowLeft aria-hidden="true" className="size-4" />
         Back to dashboard
       </Button>
@@ -62,12 +62,12 @@ export function DepartmentDetailPanel({
               availability={state.detail.availability}
               badge={state.detail.spotlightBadge}
             />
-            <section className="grid gap-4 rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-4">
+            <section className="grid gap-4 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">Department detail</p>
+                  <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">Department detail</p>
                   <h2 className="mt-1 text-2xl font-medium tracking-[0px]">{state.detail.name}</h2>
-                  <p className="mt-3 font-mono text-xs leading-6 text-[var(--app-text-50)]">{state.detail.description}</p>
+                  <p className="mt-3 font-mono text-xs leading-6 text-[var(--foreground-50)]">{state.detail.description}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant={state.detail.availability === "active" ? "success" : "warning"}>{state.detail.statusLabel}</Badge>
@@ -86,7 +86,7 @@ export function DepartmentDetailPanel({
                   <Play aria-hidden="true" className="size-4" />
                   {state.detail.visual.launchPrompt}
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => onOpenBoard(department)} className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]">
+                <Button variant="ghost" size="sm" onClick={() => onOpenBoard(department)} className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]">
                   <ExternalLink aria-hidden="true" className="size-4" />
                   Open board
                 </Button>
@@ -102,9 +102,9 @@ export function DepartmentDetailPanel({
 
 function Metric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-[10px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-3">
+    <div className="rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3">
       <p className="text-2xl leading-none">{value}</p>
-      <p className="mt-2 text-xs text-[var(--app-text-50)]">{label}</p>
+      <p className="mt-2 text-xs text-[var(--foreground-50)]">{label}</p>
     </div>
   );
 }

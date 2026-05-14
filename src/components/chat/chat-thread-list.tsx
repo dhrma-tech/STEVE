@@ -24,7 +24,7 @@ export function ChatThreadList({
   onNewThread: () => void;
 }) {
   return (
-    <section className="grid gap-3 rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+    <section className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-medium">Threads</h3>
         <Button variant="app" size="sm" onClick={onNewThread}>
@@ -33,7 +33,7 @@ export function ChatThreadList({
         </Button>
       </div>
       <div className="relative">
-        <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--app-text-50)]" />
+        <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--foreground-50)]" />
         <Input surface="dark" label="Search threads" className="pl-9" value={query} onChange={(event) => onQueryChange(event.target.value)} />
       </div>
       {threads.length ? (
@@ -43,8 +43,8 @@ export function ChatThreadList({
               key={thread.id}
               type="button"
               className={cn(
-                "grid gap-2 rounded-[10px] border p-3 text-left outline-none transition-colors hover:bg-[rgba(255,255,255,0.06)] focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]",
-                selectedThreadId === thread.id ? "border-[var(--app-primary-light)] bg-[rgba(255,255,255,0.08)]" : "border-[var(--app-border)] bg-[rgba(0,0,0,0.12)]"
+                "grid gap-2 rounded-[10px] border p-3 text-left outline-none transition-colors hover:bg-[var(--foreground-5)] focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
+                selectedThreadId === thread.id ? "border-[var(--primary)] bg-[var(--foreground-8)]" : "border-[var(--border-10)] bg-[var(--foreground-inverse-10)]"
               )}
               onClick={() => onSelect(thread.id)}
             >
@@ -52,10 +52,10 @@ export function ChatThreadList({
                 <span className="truncate text-sm font-medium">{thread.title}</span>
                 <Badge variant={thread.kind === "cofounder" ? "brand" : thread.kind === "task" ? "running" : "neutral"}>{thread.kind}</Badge>
               </div>
-              <p className="line-clamp-2 text-xs leading-5 text-[var(--app-text-50)]">
+              <p className="line-clamp-2 text-xs leading-5 text-[var(--foreground-50)]">
                 {thread.latestMessage?.body ?? thread.task?.title ?? thread.agent?.name ?? "No messages yet"}
               </p>
-              <p className="text-[11px] text-[var(--app-text-50)]">{thread.messageCount} messages / {formatDateTime(thread.updatedAt)}</p>
+              <p className="text-[11px] text-[var(--foreground-50)]">{thread.messageCount} messages / {formatDateTime(thread.updatedAt)}</p>
             </button>
           ))}
         </div>

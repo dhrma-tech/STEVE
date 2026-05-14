@@ -175,16 +175,16 @@ export function TaskWorkspace({
     <div className="grid gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-[9px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.06)] text-[var(--app-primary-light)]">
+          <span className="grid size-9 place-items-center rounded-[9px] border border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-80)]">
             <ListTodo aria-hidden="true" className="size-4" />
           </span>
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">Tasks</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">Tasks</p>
             <h2 className="text-lg font-medium tracking-[0px]">Work queue</h2>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="ghost" size="sm" className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" onClick={refresh}>
+          <Button variant="ghost" size="sm" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={refresh}>
             <RefreshCw aria-hidden="true" className="size-4" />
             Refresh
           </Button>
@@ -202,9 +202,9 @@ export function TaskWorkspace({
         </div>
       </div>
 
-      <section className="grid gap-3 rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+      <section className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
         <div className="flex items-center gap-2">
-          <Sparkles aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+          <Sparkles aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
           <h3 className="text-sm font-medium">Suggested next</h3>
         </div>
         {data?.suggestedTasks.length ? (
@@ -213,13 +213,13 @@ export function TaskWorkspace({
               <button
                 key={item.id}
                 type="button"
-                className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-3 text-left outline-none transition-colors hover:bg-[rgba(255,255,255,0.06)] focus-visible:ring-2 focus-visible:ring-[var(--brand-300)] disabled:opacity-50"
+                className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3 text-left outline-none transition-colors hover:bg-[var(--foreground-5)] focus-visible:ring-2 focus-visible:ring-[var(--focused)] disabled:opacity-50"
                 disabled={item.status === "locked"}
                 onClick={() => launchSuggested(item)}
               >
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium">{item.title}</span>
-                  <span className="mt-1 block truncate text-xs text-[var(--app-text-50)]">{item.stage} / {item.department?.name ?? appTargetOptions[0].label}</span>
+                  <span className="mt-1 block truncate text-xs text-[var(--foreground-50)]">{item.stage} / {item.department?.name ?? appTargetOptions[0].label}</span>
                 </span>
                 <Badge variant={item.status === "available" ? "running" : "neutral"}>{item.workType}</Badge>
               </button>
@@ -230,13 +230,13 @@ export function TaskWorkspace({
         )}
       </section>
 
-      <div className="grid gap-3 rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+      <div className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
         <div className="flex items-center gap-2">
-          <Filter aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+          <Filter aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
           <h3 className="text-sm font-medium">Filters</h3>
         </div>
         <div className="relative">
-          <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--app-text-50)]" />
+          <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--foreground-50)]" />
           <Input surface="dark" label="Search" className="pl-9" value={query} onChange={(event) => setQuery(event.target.value)} />
         </div>
         <div className="grid gap-3 md:grid-cols-2">

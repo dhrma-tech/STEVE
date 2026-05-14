@@ -41,11 +41,11 @@ export function RoadmapDetailPanel({
   const showInput = item.status === "available" && (needsInput || needsApproval);
 
   return (
-    <aside className="grid min-h-0 gap-4 overflow-y-auto rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.045)] p-4 lg:w-[390px] xl:w-[430px]">
+    <aside className="animate-sd-slide-up grid min-h-0 gap-4 overflow-y-auto rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-5)] p-4 lg:w-[390px] xl:w-[430px]">
       <div className="grid gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">{item.stage?.name ?? "Roadmap"}</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">{item.stage?.name ?? "Roadmap"}</p>
             <h2 className="mt-1 text-2xl font-medium leading-tight tracking-[0px]">{item.title}</h2>
           </div>
           <StatusBadge status={item.status} label={item.statusLabel} />
@@ -76,12 +76,12 @@ export function RoadmapDetailPanel({
         <section className="grid gap-2">
           <h3 className="text-sm font-medium">Linked tasks</h3>
           {item.tasks.map((task) => (
-            <div key={task.id} className="rounded-[10px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-3">
+            <div key={task.id} className="rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3">
               <div className="flex items-center justify-between gap-3">
                 <h4 className="truncate text-sm font-medium">{task.title}</h4>
                 <Badge variant={task.status === "completed" ? "success" : task.status === "blocked" ? "warning" : "running"}>{task.status}</Badge>
               </div>
-              <p className="mt-1 truncate text-xs text-[var(--app-text-50)]">{task.agent?.name ?? task.type}</p>
+              <p className="mt-1 truncate text-xs text-[var(--foreground-50)]">{task.agent?.name ?? task.type}</p>
             </div>
           ))}
         </section>
@@ -99,12 +99,12 @@ export function RoadmapDetailPanel({
       ) : null}
 
       {launchState.itemId === item.id && launchState.error ? (
-        <p role="alert" className="rounded-[10px] border border-[rgba(239,68,68,0.35)] bg-[rgba(239,68,68,0.08)] p-3 text-sm leading-6 text-red-100">
+        <p role="alert" className="rounded-[10px] border border-[var(--tt-color-text-red-contrast)] bg-[var(--tt-color-text-red-contrast)] p-3 text-sm leading-6 text-[var(--destructive)]">
           {launchState.error}
         </p>
       ) : null}
       {launchState.itemId === item.id && launchState.message ? (
-        <p className="rounded-[10px] border border-[rgba(52,168,83,0.35)] bg-[rgba(52,168,83,0.1)] p-3 text-sm leading-6 text-[#bdf8c9]">
+        <p className="rounded-[10px] border border-[var(--tt-color-text-green-contrast)] bg-[var(--tt-color-text-green-contrast)] p-3 text-sm leading-6 text-[var(--tt-color-text-green-contrast)]">
           {launchState.message}
         </p>
       ) : null}
@@ -121,7 +121,7 @@ export function RoadmapDetailPanel({
         <Button
           variant="ghost"
           disabled={item.status === "complete" || item.status === "locked" || completing}
-          className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]"
+          className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]"
           onClick={() => onComplete(item)}
         >
           <CheckCircle2 aria-hidden="true" className="size-4" />
@@ -137,17 +137,17 @@ function RoadmapDependencyGraph({ item }: { item: RoadmapItem }) {
   const right = item.unlocks.slice(0, 3);
 
   return (
-    <section className="grid gap-3 rounded-[12px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-3">
+    <section className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3">
       <div className="flex items-center gap-2">
-        <GitBranch aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+        <GitBranch aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
         <h3 className="text-sm font-medium">Dependency graph</h3>
       </div>
       <div className="grid items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
         <GraphStack label="Required" items={left} empty="Start" />
-        <div className="hidden items-center gap-2 text-[var(--app-text-50)] sm:flex">
-          <span className="h-px w-8 border-t border-dashed border-[var(--app-border)]" />
+        <div className="hidden items-center gap-2 text-[var(--foreground-50)] sm:flex">
+          <span className="h-px w-8 border-t border-dashed border-[var(--border-10)]" />
           <ArrowRight aria-hidden="true" className="size-4" />
-          <span className="h-px w-8 border-t border-dashed border-[var(--app-border)]" />
+          <span className="h-px w-8 border-t border-dashed border-[var(--border-10)]" />
         </div>
         <GraphStack label="Unlocks" items={right} empty="End" />
       </div>
@@ -166,10 +166,10 @@ function GraphStack({
 }) {
   return (
     <div className="grid gap-2">
-      <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">{label}</p>
+      <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">{label}</p>
       {items.length ? (
         items.map((entry) => (
-          <div key={entry.id} className="rounded-[8px] border border-dashed border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-2 text-xs">
+          <div key={entry.id} className="rounded-[8px] border border-dashed border-[var(--border-10)] bg-[var(--foreground-3)] p-2 text-xs">
             <div className="flex items-center justify-between gap-2">
               <span className="truncate">{entry.title}</span>
               <Badge variant={entry.status === "complete" ? "success" : entry.status === "available" ? "brand" : "neutral"}>{entry.status}</Badge>
@@ -177,7 +177,7 @@ function GraphStack({
           </div>
         ))
       ) : (
-        <div className="rounded-[8px] border border-dashed border-[var(--app-border)] bg-[rgba(255,255,255,0.025)] p-2 text-xs text-[var(--app-text-50)]">{empty}</div>
+        <div className="rounded-[8px] border border-dashed border-[var(--border-10)] bg-[var(--foreground-3)] p-2 text-xs text-[var(--foreground-50)]">{empty}</div>
       )}
     </div>
   );
@@ -187,7 +187,7 @@ function DetailBlock({ title, body }: { title: string; body: string }) {
   return (
     <section className="grid gap-2">
       <h3 className="text-sm font-medium">{title}</h3>
-      <p className="rounded-[10px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-3 text-sm leading-6 text-[var(--app-text-50)]">{body}</p>
+      <p className="rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3 text-sm leading-6 text-[var(--foreground-50)]">{body}</p>
     </section>
   );
 }
@@ -207,17 +207,17 @@ function DetailList({
       {items.length ? (
         <div className="grid gap-2">
           {items.map((entry) => (
-            <div key={entry.id} className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-3">
+            <div key={entry.id} className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3">
               <div className="min-w-0">
                 <h4 className="truncate text-sm font-medium">{entry.title}</h4>
-                <p className="mt-1 truncate text-xs text-[var(--app-text-50)]">{entry.stage ?? "Roadmap"}</p>
+                <p className="mt-1 truncate text-xs text-[var(--foreground-50)]">{entry.stage ?? "Roadmap"}</p>
               </div>
               <Badge variant={entry.status === "complete" ? "success" : entry.status === "available" ? "brand" : "neutral"}>{entry.status}</Badge>
             </div>
           ))}
         </div>
       ) : (
-        <p className="rounded-[10px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-3 text-sm text-[var(--app-text-50)]">{empty}</p>
+        <p className="rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3 text-sm text-[var(--foreground-50)]">{empty}</p>
       )}
     </section>
   );

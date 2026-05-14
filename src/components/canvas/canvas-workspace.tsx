@@ -16,7 +16,8 @@ import {
   type NodeMouseHandler,
   type Viewport
 } from "@xyflow/react";
-import { Maximize2, Workflow } from "lucide-react";
+import { GripVertical, Maximize2, Workflow } from "lucide-react";
+import { Rnd } from "react-rnd";
 import { CofounderNode } from "@/components/canvas/cofounder-node";
 import { DepartmentNode } from "@/components/canvas/department-node";
 import { QueryShells } from "@/components/canvas/query-shells";
@@ -71,6 +72,16 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
   const [roadmapVisible, setRoadmapVisible] = React.useState(initialRoadmapOpen);
   const [sessionVisible, setSessionVisible] = React.useState(Boolean(initialSessionId));
   const [sessionId, setSessionId] = React.useState(initialSessionId);
+  const [panelFloating, setPanelFloating] = React.useState(false);
+  const [panelBounds, setPanelBounds] = React.useState({ x: 0, y: 0, width: 420, height: 0 });
+  React.useEffect(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem("canvasPanelBounds") : null;
+    if (saved) {
+      try { setPanelBounds(JSON.parse(saved) as typeof panelBounds); } catch { /* ignore */ }
+    } else {
+      setPanelBounds({ x: Math.max(0, window.innerWidth - 440), y: 68, width: 420, height: window.innerHeight - 68 });
+    }
+  }, []);
   const selectedDepartment = React.useMemo(() => departmentForNodeId(data.departments, selectedNodeId), [data.departments, selectedNodeId]);
   const [nodes, setNodes, onNodesChange] = useNodesState<WorkspaceNode>(React.useMemo(() => buildNodes(data, selectedNodeId), [data, selectedNodeId]));
   const [edges, , onEdgesChange] = useEdgesState(React.useMemo(() => buildEdges(data), [data]));
@@ -152,7 +163,7 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
 
   return (
     <ReactFlowProvider>
-      <main className="flex min-h-[calc(100dvh-68px)] flex-col bg-[var(--app-canvas)] text-[var(--app-text)] lg:flex-row">
+      <main className="flex min-h-[calc(100dvh-68px)] flex-col bg-[var(--background)] text-[var(--foreground-80)] lg:flex-row">
         <section className={cn(
           "relative min-w-0 flex-1 overflow-hidden transition-all duration-300",
           selectedDepartment ? "h-[200px] lg:h-auto" : "h-[calc(100dvh-140px)] lg:h-auto"
@@ -173,20 +184,21 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
             onMoveEnd={(_event, nextViewport) => setViewport(nextViewport)}
             panOnScroll
             selectionOnDrag
-            className="bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_42%),var(--app-canvas)]"
+            className="bg-[radial-gradient(circle_at_center,var(--foreground-8),transparent_42%),var(--background)]"
           >
-            <Background color="rgba(255,255,255,0.14)" gap={28} size={1} />
+            {/* Section D: no grid dots on canvas — color transparent removes dots without structural change */}
+            <Background color="transparent" gap={28} size={1} />
             <Controls position="bottom-right" showInteractive={false} />
             <MiniMap
               position="bottom-right"
               pannable
               zoomable
               nodeColor={(node) => (node.type === "department" ? String((node.data as DepartmentNodeData).color) : "#eeeee8")}
-              maskColor="rgba(14,14,17,0.64)"
-              className="!bottom-[88px] !bg-[rgba(14,14,17,0.72)]"
+              maskColor="rgba(30,30,35,0.64)"
+              className="!bottom-[88px] !bg-[var(--background-l0-80)]"
             />
             <Panel position="top-left" className="!m-4">
-              <div className="flex flex-wrap items-center gap-2 rounded-[12px] border border-[var(--app-border)] bg-[rgba(14,14,17,0.72)] p-2 shadow-[rgba(0,0,0,0.28)_0_16px_40px] backdrop-blur">
+              <div className="flex flex-wrap items-center gap-2 rounded-[12px] border border-[var(--border-10)] bg-[var(--background-l0-80)] p-2 shadow-[var(--shadow-outset-100)] backdrop-blur">
                 <Button variant="app" size="sm" onClick={() => setSelectedNodeId(null)}>
                   <Maximize2 aria-hidden="true" className="size-4" />
                   Overview
@@ -211,24 +223,88 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
           </div>
         </section>
 
-        <div className={cn(
-          "flex-none transition-all duration-300 lg:w-[390px] xl:w-[430px]",
-          selectedDepartment ? "flex-1" : "h-0 overflow-hidden lg:h-auto lg:overflow-visible"
-        )}>
-          <CanvasSidePanel
-            data={data}
-            selectedDepartment={selectedDepartment}
-            activeTab={activeTab}
-            onActiveTabChange={setActiveTab}
-            onOpenRoadmap={() => setRoadmapVisible(true)}
-            onClearDepartment={() => setSelectedNodeId(null)}
-            onOpenDepartmentBoard={setBoardDepartment}
-            onLaunchDepartmentAgent={launchDepartmentAgent}
-            selectedTaskId={initialTaskId}
-            selectedAgentId={initialAgentId}
-            onLaunchTaskSession={launchSession}
-          />
-        </div>
+        {!panelFloating ? (
+          <div className={cn(
+            "flex-none transition-all duration-300 lg:w-[390px] xl:w-[430px]",
+            selectedDepartment ? "flex-1" : "h-0 overflow-hidden lg:h-auto lg:overflow-visible"
+          )}>
+            <div className="hidden items-center justify-end border-b border-[var(--border-10)] bg-[var(--background-sidepanel)] px-2 py-1 lg:flex">
+              <button
+                type="button"
+                title="Float panel"
+                onClick={() => setPanelFloating(true)}
+                className="grid size-6 place-items-center rounded text-[var(--foreground-50)] hover:text-[var(--foreground-80)]"
+              >
+                <GripVertical aria-hidden="true" className="size-4" />
+              </button>
+            </div>
+            <CanvasSidePanel
+              data={data}
+              selectedDepartment={selectedDepartment}
+              activeTab={activeTab}
+              onActiveTabChange={setActiveTab}
+              onOpenRoadmap={() => setRoadmapVisible(true)}
+              onClearDepartment={() => setSelectedNodeId(null)}
+              onOpenDepartmentBoard={setBoardDepartment}
+              onLaunchDepartmentAgent={launchDepartmentAgent}
+              selectedTaskId={initialTaskId}
+              selectedAgentId={initialAgentId}
+              onLaunchTaskSession={launchSession}
+            />
+          </div>
+        ) : (
+          <Rnd
+            position={{ x: panelBounds.x, y: panelBounds.y }}
+            size={{ width: panelBounds.width, height: panelBounds.height || "calc(100dvh - 68px)" }}
+            onDragStop={(_e, d) => {
+              const next = { ...panelBounds, x: d.x, y: d.y };
+              setPanelBounds(next);
+              localStorage.setItem("canvasPanelBounds", JSON.stringify(next));
+            }}
+            onResizeStop={(_e, _dir, ref, _delta, pos) => {
+              const next = { x: pos.x, y: pos.y, width: ref.offsetWidth, height: ref.offsetHeight };
+              setPanelBounds(next);
+              localStorage.setItem("canvasPanelBounds", JSON.stringify(next));
+            }}
+            minWidth={300}
+            minHeight={300}
+            maxWidth="90vw"
+            bounds="window"
+            dragHandleClassName="panel-drag-handle"
+            style={{ zIndex: 2000 }}
+          >
+            <div className="flex h-full flex-col overflow-hidden rounded-[12px] border border-[var(--border-10)] bg-[var(--background-sidepanel)] shadow-[var(--tt-shadow-elevated-md)]">
+              <div className="panel-drag-handle flex cursor-move items-center justify-between border-b border-[var(--border-10)] px-3 py-2 hover:bg-[var(--foreground-5)]">
+                <span className="flex items-center gap-2 text-xs text-[var(--foreground-50)]">
+                  <GripVertical aria-hidden="true" className="size-4" />
+                  Drag to move · resize from edges
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPanelFloating(false)}
+                  className="text-xs text-[var(--foreground-50)] hover:text-[var(--foreground-80)]"
+                >
+                  Dock
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <CanvasSidePanel
+                  data={data}
+                  selectedDepartment={selectedDepartment}
+                  activeTab={activeTab}
+                  onActiveTabChange={setActiveTab}
+                  onOpenRoadmap={() => setRoadmapVisible(true)}
+                  onClearDepartment={() => setSelectedNodeId(null)}
+                  onOpenDepartmentBoard={setBoardDepartment}
+                  onLaunchDepartmentAgent={launchDepartmentAgent}
+                  selectedTaskId={initialTaskId}
+                  selectedAgentId={initialAgentId}
+                  onLaunchTaskSession={launchSession}
+                />
+              </div>
+            </div>
+          </Rnd>
+        )}
       </main>
       <QueryShells
         data={data}
@@ -295,11 +371,15 @@ function buildEdges(data: CanvasData): Edge[] {
     source: "cofounder",
     target: `department:${department.slug}`,
     type: "smoothstep",
-    markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: "rgba(255,255,255,0.36)" },
+    /* Section D orbital edges: dashed, animated stroke-dashoffset (canvasDashFlow per Section L).
+       markerEnd.color is an SVG attribute — CSS var() cannot resolve there; keep as literal.
+       style.stroke IS a CSS style property — var() resolves correctly. */
+    markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: "rgba(255,255,255,0.3)" },
     style: {
-      stroke: "rgba(255,255,255,0.28)",
+      stroke: "var(--border-20)",
       strokeWidth: 1.2,
-      strokeDasharray: "8 10"
+      strokeDasharray: "8 10",
+      animation: "canvasDashFlow 20s linear infinite"
     }
   }));
 
@@ -323,7 +403,7 @@ function buildEdges(data: CanvasData): Edge[] {
         fontSize: 11
       },
       labelBgStyle: {
-        fill: "rgba(14,14,17,0.72)"
+        fill: "var(--background-l0-80)"
       }
     }));
 

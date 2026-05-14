@@ -52,33 +52,33 @@ export function UpgradeModal({
         <DialogHeader>
           <DialogTitle>Upgrade {shell.organization.name}</DialogTitle>
           <DialogDescription>
-            Current plan: {plan} / {status}. Billing is tracked in sandbox until Stripe credentials are supplied.
+            Current plan: {plan} · {status}. Choose a new plan below — usage is metered in your billing dashboard.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="grid gap-3 rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.05)] p-4">
-            <Sparkles aria-hidden="true" className="size-5 text-[var(--brand-300)]" />
+          <div className="grid gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-5)] p-4">
+            <Sparkles aria-hidden="true" className="size-5 text-[var(--focused)]" />
             <div>
               <h3 className="font-medium">Cofounder Pro</h3>
-              <p className="mt-1 text-sm leading-6 text-[var(--app-text-50)]">$20/month plus usage with higher included execution room.</p>
+              <p className="mt-1 text-sm leading-6 text-[var(--foreground-50)]">$20/month plus usage with higher included execution room.</p>
             </div>
             <Button variant="app" disabled={busy !== null || plan === "pro"} onClick={() => upgrade("pro")}>
               <Sparkles aria-hidden="true" className="size-4" />
               Upgrade Pro
             </Button>
           </div>
-          <div className="grid gap-3 rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.05)] p-4">
-            <CreditCard aria-hidden="true" className="size-5 text-[var(--app-primary-light)]" />
+          <div className="grid gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-5)] p-4">
+            <CreditCard aria-hidden="true" className="size-5 text-[var(--foreground-80)]" />
             <div>
               <h3 className="font-medium">Team Plan</h3>
-              <p className="mt-1 text-sm leading-6 text-[var(--app-text-50)]">$50/month for collaborators, approvals, and shared operating cadence.</p>
+              <p className="mt-1 text-sm leading-6 text-[var(--foreground-50)]">$50/month for collaborators, approvals, and shared operating cadence.</p>
             </div>
             <Button variant="ghost" disabled={busy !== null || plan === "team"} onClick={() => upgrade("team")}>
-              Team sandbox
+              Join Team waitlist
             </Button>
           </div>
         </div>
-        {message ? <p className="text-sm text-[var(--app-primary-light)]">{message}</p> : null}
+        {message ? <p className="text-sm text-[var(--foreground-80)]">{message}</p> : null}
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Keep current plan

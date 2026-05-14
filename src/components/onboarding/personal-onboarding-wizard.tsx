@@ -112,7 +112,7 @@ export function PersonalOnboardingWizard({ initialProfile }: { initialProfile: I
     <Card className="mx-auto grid w-full max-w-[860px] gap-6 p-5">
       <Stepper steps={steps} current={step} />
       <div className="grid gap-3">
-        <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--color-ink-faint)]">Personal onboarding</p>
+        <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--foreground-50)]">Personal onboarding</p>
         <h1 className="text-[36px] font-normal leading-[1.12] tracking-[0px]">{steps[step]}</h1>
       </div>
 

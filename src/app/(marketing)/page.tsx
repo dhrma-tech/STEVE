@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Play } from "lucide-react";
-import { NotificationWheel } from "@/components/marketing/notification-wheel";
-import { HeroPixelScene } from "@/components/marketing/pixel-art";
+import { ArrowRight } from "lucide-react";
 import {
   ChaptersSection,
   DemoSections,
@@ -14,40 +12,66 @@ import {
   ToolCarouselSection,
   ValuePropsSection
 } from "@/components/marketing/home-sections";
-import { buttonClassName } from "@/components/ui/button";
+import { getSession } from "@/lib/auth/session";
+import { resolveActiveOrg } from "@/lib/orgs/active";
 
 export const metadata: Metadata = {
-  title: "Cofounder - Run an entire company with agents",
-  description: "A Cofounder.co-style company operating system with departments, agents, roadmap, files, and founder approval."
+  title: "Cofounder — Run an entire company with agents",
+  description: "Activate departments, build a roadmap, launch tasks, and keep humans in the loop. The company operating system, powered by agents."
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await getSession();
+  const activeOrg = session.user ? await resolveActiveOrg(session.user.id) : null;
+  const primaryHref = activeOrg
+    ? `/org/${activeOrg.id}/canvas`
+    : session.user
+      ? "/onboarding"
+      : "/login";
+  const primaryLabel = session.user ? "Go to workspace" : "Run a company";
+
   return (
     <main className="bg-[var(--background)] text-[var(--foreground)]">
-      <section className="relative min-h-[914px] overflow-hidden">
-        <HeroPixelScene />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.34),rgba(0,0,0,0.08)_52%,rgba(0,0,0,0))]" />
-        <div className="absolute inset-x-0 top-0 mx-auto grid max-w-[1440px] gap-8 px-5 pt-[max(15dvh,92px)] text-white max-[500px]:pt-[166px]">
-          <div className="grid max-w-[580px] gap-5">
-            <h1 className="animate-[hero-enter_580ms_ease-out_100ms_forwards] text-[46px] font-normal leading-[1.08] tracking-[0px] opacity-0 max-[900px]:text-[38px] max-[500px]:text-[34px]">
-              Run an entire company with agents.
-            </h1>
-            <p className="animate-[hero-enter_580ms_ease-out_500ms_forwards] max-w-[56ch] text-[16px] font-[460] leading-[1.4] tracking-[0.15px] text-white/82 opacity-0">
-              Activate departments, build a roadmap, launch tasks, review agent work, and keep every company system in one operating surface.
-            </p>
-            <div className="flex flex-wrap gap-3 opacity-0 animate-[float-btn-spring_760ms_ease-out_900ms_forwards]">
-              <Link href="/login" className={buttonClassName({ variant: "dark" })}>
-                Run a company
-              </Link>
-              <Link href="/resources/introducing-cofounder-2" className={buttonClassName({ variant: "ghost", className: "text-white hover:text-white" })}>
-                <Play aria-hidden="true" className="size-4" />
-                Check out the launch
-              </Link>
-            </div>
-          </div>
-          <div className="ml-auto mt-8 hidden lg:block">
-            <NotificationWheel />
-          </div>
+      {/* ── Cinematic video hero ── */}
+      <section className="relative min-h-screen overflow-hidden bg-[var(--background)]">
+        {/* Video background */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          className="absolute inset-0 h-full w-full object-cover"
+        >
+          <source
+            src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4"
+            type="video/mp4"
+          />
+        </video>
+
+        {/* Centered content */}
+        <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 text-center">
+          <h1
+            className="animate-fade-rise max-w-7xl text-5xl font-normal leading-[0.95] tracking-[-2.46px] text-white sm:text-7xl md:text-8xl"
+            style={{ fontFamily: "'Instrument Serif', serif" }}
+          >
+            Where{" "}
+            <em className="not-italic text-white/55">dreams rise</em>{" "}
+            through the{" "}
+            <em className="not-italic text-white/55">silence.</em>
+          </h1>
+
+          <p className="animate-fade-rise-delay mt-8 max-w-2xl text-base leading-relaxed text-white/60 sm:text-lg">
+            We&apos;re designing tools for deep thinkers, bold creators, and quiet rebels.
+            Amid the chaos, we build digital spaces for sharp focus and inspired work.
+          </p>
+
+          <Link
+            href={primaryHref}
+            className="animate-fade-rise-delay-2 liquid-glass mt-12 rounded-full px-14 py-5 text-base text-white transition-transform duration-300 hover:scale-[1.03]"
+          >
+            {primaryLabel}
+          </Link>
         </div>
       </section>
       <StatsSection />

@@ -193,28 +193,45 @@ export async function updateChatThread({
   return serializeThreadDetail(updated);
 }
 
-export async function sendChatMessage({
-  orgId,
-  threadId,
-  body,
-  fileIds = [],
-  attachmentNames = [],
-  mentions = []
-}: {
+type ChatMessageInput = {
   orgId: string;
   threadId: string;
   body: string;
   fileIds?: string[];
   attachmentNames?: string[];
   mentions?: string[];
-}) {
+};
+
+type ActiveThread = NonNullable<Awaited<ReturnType<typeof loadActiveThread>>>;
+
+export type ChatMessagePreparation = {
+  userId: string;
+  organizationName: string;
+  thread: ActiveThread;
+  mentions: ChatMention[];
+  attachments: Awaited<ReturnType<typeof persistChatAttachments>>;
+  trimmedBody: string;
+  responseAgentId: string | null;
+};
+
+/**
+ * Persist the user's message and return everything needed to generate an
+ * assistant response (and downstream action log entries). Used by both the
+ * standard request/response send and the streaming send.
+ */
+export async function prepareChatMessage({
+  orgId,
+  threadId,
+  body,
+  fileIds = [],
+  attachmentNames = [],
+  mentions = []
+}: ChatMessageInput): Promise<ChatMessagePreparation | null> {
   const { user, organization } = await requireOrgMember(orgId);
-  const thread = await prisma.chatThread.findFirst({
-    where: { id: threadId, organizationId: orgId, archivedAt: null },
-    include: { task: true, agent: true }
-  });
+  const thread = await loadActiveThread(orgId, threadId);
   if (!thread) return null;
 
+  const trimmedBody = body.trim();
   const resolvedMentions = await resolveMentions({ orgId, body, mentions });
   const attachments = await persistChatAttachments({
     orgId,
@@ -231,7 +248,7 @@ export async function sendChatMessage({
       threadId,
       senderType: "user",
       senderUserId: user.id,
-      body: body.trim(),
+      body: trimmedBody,
       metadataJson: json({
         kind: "user_message",
         mentions: resolvedMentions,
@@ -241,20 +258,42 @@ export async function sendChatMessage({
     }
   });
 
+  return {
+    userId: user.id,
+    organizationName: organization.name,
+    thread,
+    mentions: resolvedMentions,
+    attachments,
+    trimmedBody,
+    responseAgentId: thread.agentId ?? thread.task?.agentId ?? null
+  };
+}
+
+/**
+ * Persist the assistant response, append the action log summary, bump the
+ * thread timestamp, and return the canonical thread detail snapshot.
+ */
+export async function finalizeChatMessage({
+  orgId,
+  threadId,
+  preparation,
+  responseBody,
+  responseMetadata
+}: {
+  orgId: string;
+  threadId: string;
+  preparation: ChatMessagePreparation;
+  responseBody: string;
+  responseMetadata: Record<string, unknown>;
+}) {
+  const { responseAgentId, attachments } = preparation;
+
   const actionMessages = await createActionMessages({
     orgId,
     threadId,
-    agentId: thread.agentId ?? thread.task?.agentId ?? null,
+    agentId: responseAgentId,
     attachmentCount: attachments.length
   });
-  const sandboxResponse = generateSandboxChatResponse({
-    body,
-    organizationName: organization.name,
-    threadKind: thread.kind,
-    mentions: resolvedMentions,
-    attachmentNames: attachments.map((file) => file.name)
-  });
-  const responseAgentId = thread.agentId ?? thread.task?.agentId ?? null;
 
   await prisma.chatMessage.create({
     data: {
@@ -262,10 +301,11 @@ export async function sendChatMessage({
       threadId,
       senderType: responseAgentId ? "agent" : "system",
       senderAgentId: responseAgentId,
-      body: sandboxResponse.body,
-      metadataJson: json(sandboxResponse.metadata)
+      body: responseBody,
+      metadataJson: json(responseMetadata)
     }
   });
+
   await prisma.chatMessage.create({
     data: {
       organizationId: orgId,
@@ -280,9 +320,38 @@ export async function sendChatMessage({
       })
     }
   });
+
   await prisma.chatThread.update({ where: { id: threadId }, data: { updatedAt: new Date() } });
 
   return getChatThreadDetail(orgId, threadId);
+}
+
+async function loadActiveThread(orgId: string, threadId: string) {
+  return prisma.chatThread.findFirst({
+    where: { id: threadId, organizationId: orgId, archivedAt: null },
+    include: { task: true, agent: true }
+  });
+}
+
+export async function sendChatMessage(input: ChatMessageInput) {
+  const preparation = await prepareChatMessage(input);
+  if (!preparation) return null;
+
+  const sandboxResponse = generateSandboxChatResponse({
+    body: preparation.trimmedBody,
+    organizationName: preparation.organizationName,
+    threadKind: preparation.thread.kind,
+    mentions: preparation.mentions,
+    attachmentNames: preparation.attachments.map((file) => file.name)
+  });
+
+  return finalizeChatMessage({
+    orgId: input.orgId,
+    threadId: input.threadId,
+    preparation,
+    responseBody: sandboxResponse.body,
+    responseMetadata: sandboxResponse.metadata
+  });
 }
 
 export function chatThreadNotFoundResponse() {

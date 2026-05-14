@@ -90,7 +90,7 @@ export function AgentCreateDialog({
       <DialogContent className="max-h-[92dvh] max-w-[720px] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Bot aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+            <Bot aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
             New agent
           </DialogTitle>
           <DialogDescription>
@@ -100,7 +100,7 @@ export function AgentCreateDialog({
 
         <div className="grid gap-4">
           {error ? (
-            <div className="rounded-[10px] border border-[rgba(239,68,68,0.36)] bg-[rgba(239,68,68,0.12)] p-3 text-sm text-red-100">
+            <div className="rounded-[10px] border border-[var(--tt-color-text-red-contrast)] bg-[var(--tt-color-text-red-contrast)] p-3 text-sm text-[var(--destructive)]">
               {error}
             </div>
           ) : null}
@@ -128,13 +128,13 @@ export function AgentCreateDialog({
                   <button
                     key={skill.key}
                     type="button"
-                    className={`rounded-[10px] border p-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--brand-300)] ${
-                      selected ? "border-[var(--app-primary-light)] bg-[rgba(255,255,255,0.09)]" : "border-[var(--app-border)] bg-[rgba(255,255,255,0.04)]"
+                    className={`rounded-[10px] border p-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focused)] ${
+                      selected ? "border-[var(--primary)] bg-[var(--foreground-8)]" : "border-[var(--border-10)] bg-[var(--foreground-3)]"
                     }`}
                     onClick={() => setSkillKeys((current) => selected ? current.filter((key) => key !== skill.key) : [...current, skill.key])}
                   >
                     <span className="block text-sm font-medium">{skill.name}</span>
-                    <span className="mt-1 block text-xs leading-5 text-[var(--app-text-50)]">{skill.description}</span>
+                    <span className="mt-1 block text-xs leading-5 text-[var(--foreground-50)]">{skill.description}</span>
                   </button>
                 );
               })}
@@ -143,7 +143,7 @@ export function AgentCreateDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" onClick={() => onOpenChange(false)} disabled={submitting}>
+          <Button variant="ghost" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={() => onOpenChange(false)} disabled={submitting}>
             Cancel
           </Button>
           <Button variant="app" onClick={submit} disabled={!name.trim() || !departmentId || submitting}>

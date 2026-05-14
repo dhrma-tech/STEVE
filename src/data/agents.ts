@@ -9,14 +9,14 @@ export const agentStatusOptions = [
 ] as const;
 
 export const agentModelOptions = [
-  { value: "claude-sonnet-sandbox", label: "Claude Sonnet sandbox" },
-  { value: "gpt-5.4-sandbox", label: "GPT-5.4 sandbox" },
-  { value: "gpt-5.4-mini-sandbox", label: "GPT-5.4 Mini sandbox" }
+  { value: "claude-sonnet-sandbox", label: "Claude Sonnet 4.6" },
+  { value: "gpt-5.4-sandbox", label: "GPT-5.4" },
+  { value: "gpt-5.4-mini-sandbox", label: "GPT-5.4 Mini" }
 ] as const;
 
 export const permissionModeOptions = [
   { value: "review_required", label: "Review dangerous actions" },
-  { value: "sandbox_only", label: "Sandbox only" },
+  { value: "sandbox_only", label: "Read-only preview" },
   { value: "trusted", label: "Trusted workspace" }
 ] as const;
 

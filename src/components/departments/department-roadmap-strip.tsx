@@ -25,13 +25,13 @@ export function DepartmentRoadmapStrip({ items }: { items: DepartmentDetail["roa
       </div>
       <div className="flex gap-2 overflow-x-auto pb-1">
         {items.map((item) => (
-          <article key={item.id} className="min-w-[180px] rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+          <article key={item.id} className="min-w-[180px] rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
             <div className="flex items-center justify-between gap-2">
               <Badge variant={roadmapVariant(item.status)}>{item.status}</Badge>
-              <Rocket aria-hidden="true" className="size-4 text-[var(--app-text-50)]" />
+              <Rocket aria-hidden="true" className="size-4 text-[var(--foreground-50)]" />
             </div>
             <h4 className="mt-3 line-clamp-2 text-sm font-medium">{item.title}</h4>
-            <p className="mt-2 truncate text-xs text-[var(--app-text-50)]">{item.stage}</p>
+            <p className="mt-2 truncate text-xs text-[var(--foreground-50)]">{item.stage}</p>
           </article>
         ))}
       </div>

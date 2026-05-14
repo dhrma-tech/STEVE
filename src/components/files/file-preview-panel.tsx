@@ -125,15 +125,15 @@ export function FilePreviewPanel({
   ];
 
   return (
-    <section className="grid gap-3 rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+    <section className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2">
-          <span className="grid size-10 shrink-0 place-items-center rounded-[9px] bg-[rgba(255,255,255,0.07)] text-[var(--app-primary-light)]">
+          <span className="grid size-10 shrink-0 place-items-center rounded-[9px] bg-[var(--foreground-8)] text-[var(--foreground-80)]">
             {iconForFile(file)}
           </span>
           <div className="min-w-0">
             <h3 className="truncate text-sm font-medium">{file.name}</h3>
-            <p className="mt-1 truncate text-xs text-[var(--app-text-50)]">{file.mimeType ?? "unknown type"} / {formatBytes(file.sizeBytes)}</p>
+            <p className="mt-1 truncate text-xs text-[var(--foreground-50)]">{file.mimeType ?? "unknown type"} / {formatBytes(file.sizeBytes)}</p>
           </div>
         </div>
         <Badge variant={visibilityVariant(file.visibility)}>{file.visibility}</Badge>
@@ -141,17 +141,17 @@ export function FilePreviewPanel({
 
       {error ? <ErrorState title="File action failed" description={error} /> : null}
 
-      <div className="grid gap-2 rounded-[10px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.14)] p-3">
+      <div className="grid gap-2 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3">
         <div className="flex items-center justify-between gap-2">
           <h4 className="text-sm font-medium">Preview</h4>
           <Badge variant="neutral">{file.preview.kind}</Badge>
         </div>
         {file.preview.text ? (
-          <pre className="max-h-[240px] overflow-auto whitespace-pre-wrap rounded-[8px] bg-[rgba(0,0,0,0.22)] p-3 text-xs leading-5 text-[var(--app-text)]">
+          <pre className="max-h-[240px] overflow-auto whitespace-pre-wrap rounded-[8px] bg-[var(--foreground-inverse-20)] p-3 text-xs leading-5 text-[var(--foreground-80)]">
             {file.preview.text}
           </pre>
         ) : (
-          <p className="text-sm leading-6 text-[var(--app-text-50)]">{file.preview.message ?? "Preview metadata is available."}</p>
+          <p className="text-sm leading-6 text-[var(--foreground-50)]">{file.preview.message ?? "Preview metadata is available."}</p>
         )}
       </div>
 
@@ -178,7 +178,7 @@ export function FilePreviewPanel({
           options={departmentOptions}
         />
         <div className="grid content-end">
-          <Button variant="ghost" size="sm" className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" onClick={copyShare} disabled={saving !== null}>
+          <Button variant="ghost" size="sm" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={copyShare} disabled={saving !== null}>
             {copied ? <Copy aria-hidden="true" className="size-4" /> : <Share2 aria-hidden="true" className="size-4" />}
             {copied ? "Copied" : "Share"}
           </Button>
@@ -187,27 +187,27 @@ export function FilePreviewPanel({
 
       <div className="grid gap-2">
         <div className="flex items-center gap-2">
-          <Link2 aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
-          <span className="truncate font-mono text-xs text-[var(--app-text-50)]">{file.shareUrl}</span>
+          <Link2 aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
+          <span className="truncate font-mono text-xs text-[var(--foreground-50)]">{file.shareUrl}</span>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs text-[var(--app-text-50)]">
+        <div className="flex flex-wrap gap-2 text-xs text-[var(--foreground-50)]">
           <span>Folder: {file.folder?.name ?? "none"}</span>
           <span>Updated: {formatDate(file.updatedAt)}</span>
           <span>Storage: {file.storageKey}</span>
         </div>
       </div>
 
-      <div className="grid gap-2 rounded-[10px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-3">
+      <div className="grid gap-2 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3">
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-sm font-medium">Version history</h4>
           <Badge variant="neutral">{file.versions.length}</Badge>
         </div>
         <div className="grid gap-2">
           {file.versions.map((version) => (
-            <div key={version.id} className="flex items-center justify-between gap-3 rounded-[8px] bg-[rgba(255,255,255,0.04)] px-3 py-2">
+            <div key={version.id} className="flex items-center justify-between gap-3 rounded-[8px] bg-[var(--foreground-3)] px-3 py-2">
               <span className="min-w-0">
                 <span className="block text-sm">v{version.versionNumber}</span>
-                <span className="mt-0.5 block truncate text-xs text-[var(--app-text-50)]">{formatBytes(version.sizeBytes)} / {formatDate(version.createdAt)}</span>
+                <span className="mt-0.5 block truncate text-xs text-[var(--foreground-50)]">{formatBytes(version.sizeBytes)} / {formatDate(version.createdAt)}</span>
               </span>
               <Badge variant={version.id === file.currentVersionId ? "success" : "neutral"}>{version.id === file.currentVersionId ? "current" : "stored"}</Badge>
             </div>
@@ -225,7 +225,7 @@ export function FilePreviewPanel({
       </div>
 
       <div className="flex flex-wrap justify-between gap-2">
-        <span className="inline-flex h-[30px] items-center gap-1.5 rounded-[8px] px-3 text-[13px] text-[var(--app-text-50)]">
+        <span className="inline-flex h-[30px] items-center gap-1.5 rounded-[8px] px-3 text-[13px] text-[var(--foreground-50)]">
           <FolderInput aria-hidden="true" className="size-4" />
           Organized
         </span>

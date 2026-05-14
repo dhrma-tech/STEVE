@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { InboxItem, InboxState } from "@/lib/notifications/inbox";
+import { Z_ATTENTION_INBOX } from "@/lib/z-index";
 
 type InboxPayload = {
   data?: InboxState;
@@ -76,14 +77,14 @@ export function InboxPanel({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="left-auto right-4 top-4 h-[calc(100dvh-32px)] max-w-[420px] translate-x-0 translate-y-0 content-start overflow-hidden p-0">
-        <DialogHeader className="border-b border-[var(--app-border)] p-4 pr-12">
+      <DialogContent className="animate-attention-slide-up left-auto right-4 top-4 h-[calc(100dvh-32px)] max-w-[420px] translate-x-0 translate-y-0 content-start overflow-hidden p-0" style={{ zIndex: Z_ATTENTION_INBOX }}>
+        <DialogHeader className="border-b border-[var(--border-10)] p-4 pr-12">
           <DialogTitle className="flex items-center gap-2">
-            <Bell aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+            <Bell aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
             Inbox
           </DialogTitle>
         </DialogHeader>
-        <div className="flex items-center justify-between border-b border-[var(--app-border)] px-4 py-3">
+        <div className="flex items-center justify-between border-b border-[var(--border-10)] px-4 py-3">
           <Badge variant={state?.unreadCount ? "warning" : "success"}>{state?.unreadCount ?? 0} unread</Badge>
           <Button variant="ghost" size="sm" onClick={markAll} disabled={!state || state.unreadCount === 0}>
             <CheckCheck aria-hidden="true" className="size-4" />
@@ -92,7 +93,7 @@ export function InboxPanel({
         </div>
         <div className="min-h-0 overflow-y-auto p-4">
           {!state ? (
-            <div className="flex items-center gap-2 py-8 text-sm text-[var(--app-text-50)]">
+            <div className="flex items-center gap-2 py-8 text-sm text-[var(--foreground-50)]">
               <Loader2 aria-hidden="true" className="size-4 animate-spin" />
               Loading inbox
             </div>
@@ -101,20 +102,20 @@ export function InboxPanel({
           ) : (
             <div className="grid gap-2">
               {items.map((item) => (
-                <article key={item.id} className="grid gap-3 rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+                <article key={item.id} className="animate-attention-item grid gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3 transition-colors hover:bg-[var(--foreground-8)]">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-sm font-medium text-[var(--app-text)]">{item.title}</h3>
-                      <p className="mt-1 text-xs leading-5 text-[var(--app-text-50)]">{item.description}</p>
+                      <h3 className="text-sm font-medium text-[var(--foreground-80)]">{item.title}</h3>
+                      <p className="mt-1 text-xs leading-5 text-[var(--foreground-50)]">{item.description}</p>
                     </div>
                     <Badge variant={item.read ? "neutral" : "warning"}>{item.status}</Badge>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <a className="text-xs text-[var(--app-primary-light)] hover:underline" href={item.href}>
+                    <a className="text-xs text-[var(--tt-color-text-blue)] hover:underline" href={item.href}>
                       Open
                     </a>
                     {!item.read ? (
-                      <button type="button" className="text-xs text-[var(--app-text-50)] hover:text-[var(--app-text)]" onClick={() => markRead(item)}>
+                      <button type="button" className="text-xs text-[var(--foreground-50)] hover:text-[var(--foreground-80)]" onClick={() => markRead(item)}>
                         Mark read
                       </button>
                     ) : null}

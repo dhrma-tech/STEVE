@@ -120,7 +120,7 @@ export function DesignOnboardingWizard({
     <div className="grid gap-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--app-text-50)]">Design onboarding</p>
+          <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--foreground-50)]">Design onboarding</p>
           <h2 className="mt-1 text-xl font-medium tracking-[0px]">Brand kit setup</h2>
         </div>
         <Badge variant={initialState.status === "complete" ? "success" : "brand"}>{initialState.status}</Badge>
@@ -130,9 +130,9 @@ export function DesignOnboardingWizard({
 
       {step === 0 ? (
         <Card variant="deep" className="grid gap-4 rounded-[12px] p-4">
-          <Palette aria-hidden="true" className="size-6 text-[var(--brand-300)]" />
+          <Palette aria-hidden="true" className="size-6 text-[var(--focused)]" />
           <h3 className="text-lg font-medium">Choose a vibe or skip setup.</h3>
-          <p className="text-sm leading-6 text-[var(--app-text-50)]">
+          <p className="text-sm leading-6 text-[var(--foreground-50)]">
             Skipping can reduce output quality because design context will be missing from future agent work.
           </p>
           <div className="flex gap-2">
@@ -154,7 +154,7 @@ export function DesignOnboardingWizard({
         <div className="grid gap-4">
           <FileUpload
             label="Upload references"
-            description="Up to 6 PNG, JPG, or WebP files. Metadata is stored in sandbox mode."
+            description="Drop up to 6 PNG, JPG, or WebP files to anchor the brand kit generator."
             accept="image/png,image/jpeg,image/webp"
             maxFiles={6}
             onFilesSelected={(files) => setReferenceFiles(files.map((file) => ({ name: file.name, type: file.type, size: file.size })))}
@@ -203,7 +203,7 @@ export function DesignOnboardingWizard({
               Output risk: future design and marketing tasks will lack palette, typography, and reference context. This is not recommended.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-2 text-sm text-[var(--app-text-50)]">
+          <div className="grid gap-2 text-sm text-[var(--foreground-50)]">
             <p>Missing: selected vibe, references, and brand kit.</p>
             <p>Affects: marketing pages, product UI, brand assets, and design department work.</p>
           </div>
@@ -250,13 +250,13 @@ function BrandKitReview({
           ))}
         </div>
       </div>
-      <div className="grid gap-1 text-sm text-[var(--app-text-50)]">
+      <div className="grid gap-1 text-sm text-[var(--foreground-50)]">
         <p>Primary: {String(typography?.primary ?? "")}</p>
         <p>Mono: {String(typography?.mono ?? "")}</p>
       </div>
       <div className="grid gap-2">
         {examples.map((example) => (
-          <div key={example} className="rounded-[8px] border border-[var(--app-border)] p-3 text-sm">{example}</div>
+          <div key={example} className="rounded-[8px] border border-[var(--border-10)] p-3 text-sm">{example}</div>
         ))}
       </div>
       <Textarea surface="dark" label="Iteration feedback" value={feedback} onChange={(event) => setFeedback(event.target.value)} />

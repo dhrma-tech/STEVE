@@ -14,8 +14,8 @@ import { Card, PricingCard } from "@/components/ui/card";
 import { MarketingContainer } from "@/components/ui/container";
 
 export const metadata: Metadata = {
-  title: "Pricing - Cofounder",
-  description: "Pricing plans, usage calculator, feature comparison, and managed data graduation notes."
+  title: "Pricing",
+  description: "Simple plans that grow with your company — usage-based pricing, a free trial, and full data graduation when you're ready."
 };
 
 export default function PricingPage() {
@@ -23,10 +23,10 @@ export default function PricingPage() {
     <main className="bg-[var(--background)] pb-24 pt-[130px] text-[var(--foreground)]">
       <MarketingContainer className="grid gap-14">
         <header className="mx-auto grid max-w-[720px] gap-4 text-center">
-          <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--color-ink-faint)]">Pricing</p>
+          <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--foreground-50)]">Pricing</p>
           <h1 className="text-[40px] font-normal leading-[1.15] tracking-[0px]">Start simple. Grow without limits.</h1>
-          <p className="text-[16px] leading-7 text-[var(--color-ink-muted)]">
-            Plans match the source notes: trial, Pro, and a visible Team plan marked coming soon.
+          <p className="text-[16px] leading-7 text-[var(--foreground-60)]">
+            Start with a free trial, scale to Pro as you ship, and join the Team plan when you&apos;re ready for multiplayer and SOC 2.
           </p>
         </header>
 
@@ -48,10 +48,10 @@ export default function PricingPage() {
         <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <PricingCalculator />
           <Card className="grid content-center gap-4 p-5">
-            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--color-ink-faint)]">Data graduation</p>
+            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--foreground-50)]">Data graduation</p>
             <h2 className="text-[32px] font-normal leading-[1.15] tracking-[0px]">GitHub, Supabase, and Vercel stay portable.</h2>
-            <p className="text-[15px] leading-7 text-[var(--color-ink-muted)]">
-              The notes require managed services and a graduation path so founders can move repository, database, and deployment assets into their own accounts.
+            <p className="text-[15px] leading-7 text-[var(--foreground-60)]">
+              We manage your repository, database, and deployments so you can ship from day one — and hand the keys back whenever you want. Graduate to your own GitHub, Supabase, and Vercel accounts with one click.
             </p>
             <Link href="/docs" className={buttonClassName({ variant: "dark" })}>
               Read docs

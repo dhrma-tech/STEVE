@@ -66,11 +66,11 @@ export function ChapterArt({ tone = "green", className }: { tone?: "green" | "bl
 
 export function FooterPixelCard() {
   return (
-    <div className="relative h-[220px] overflow-hidden rounded-[16px] border border-[var(--color-border-card)] bg-[linear-gradient(135deg,#fbfbf8,#d7e8ff_52%,#d8f999)] [image-rendering:pixelated]">
+    <div className="relative h-[220px] overflow-hidden rounded-[16px] border border-[var(--border-10)] bg-[linear-gradient(135deg,#fbfbf8,#d7e8ff_52%,#d8f999)] [image-rendering:pixelated]">
       <div className="absolute inset-x-0 bottom-0 h-16 bg-[linear-gradient(180deg,rgba(255,255,255,0),rgba(52,168,83,0.65))]" />
       <div className="absolute bottom-14 left-12 h-28 w-24 bg-[#262323] shadow-[84px_22px_0_#3c5a48,170px_-12px_0_#262323]" />
       <div className="absolute bottom-28 left-16 size-5 bg-[#d8f999] shadow-[86px_22px_0_#d8f999,170px_-12px_0_#d8f999]" />
-      <div className="absolute right-10 top-10 rounded-[8px] bg-white/60 px-4 py-3 font-mono text-xs text-[var(--color-ink)] shadow-[rgba(0,0,0,0.08)_0_14px_34px]">
+      <div className="absolute right-10 top-10 rounded-[8px] bg-white/60 px-4 py-3 font-mono text-xs text-[var(--foreground)] shadow-[rgba(0,0,0,0.08)_0_14px_34px]">
         SOC 2 security copy
       </div>
     </div>

@@ -40,14 +40,14 @@ export function IntegrationCenter({ orgId, initialData }: { orgId: string; initi
 
   return (
     <div className="grid gap-4">
-      <section className="grid gap-3 rounded-[12px] border border-[var(--app-border)] bg-[var(--app-panel)] p-4">
+      <section className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--background-sidepanel)] p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">Integrations</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">Integrations</p>
             <h1 className="mt-1 text-2xl font-medium">Provider center</h1>
-            <p className="mt-2 max-w-[78ch] text-sm leading-6 text-[var(--app-text-50)]">Managed provider records for repo, hosting, database, payments, publishing, domains, inboxes, analytics, monitoring, and support.</p>
+            <p className="mt-2 max-w-[78ch] text-sm leading-6 text-[var(--foreground-50)]">Managed provider records for repo, hosting, database, payments, publishing, domains, inboxes, analytics, monitoring, and support.</p>
           </div>
-          <Button variant="ghost" className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" onClick={refresh}>
+          <Button variant="ghost" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={refresh}>
             <RefreshCw aria-hidden="true" className="size-4" />
             Refresh
           </Button>
@@ -58,7 +58,7 @@ export function IntegrationCenter({ orgId, initialData }: { orgId: string; initi
           <Metric label="Sandbox" value={data.counts.sandbox} />
           <Metric label="Needs setup" value={data.counts.needsSetup} />
         </div>
-        {message ? <p className="text-sm text-[var(--app-primary-light)]">{message}</p> : null}
+        {message ? <p className="text-sm text-[var(--foreground-80)]">{message}</p> : null}
       </section>
 
       <section className="grid gap-3 lg:grid-cols-2">
@@ -66,18 +66,18 @@ export function IntegrationCenter({ orgId, initialData }: { orgId: string; initi
           const integration = provider.integration;
           const isBusy = busy?.startsWith(provider.provider);
           return (
-            <article key={provider.provider} className="grid gap-3 rounded-[12px] border border-[var(--app-border)] bg-[var(--app-panel)] p-4">
+            <article key={provider.provider} className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--background-sidepanel)] p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="font-medium">{provider.label}</h2>
                     <Badge variant={statusVariant(integration?.status ?? "missing")}>{integration?.status ?? "missing"}</Badge>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-[var(--app-text-50)]">{provider.description}</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--foreground-50)]">{provider.description}</p>
                 </div>
                 <Badge variant="neutral">{provider.category}</Badge>
               </div>
-              <div className="grid gap-1 text-sm text-[var(--app-text-50)]">
+              <div className="grid gap-1 text-sm text-[var(--foreground-50)]">
                 <span>Mode: {integration?.mode ?? "none"}</span>
                 <span>Secrets: {integration?.secretsCount ?? 0}</span>
                 <span>Events: {integration?.eventsCount ?? 0}</span>
@@ -87,7 +87,7 @@ export function IntegrationCenter({ orgId, initialData }: { orgId: string; initi
                   <PlugZap aria-hidden="true" className="size-4" />
                   Connect
                 </Button>
-                <Button variant="ghost" size="sm" className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" disabled={isBusy} onClick={() => action(provider.provider, "check")}>
+                <Button variant="ghost" size="sm" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" disabled={isBusy} onClick={() => action(provider.provider, "check")}>
                   <CheckCircle2 aria-hidden="true" className="size-4" />
                   Check
                 </Button>
@@ -96,7 +96,7 @@ export function IntegrationCenter({ orgId, initialData }: { orgId: string; initi
                   Disconnect
                 </Button>
                 {provider.provider === "postiz" ? (
-                  <Link href={`/org/${orgId}/integrations/postiz`} className={buttonClassName({ variant: "ghost", size: "sm", className: "text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" })}>
+                  <Link href={`/org/${orgId}/integrations/postiz`} className={buttonClassName({ variant: "ghost", size: "sm", className: "text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" })}>
                     Postiz channels
                   </Link>
                 ) : null}
@@ -111,8 +111,8 @@ export function IntegrationCenter({ orgId, initialData }: { orgId: string; initi
 
 function Metric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
-      <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">{label}</p>
+    <div className="rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">{label}</p>
       <p className="mt-1 text-lg font-medium tabular-nums">{value}</p>
     </div>
   );

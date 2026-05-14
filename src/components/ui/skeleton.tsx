@@ -12,7 +12,7 @@ export function Skeleton({ className, surface = "dark", ...props }: SkeletonProp
       className={cn(
         "motion-safe-shimmer rounded-[8px]",
         surface === "dark"
-          ? "bg-[linear-gradient(90deg,rgba(255,255,255,0.06),rgba(255,255,255,0.14),rgba(255,255,255,0.06))]"
+          ? "bg-[linear-gradient(90deg,var(--foreground-5),var(--foreground-15),var(--foreground-5))]"
           : "bg-[linear-gradient(90deg,rgba(38,35,35,0.05),rgba(38,35,35,0.11),rgba(38,35,35,0.05))]",
         className
       )}

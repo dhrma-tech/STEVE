@@ -17,11 +17,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const content = howToChapters[chapter as HowToChapterSlug];
 
   if (!content) {
-    return { title: "Guide not found - Cofounder" };
+    return { title: "Guide not found" };
   }
 
   return {
-    title: `${content.title} guide - Cofounder`,
+    title: `How to ${content.title}`,
     description: content.intro
   };
 }

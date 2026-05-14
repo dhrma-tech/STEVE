@@ -7,8 +7,15 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AgentPulseDot } from "@/components/motion/animated-list";
 import { Stagger, StaggerItem } from "@/components/motion/stagger";
+import { agentModelOptions } from "@/data/agents";
 import type { AgentSummary } from "@/components/agents/types";
 import { cn } from "@/lib/utils/cn";
+
+function modelLabel(value: string | null | undefined) {
+  if (!value) return "Default model";
+  const match = agentModelOptions.find((option) => option.value === value);
+  return match?.label ?? value;
+}
 
 export function AgentList({
   agents,
@@ -31,13 +38,14 @@ export function AgentList({
         <StaggerItem key={agent.id}>
           <article
             className={cn(
-              "grid gap-3 rounded-[12px] border p-3 transition-colors hover:bg-[rgba(255,255,255,0.07)]",
-              selectedAgentId === agent.id ? "border-[var(--app-primary-light)] bg-[rgba(255,255,255,0.08)]" : "border-[var(--app-border)] bg-[rgba(255,255,255,0.04)]"
+              "grid gap-3 rounded-[12px] border p-3 transition-colors hover:bg-[var(--foreground-8)]",
+              selectedAgentId === agent.id ? "border-[var(--primary)] bg-[var(--foreground-8)]" : "border-[var(--border-10)] bg-[var(--foreground-3)]",
+              agent.status === "running" ? "animate-agent-pulse" : ""
             )}
           >
             <button
               type="button"
-              className="flex items-start gap-3 rounded-[8px] text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]"
+              className="flex items-start gap-3 rounded-[8px] text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--focused)]"
               onClick={() => onSelect(agent.id)}
               aria-pressed={selectedAgentId === agent.id}
             >
@@ -50,7 +58,7 @@ export function AgentList({
                 <div className="flex items-start justify-between gap-2">
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-medium">{agent.name}</span>
-                    <span className="mt-1 block truncate text-xs text-[var(--app-text-50)]">{agent.department.name} / {agent.model ?? "sandbox model"}</span>
+                    <span className="mt-1 block truncate text-xs text-[var(--foreground-50)]">{agent.department.name} / {modelLabel(agent.model)}</span>
                   </span>
                   <span className="flex shrink-0 items-center gap-1.5">
                     {agent.status === "running" && (
@@ -59,7 +67,7 @@ export function AgentList({
                     <Badge variant={statusVariant(agent.status)}>{agent.status}</Badge>
                   </span>
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--app-text-50)]">
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--foreground-50)]">
                   <span className="inline-flex items-center gap-1">
                     <Zap aria-hidden="true" className="size-3.5" />
                     {agent.skills.length || agent.recommendedSkills.length} skills
@@ -77,7 +85,7 @@ export function AgentList({
                 <Play aria-hidden="true" className="size-4" />
                 Launch
               </Button>
-              <Button size="sm" variant="ghost" className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" onClick={() => onSelect(agent.id)}>
+              <Button size="sm" variant="ghost" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={() => onSelect(agent.id)}>
                 <Settings2 aria-hidden="true" className="size-4" />
                 Config
               </Button>
@@ -93,20 +101,20 @@ export function MarketplaceSkills({ skills, selectedDepartmentSlug }: { skills: 
   const visible = selectedDepartmentSlug ? skills.filter((skill) => skill.departmentSlug === selectedDepartmentSlug || skill.category === "Integration") : skills;
 
   return (
-    <section className="grid gap-3 rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+    <section className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
       <div className="flex items-center gap-2">
-        <Zap aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+        <Zap aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
         <h3 className="text-sm font-medium">Marketplace skills</h3>
       </div>
       <Stagger className="grid gap-2" staggerChildren={0.05}>
         {visible.slice(0, 8).map((skill) => (
           <StaggerItem key={skill.key} y={8}>
-            <div className="rounded-[10px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-3">
+            <div className="rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3">
               <div className="flex items-center justify-between gap-2">
                 <h4 className="truncate text-sm font-medium">{skill.name}</h4>
                 <Badge variant="neutral">{skill.category}</Badge>
               </div>
-              <p className="mt-1 text-xs leading-5 text-[var(--app-text-50)]">{skill.description}</p>
+              <p className="mt-1 text-xs leading-5 text-[var(--foreground-50)]">{skill.description}</p>
             </div>
           </StaggerItem>
         ))}

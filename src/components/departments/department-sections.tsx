@@ -74,25 +74,25 @@ function DepartmentAccordionItem({
   children: React.ReactNode;
 }) {
   return (
-    <AccordionItem value={value} className="overflow-hidden rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)]">
-      <AccordionTrigger className="min-h-[54px] px-3 py-3 text-[var(--app-text)] hover:text-white">
+    <AccordionItem value={value} className="overflow-hidden rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)]">
+      <AccordionTrigger className="min-h-[54px] px-3 py-3 text-[var(--foreground-80)] hover:text-white">
         <span className="flex min-w-0 items-center gap-2">
-          <span className="grid size-8 shrink-0 place-items-center rounded-[8px] bg-[rgba(255,255,255,0.07)] text-[var(--app-primary-light)]">{icon}</span>
+          <span className="grid size-8 shrink-0 place-items-center rounded-[8px] bg-[var(--foreground-8)] text-[var(--foreground-80)]">{icon}</span>
           <span className="truncate">{title}</span>
           <Badge variant="neutral">{count}</Badge>
         </span>
       </AccordionTrigger>
-      <AccordionContent className="px-3 pb-3 text-[var(--app-text-50)]">{children}</AccordionContent>
+      <AccordionContent className="px-3 pb-3 text-[var(--foreground-50)]">{children}</AccordionContent>
     </AccordionItem>
   );
 }
 
 function MiniRecord({ title, detail, status }: { title: string; detail: string; status: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-3">
+    <div className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3">
       <div className="min-w-0">
-        <h4 className="truncate text-sm font-medium text-[var(--app-text)]">{title}</h4>
-        <p className="mt-1 truncate text-xs text-[var(--app-text-50)]">{detail}</p>
+        <h4 className="truncate text-sm font-medium text-[var(--foreground-80)]">{title}</h4>
+        <p className="mt-1 truncate text-xs text-[var(--foreground-50)]">{detail}</p>
       </div>
       <Badge variant={statusVariant(status)}>{status.replace("_", " ")}</Badge>
     </div>

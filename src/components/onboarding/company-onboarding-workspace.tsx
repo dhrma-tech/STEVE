@@ -169,12 +169,12 @@ export function CompanyOnboardingWorkspace({ initialState }: { initialState: Ini
   }
 
   return (
-    <main className="min-h-dvh bg-[var(--app-canvas)] p-4 text-[var(--app-text)]">
+    <main className="min-h-dvh bg-[var(--background)] p-4 text-[var(--foreground-80)]">
       <div className="grid min-h-[calc(100dvh-32px)] gap-4 lg:grid-cols-[minmax(0,1fr)_456px]">
-        <section className="relative overflow-hidden rounded-[18px] border border-[var(--app-border)] bg-[radial-gradient(circle_at_center,rgba(98,41,255,0.18),rgba(30,30,35,0)_38%),var(--app-canvas)] p-5">
+        <section className="relative overflow-hidden rounded-[18px] border border-[var(--border-10)] bg-[radial-gradient(circle_at_center,rgba(98,41,255,0.18),rgba(30,30,35,0)_38%),var(--background)] p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--app-text-50)]">Company activation canvas</p>
+              <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--foreground-50)]">Company activation canvas</p>
               <h1 className="mt-2 text-3xl font-medium tracking-[0px]">{state.organization.name}</h1>
             </div>
             <Badge variant={activated ? "success" : "warning"}>{activated ? "Departments active" : "Onboarding"}</Badge>
@@ -182,9 +182,9 @@ export function CompanyOnboardingWorkspace({ initialState }: { initialState: Ini
 
           <div className="relative mx-auto mt-10 min-h-[430px] max-w-[720px]">
             <div className="absolute left-1/2 top-1/2 size-[310px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-white/15" />
-            <div className="absolute left-1/2 top-1/2 grid size-28 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-[18px] border border-[var(--app-border)] bg-[var(--app-black-base)]">
-              <Bot aria-hidden="true" className="size-8 text-[var(--brand-300)]" />
-              <span className="text-xs text-[var(--app-text-50)]">Cofounder</span>
+            <div className="absolute left-1/2 top-1/2 grid size-28 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-[18px] border border-[var(--border-10)] bg-[var(--card)]">
+              <Bot aria-hidden="true" className="size-8 text-[var(--focused)]" />
+              <span className="text-xs text-[var(--foreground-50)]">Cofounder</span>
             </div>
             {departmentDefinitions.map((department, index) => {
               const angle = (Math.PI * 2 * index) / departmentDefinitions.length - Math.PI / 2;
@@ -193,10 +193,10 @@ export function CompanyOnboardingWorkspace({ initialState }: { initialState: Ini
               const Icon = department.lucideIcon;
               const built = state.departments.some((item) => item.slug === department.slug);
               return (
-                <div key={department.slug} className="absolute grid min-w-[120px] -translate-x-1/2 -translate-y-1/2 gap-1 rounded-[12px] border border-white/10 bg-[rgba(38,38,42,0.92)] p-3 text-center" style={{ left: `${x}%`, top: `${y}%` }}>
+                <div key={department.slug} className="absolute grid min-w-[120px] -translate-x-1/2 -translate-y-1/2 gap-1 rounded-[12px] border border-white/10 bg-[var(--background-l0-85)] p-3 text-center" style={{ left: `${x}%`, top: `${y}%` }}>
                   <Icon aria-hidden="true" className="mx-auto size-5" style={{ color: department.color }} />
                   <span className="text-xs">{department.name}</span>
-                  <span className="text-[10px] uppercase text-[var(--app-text-50)]">{built ? department.availability.replace("_", " ") : "pending"}</span>
+                  <span className="text-[10px] uppercase text-[var(--foreground-50)]">{built ? department.availability.replace("_", " ") : "pending"}</span>
                 </div>
               );
             })}
@@ -211,12 +211,12 @@ export function CompanyOnboardingWorkspace({ initialState }: { initialState: Ini
 
         <AppPanel className="grid content-start gap-4 overflow-y-auto p-4">
           <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-[10px] bg-[var(--brand-500)]">
+            <span className="grid size-10 place-items-center rounded-[10px] bg-[var(--tt-brand-color-500)]">
               <Sparkles aria-hidden="true" className="size-5" />
             </span>
             <div>
               <h2 className="font-medium tracking-[0px]">Cofounder onboarding</h2>
-              <p className="text-xs text-[var(--app-text-50)]">Company questions, business plan, activation, brand kit.</p>
+              <p className="text-xs text-[var(--foreground-50)]">Company questions, business plan, activation, brand kit.</p>
             </div>
           </div>
 
@@ -277,7 +277,7 @@ export function CompanyOnboardingWorkspace({ initialState }: { initialState: Ini
 function StatusTile({ label, value }: { label: string; value: string }) {
   return (
     <Card variant="app" className="rounded-[12px] p-3">
-      <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">{label}</p>
+      <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">{label}</p>
       <p className="mt-2 text-lg font-medium tracking-[0px]">{value}</p>
     </Card>
   );
@@ -290,12 +290,12 @@ function AnsweredQuestions({ answers }: { answers: Answer[] }) {
 
   return (
     <Accordion type="single" collapsible>
-      <AccordionItem value="answers" className="border-[var(--app-border)]">
-        <AccordionTrigger className="text-[var(--app-text)]">Answered questions</AccordionTrigger>
-        <AccordionContent className="grid gap-2 text-[var(--app-text-50)]">
+      <AccordionItem value="answers" className="border-[var(--border-10)]">
+        <AccordionTrigger className="text-[var(--foreground-80)]">Answered questions</AccordionTrigger>
+        <AccordionContent className="grid gap-2 text-[var(--foreground-50)]">
           {answers.map((answer) => (
-            <div key={answer.questionKey} className="rounded-[8px] border border-[var(--app-border)] p-3">
-              <p className="text-sm text-[var(--app-text)]">{answer.questionText}</p>
+            <div key={answer.questionKey} className="rounded-[8px] border border-[var(--border-10)] p-3">
+              <p className="text-sm text-[var(--foreground-80)]">{answer.questionText}</p>
               <p className="mt-1 text-xs">{answer.freeText || answer.selectedOption || "Waiting for answer"}</p>
             </div>
           ))}
@@ -311,11 +311,11 @@ function BusinessPlanPreview({ plan }: { plan: Record<string, unknown> }) {
       <Badge variant="success">Business Plan.md</Badge>
       <div>
         <h3 className="font-medium">Product/Service</h3>
-        <p className="mt-1 text-sm leading-6 text-[var(--app-text-50)]">{String(plan.productOrService ?? "")}</p>
+        <p className="mt-1 text-sm leading-6 text-[var(--foreground-50)]">{String(plan.productOrService ?? "")}</p>
       </div>
       <div>
         <h3 className="font-medium">ICP</h3>
-        <p className="mt-1 text-sm leading-6 text-[var(--app-text-50)]">{String(plan.icp ?? "")}</p>
+        <p className="mt-1 text-sm leading-6 text-[var(--foreground-50)]">{String(plan.icp ?? "")}</p>
       </div>
     </Card>
   );
@@ -325,7 +325,7 @@ function ActionLog({ actions }: { actions: ActionLog[] }) {
   if (actions.length === 0) return null;
 
   return (
-    <div className="grid gap-2 rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+    <div className="grid gap-2 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
       {actions.map((action) => (
         <div key={action.label} className="flex items-center justify-between gap-3 text-sm">
           <span>{action.label}</span>

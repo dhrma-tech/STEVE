@@ -1,0 +1,462 @@
+/* ============================================================
+   Section L — Animation & Motion System (Slice 6b)
+   All keyframes from report100.txt Section L that are not already
+   defined in motion.css. motion.css retains: node-breath,
+   node-select-pop, agent-pulse, shimmer, modal-enter/exit,
+   task-row-in, notif-pop/exit, panel-slide-in, tab-content-fade.
+   ============================================================ */
+
+/* ─── timing token aliases (Section L) ──────────────────────
+   Use these names in animation shorthand rather than bare
+   var(--tt-transition-*) for readability. Both resolve to the
+   same CSS custom property. */
+
+/* ─── UI State Animations (Section L) ─────────────────────── */
+
+@keyframes fade-in {
+  0%   { opacity: 0; transform: translateY(1rem); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sd-fadeIn {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes sd-blurIn {
+  0%   { opacity: 0; filter: blur(4px); }
+  100% { opacity: 1; filter: blur(0px); }
+}
+
+@keyframes sd-slideUp {
+  0%   { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0px); }
+}
+
+/* Tailwind animate primitive (used by tailwindcss-animate plugin equivalents) */
+@keyframes enter {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform:
+      translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0)
+      scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), 1)
+      rotate(var(--tw-enter-rotate, 0));
+  }
+}
+
+@keyframes exit {
+  to {
+    opacity: var(--tw-exit-opacity, 1);
+    transform:
+      translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0)
+      scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), 1)
+      rotate(var(--tw-exit-rotate, 0));
+  }
+}
+
+/* ─── Looping / Ambient (Section L) ───────────────────────── */
+
+@keyframes pulse {
+  0%,  100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+@keyframes pulse-building {
+  0%,  100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+@keyframes thin-pulse {
+  0%,  100% { opacity: 0.8; transform: scale(0.95); }
+  50%       { opacity: 0.4; transform: scale(1.05); }
+}
+
+@keyframes pulse-dot {
+  0%,  100% { opacity: 0.8; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.5); }
+}
+
+/* Gentle opacity + scale breathe — applied to dept status indicator dots */
+@keyframes status-dot-breathe {
+  0%,  100% { opacity: 0.6; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.2); }
+}
+
+@keyframes blink {
+  0%,  100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+@keyframes text-blink {
+  0%,  100% { color: var(--primary); }
+  50%       { color: var(--muted-foreground); }
+}
+
+/* ─── Chat / AI Typing (Section L) ────────────────────────── */
+
+/* 3-dot typing indicator; stagger via animation-delay on each dot */
+@keyframes typing-indicator-blink {
+  0%,   80%, 100% { opacity: 0.25; transform: scale(0.9); }
+  40%             { opacity: 1;    transform: scale(1); }
+}
+
+@keyframes typing {
+  0%,  100% { opacity: 0.5; transform: translateY(0px); }
+  50%       { opacity: 1;   transform: translateY(-2px); }
+}
+
+@keyframes loading-dots {
+  0%,  100% { opacity: 0; }
+  50%       { opacity: 1; }
+}
+
+@keyframes bounce-dots {
+  0%,  100% { opacity: 0.5; transform: scale(0.8); }
+  50%       { opacity: 1;   transform: scale(1.2); }
+}
+
+@keyframes wave-bars {
+  0%,  100% { transform: scaleY(1); }
+  50%       { transform: scaleY(0.6); }
+}
+
+/* ─── Shimmer / Loading (Section L) ───────────────────────── */
+
+/* Hover text shimmer sweep */
+@keyframes text-shimmer-sweep {
+  0%   { background-position: 200% center; }
+  100% { background-position: -100% center; }
+}
+
+@keyframes spinner-fade {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* ─── Canvas-Specific (Section L) ─────────────────────────── */
+
+/*
+ * Animated dashed orbital ring stroke-dashoffset.
+ * Creates the "moving ants" effect on the orbital ring around
+ * the center Cofounder node. Applied to SVG <path> or ReactFlow
+ * edge style.animation.
+ * Duration: 20s linear infinite (slow, ambient).
+ */
+@keyframes canvasDashFlow {
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+
+/*
+ * Multi-stage floating drift for pixel particles on dept workspace
+ * home nodes. Each particle has unique CSS custom properties:
+ *   --department-pixel-start-x, --department-pixel-start-y
+ *   --department-pixel-dim-opacity, --department-pixel-bright-opacity
+ * Implemented across 5 waypoints per Section L spec.
+ */
+@keyframes department-workspace-pixel-drift {
+  0% {
+    opacity: var(--department-pixel-dim-opacity, 0.3);
+    transform: translate3d(
+        var(--department-pixel-start-x, -2px),
+        var(--department-pixel-start-y, 0.5px),
+        0
+      )
+      scale(0.9);
+  }
+
+  22% {
+    opacity: var(--department-pixel-bright-opacity, 0.9);
+  }
+
+  45% {
+    transform: translate3d(
+        calc(var(--department-pixel-start-x, -2px) * -0.5),
+        calc(var(--department-pixel-start-y, 0.5px) * 2),
+        0
+      )
+      scale(1.1);
+  }
+
+  68% {
+    opacity: var(--department-pixel-dim-opacity, 0.3);
+  }
+
+  87% {
+    transform: translate3d(
+        calc(var(--department-pixel-start-x, -2px) * 1.5),
+        var(--department-pixel-start-y, 0.5px),
+        0
+      )
+      scale(0.95);
+  }
+
+  100% {
+    opacity: var(--department-pixel-dim-opacity, 0.3);
+    transform: translate3d(
+        var(--department-pixel-start-x, -2px),
+        var(--department-pixel-start-y, 0.5px),
+        0
+      )
+      scale(0.9);
+  }
+}
+
+/*
+ * Gentle horizontal drift for ambient pixel overlay on dept
+ * workspace home nodes. Runs continuously on the overlay layer.
+ */
+@keyframes department-workspace-pixel-ambient-wave {
+  0%   { opacity: 0.72; transform: translate(-7px,  1px); }
+  50%  { opacity: 1;    transform: translate( 7px, -1px); }
+  100% { opacity: 0.72; transform: translate(-7px,  1px); }
+}
+
+/*
+ * Scale + opacity pop for new task appearance cue on canvas nodes.
+ * Applied when an agent workspace node receives its first task.
+ */
+@keyframes agent-canvas-cue-pop {
+  0%   { opacity: 0; transform: scale(0.8); }
+  60%  { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/*
+ * Slide-up entrance for the attention inbox widget bottom-left.
+ * Applied on widget appearance.
+ */
+@keyframes attentionUpdateSlideUp {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Similar slide-up for individual attention inbox items */
+@keyframes attentionInboxItemAppear {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* New task row slide-in (alias of newTaskAppear per Section L) */
+@keyframes newTaskAppear {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Navigation hint animation for route transitions */
+@keyframes taskRouteHintEnter {
+  0%   { opacity: 0; transform: translateX(-8px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+/* Icon bounce/pop on task route hint appear */
+@keyframes taskRouteHintIconPop {
+  0%   { opacity: 0; transform: scale(0.6); }
+  60%  { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Fresh/new badge pop on review launcher */
+@keyframes reviewLauncherFreshBadge {
+  0%   { opacity: 0; transform: scale(0); }
+  60%  { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Camera-like settle animation for review lens component */
+@keyframes reviewLensSettle {
+  0%   { opacity: 0; transform: scale(1.08); }
+  60%  { opacity: 1; transform: scale(0.97); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Activity note appears on canvas with slide */
+@keyframes canvasActivityNoteIn {
+  0%   { opacity: 0; transform: translateY(-12px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0)     scale(1); }
+}
+
+/* CLI prompt bloom / expand animation */
+@keyframes cofounder-cli-bloom {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+
+/* ─── Marketing Asset Loading (Section L) ─────────────────── */
+
+@keyframes MarketingAssetLoadingAnimation__marketing-asset-field {
+  0%,  100% { opacity: 0.4; }
+  50%       { opacity: 1; }
+}
+
+@keyframes MarketingAssetLoadingAnimation__marketing-asset-scan {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes MarketingAssetLoadingAnimation__marketing-asset-dot-breathe {
+  0%,  100% { opacity: 0.3; transform: scale(0.8); }
+  50%       { opacity: 1;   transform: scale(1); }
+}
+
+/* ─── Utility classes (Section L wiring) ─────────────────────
+   Each class applies one Section L animation using Section V
+   duration and easing tokens. consumed by components directly.
+   ============================================================ */
+
+/* UI State */
+.animate-fade-in {
+  animation: fade-in var(--tt-transition-duration-default) var(--tt-transition-easing-cubic) both;
+}
+
+.animate-sd-fade-in {
+  animation: sd-fadeIn var(--tt-transition-duration-short) ease-out both;
+}
+
+.animate-sd-blur-in {
+  animation: sd-blurIn var(--tt-transition-duration-default) var(--tt-transition-easing-default) both;
+}
+
+.animate-sd-slide-up {
+  animation: sd-slideUp 120ms var(--tt-transition-easing-default) both;
+}
+
+/* Looping ambient */
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.animate-pulse-building {
+  animation: pulse-building 1.4s ease-in-out infinite;
+}
+
+.animate-thin-pulse {
+  animation: thin-pulse 1.6s ease-in-out infinite;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+.animate-status-dot-breathe {
+  animation: status-dot-breathe 2.4s var(--tt-transition-easing-default) infinite;
+}
+
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* Chat typing dots (apply to each dot with staggered delay) */
+.animate-typing-dot {
+  animation: typing-indicator-blink 1.2s ease-in-out infinite;
+}
+
+/* Canvas chrome */
+.animate-attention-slide-up {
+  animation: attentionUpdateSlideUp var(--tt-transition-duration-default) var(--tt-transition-easing-cubic) both;
+}
+
+.animate-attention-item {
+  animation: attentionInboxItemAppear var(--tt-transition-duration-default) var(--tt-transition-easing-cubic) both;
+}
+
+.animate-agent-cue-pop {
+  animation: agent-canvas-cue-pop 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-canvas-dash-flow {
+  /* Applied to SVG path / ReactFlow edge style.animation */
+  animation: canvasDashFlow 20s linear infinite;
+}
+
+.animate-pixel-drift {
+  animation: department-workspace-pixel-drift 6s var(--tt-transition-easing-default) infinite alternate;
+}
+
+.animate-pixel-wave {
+  animation: department-workspace-pixel-ambient-wave 12s ease-in-out infinite;
+}
+
+.animate-canvas-note-in {
+  animation: canvasActivityNoteIn var(--tt-transition-duration-default) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Review / hint */
+.animate-review-badge {
+  animation: reviewLauncherFreshBadge 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-review-settle {
+  animation: reviewLensSettle 400ms var(--tt-transition-easing-cubic) both;
+}
+
+.animate-route-hint {
+  animation: taskRouteHintEnter var(--tt-transition-duration-default) var(--tt-transition-easing-cubic) both;
+}
+
+.animate-route-hint-icon {
+  animation: taskRouteHintIconPop 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Shimmer sweep (for hover effects) */
+.animate-text-shimmer {
+  background-size: 200% auto;
+  animation: text-shimmer-sweep 1.4s linear infinite;
+}
+
+/* Agent glow-pulse ring — wired to running agent nodes (Section L pulseGlow) */
+.animate-agent-pulse {
+  animation: agent-pulse 2.4s var(--tt-transition-easing-default) infinite;
+}
+
+/* ─── Hero: liquid glass + fade-rise ──────────────────────── */
+
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.01);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.liquid-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.4px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.45) 0%,
+    rgba(255, 255, 255, 0.15) 20%,
+    rgba(255, 255, 255, 0) 40%,
+    rgba(255, 255, 255, 0) 60%,
+    rgba(255, 255, 255, 0.15) 80%,
+    rgba(255, 255, 255, 0.45) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+@keyframes fade-rise {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-rise         { animation: fade-rise 0.8s ease-out both; }
+.animate-fade-rise-delay   { animation: fade-rise 0.8s ease-out 0.2s both; }
+.animate-fade-rise-delay-2 { animation: fade-rise 0.8s ease-out 0.4s both; }

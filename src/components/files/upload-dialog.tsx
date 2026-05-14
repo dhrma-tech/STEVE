@@ -116,10 +116,10 @@ export function FileUploadDialog({
         />
 
         <DialogFooter>
-          <Button variant="ghost" className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          <span className="inline-flex h-[30px] items-center gap-1.5 rounded-[8px] px-3 text-[13px] text-[var(--app-text-50)]">
+          <span className="inline-flex h-[30px] items-center gap-1.5 rounded-[8px] px-3 text-[13px] text-[var(--foreground-50)]">
             <UploadCloud aria-hidden="true" className="size-4" />
             {uploading ? "Uploading" : "Waiting for files"}
           </span>

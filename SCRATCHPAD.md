@@ -1,6 +1,62 @@
 # SCRATCHPAD.md
 
-## Current Phase And Status
+## UI/UX Overhaul — Current State (2026-05-15)
+
+### Slices complete (10/17 — 59%)
+- ✅ Slice 1: `tokens.css` (319 Section V variables) + `layout.tsx` (6 fonts + async theme class)
+- ✅ Slice 2: 21 UI primitives re-skinned off `--app-*`/`--brand-*` → Section V tokens
+- ✅ Slice 3 (3a): Light-mode dual system — `middleware.ts` + `html:not(.dark)` block in tokens.css + 5 light primitives
+- ✅ Slice 3 (3b): Marketing surface — 15 components/pages migrated, 0 `--color-ink-*` refs remain
+- ✅ Slice 4: Settings cluster — `settings-shell.tsx`, `settings-sections.tsx` + `--background-settings` token
+- ✅ Slice 5: App-shell cluster — 5 files + `src/lib/z-index.ts` (17 Section S constants)
+- ✅ Slice 6a: Canvas tokens — 4 files, Section D/E/H/S alignment, `canvasDashFlow` wired to orbital edges
+- ✅ Slice 6b: Canvas animations — `src/styles/animations.css` created, 36 Section L keyframes + utility classes
+- ✅ Slice 7: Agents cluster — 5 files, `.animate-agent-pulse` + `.animate-agent-cue-pop` wired
+- ✅ Slice 8: Chat cluster — 4 files, typing indicator wired to `animate-typing-dot` (160ms/320ms delays)
+- ✅ Slice 9: Notifications cluster — `inbox-panel.tsx`, `animate-attention-slide-up` + `animate-attention-item` wired, `Z_ATTENTION_INBOX` applied
+- ✅ Slice 10: Command-palette cluster — `command-palette.tsx`, 6 token passes, uses migrated Input/EmptyState/Dialog primitives
+- ✅ Slice 11: Integrations cluster — `integration-center.tsx` + `postiz-integration.tsx`, 16 token passes across 2 files
+- ✅ Slice 12: Side-panel cluster — `canvas-side-panel.tsx`, 8 token passes, all 5 tabs covered, app chrome system complete
+- ✅ Slice 13: Tasks cluster — 4 files, 34 token passes, 18 distinct legacy patterns (incl. hardcoded hex #ffd27c/#9df0b4, error/approval rgba blocks)
+
+### Canvas cluster: 100% done
+- 4 components migrated (6a)
+- animations.css created with 36 Section L keyframes (6b)
+- `canvasDashFlow` wired: moving-ants on orbital edges
+- `node-breath` + `node-select-pop` already wired in motion.css
+- animations.css imported globally — utility classes ready for all downstream clusters
+
+### Animation layer: ready for all clusters
+`src/styles/animations.css` is a global CSS layer. Key utility classes waiting:
+- `.animate-agent-cue-pop` → agents cluster
+- `.animate-typing-dot` → chat cluster
+- `.animate-attention-slide-up` → notifications cluster
+- `.animate-pixel-drift` / `.animate-pixel-wave` → departments cluster
+
+### Agents cluster: done
+5 files. `.animate-agent-pulse` wired to running cards. `.animate-agent-cue-pop` wired to workspace dialog. Section H Dialog structure preserved (notch blob rebuild deferred — DECISION-62).
+
+### Chat cluster: done
+4 files. Typing indicator upgraded from `animate-pulse` to `animate-typing-dot` (Section L: `typing-indicator-blink`, 160ms/320ms stagger). ChatComposer stack layout preserved (compact compound deferred — DECISION-63).
+
+### Domain clusters: 4 pending (Slice 14+)
+onboarding (medium, 5 files) · roadmap (medium, 4 files) · files (medium, 5 files) · departments (large, 6 files, pixel-drift DOM wiring)
+
+### Next task (Slice 14)
+Read `checkpoint-slice-13.md`. Pick onboarding OR roadmap OR files. Departments last (pixel-drift animation wiring, structural complexity).
+
+### Animations ready for downstream clusters
+- `.animate-pixel-drift` / `.animate-pixel-wave` → departments cluster (last heavy cluster, unwired)
+
+### Legacy `:root` shim
+Still active — keeps the 9 pending clusters rendering. Remove once all clusters are done.
+
+---
+
+## Original 17-Phase Build — Status
+All 17 phases complete. Product is functionally green (build, typecheck, lint, runtime all pass). The overhaul above is cosmetic/design-system work only — no backend changes.
+
+## Current Phase And Status (original)
 - Current phase: Execution - Phase 17: Final System Audit & Performance
     - [x] Phase 16: Error, Loading And Empty States (complete and verified)
     - [ ] Conduct final deep-dive audit of all 16 previous phases

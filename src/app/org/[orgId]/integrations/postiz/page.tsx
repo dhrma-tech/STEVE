@@ -4,8 +4,8 @@ import { PostizIntegration } from "@/components/integrations/postiz-integration"
 import { getPostizIntegration } from "@/lib/integrations/data";
 
 export const metadata: Metadata = {
-  title: "Postiz - Cofounder",
-  description: "Social publishing channel integration."
+  title: "Postiz",
+  description: "Connect your social publishing channels so agents can ship marketing without leaving your workspace."
 };
 
 type PostizPageProps = {

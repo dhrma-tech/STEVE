@@ -1,19 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { Bot, Briefcase, Building2, FileText, Home, MessageSquare, RefreshCw } from "lucide-react";
+import { Bot, Briefcase, Building2, FileText, Home, MessageSquare, RefreshCw, Send } from "lucide-react";
 import { AgentControlCenter } from "@/components/agents/agent-control-center";
 import { ChatWorkspace } from "@/components/chat/chat-workspace";
 import { DepartmentDetailPanel } from "@/components/departments/department-detail-panel";
 import { FileLibrary } from "@/components/files/file-library";
 import { TaskCreateDialog, type TaskCreateDefaults } from "@/components/tasks/task-create-dialog";
 import { TaskWorkspace } from "@/components/tasks/task-workspace";
+import { AdvisorChat } from "@/components/ai/advisor-chat";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import type { CanvasData, CanvasDepartment } from "@/lib/canvas/data";
 import type { DepartmentDetailData } from "@/lib/departments/data";
 
@@ -58,7 +58,7 @@ export function CanvasSidePanel({
   }
 
   return (
-    <aside className="animate-panel-slide-in flex min-h-[520px] w-full shrink-0 flex-col border-t border-[var(--app-border)] bg-[var(--app-panel)] text-[var(--app-text)] lg:min-h-0 lg:w-[390px] lg:border-l lg:border-t-0 xl:w-[430px]">
+    <aside className="animate-panel-slide-in flex min-h-[520px] w-full shrink-0 flex-col border-t border-[var(--border-10)] bg-[var(--background-sidepanel)] text-[var(--foreground-80)] lg:min-h-0 lg:w-[390px] lg:border-l lg:border-t-0 xl:w-[430px]">
       {selectedDepartment ? (
         <DepartmentDetailPanel
           orgId={data.organization.id}
@@ -69,7 +69,7 @@ export function CanvasSidePanel({
         />
       ) : (
         <Tabs value={activeTab} onValueChange={onActiveTabChange} className="flex min-h-0 flex-1 flex-col">
-          <div className="border-b border-[var(--app-border)] p-2">
+          <div className="border-b border-[var(--border-10)] p-2">
             <TabsList className="flex w-full gap-1 overflow-x-auto scrollbar-none">
               <TabsTrigger value="home" className="flex-1 gap-2 px-2 text-xs">
                 <Home className="size-3.5" />
@@ -96,11 +96,11 @@ export function CanvasSidePanel({
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
             <TabsContent value="home" className="mt-0 grid gap-4 animate-tab-content-fade">
               <PanelHeading eyebrow="Home" title={greeting(data.organization.name)} icon={<MessageSquare aria-hidden="true" className="size-4" />} />
-              <section className="grid gap-3 rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+              <section className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-medium">Roadmap progress</h3>
-                    <p className="mt-1 text-xs text-[var(--app-text-50)]">{data.roadmap.complete} of {data.roadmap.total} items complete</p>
+                    <p className="mt-1 text-xs text-[var(--foreground-50)]">{data.roadmap.complete} of {data.roadmap.total} items complete</p>
                   </div>
                   <Badge variant="brand">{data.roadmap.progress}%</Badge>
                 </div>
@@ -121,7 +121,7 @@ export function CanvasSidePanel({
                       key={item.id}
                       type="button"
                       disabled={item.status === "locked"}
-                      className="rounded-[10px] outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--brand-300)] disabled:opacity-55"
+                      className="rounded-[10px] outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--focused)] disabled:opacity-55"
                       onClick={() => createFromSuggested(item)}
                     >
                       <MiniRow title={item.title} detail={`${item.stage} - ${item.workType}`} status={item.status} />
@@ -131,7 +131,7 @@ export function CanvasSidePanel({
                   <EmptyState surface="dark" title="No suggested tasks" description="Roadmap suggestions will appear after more items unlock." />
                 )}
               </section>
-              <Textarea surface="dark" label="Ask Cofounder" placeholder="What should we do next?" />
+              <AdvisorChat orgName={data.organization.name} />
             </TabsContent>
 
             <TabsContent value="cofounder" className="mt-0 grid gap-4 animate-tab-content-fade">
@@ -180,9 +180,9 @@ export function CanvasSidePanel({
 function PanelHeading({ eyebrow, title, icon }: { eyebrow: string; title: string; icon: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="grid size-9 place-items-center rounded-[9px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.06)] text-[var(--app-primary-light)]">{icon}</span>
+      <span className="grid size-9 place-items-center rounded-[9px] border border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-80)]">{icon}</span>
       <div>
-        <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">{eyebrow}</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">{eyebrow}</p>
         <h2 className="text-lg font-medium tracking-[0px]">{title}</h2>
       </div>
     </div>
@@ -191,10 +191,10 @@ function PanelHeading({ eyebrow, title, icon }: { eyebrow: string; title: string
 
 function MiniRow({ title, detail, status }: { title: string; detail: string; status: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+    <div className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
       <div className="min-w-0">
         <h3 className="truncate text-sm font-medium">{title}</h3>
-        <p className="mt-1 truncate text-xs text-[var(--app-text-50)]">{detail}</p>
+        <p className="mt-1 truncate text-xs text-[var(--foreground-50)]">{detail}</p>
       </div>
       <Badge variant={status === "complete" || status === "active" || status === "idle" ? "success" : status === "locked" ? "neutral" : "warning"}>
         {status}

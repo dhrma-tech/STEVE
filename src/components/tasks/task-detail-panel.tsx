@@ -42,7 +42,7 @@ export function TaskDetailPanel({
 
   if (!task) {
     return (
-      <section className="rounded-[12px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-4">
+      <section className="rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-4">
         <EmptyState surface="dark" title="Select a task" description="Task detail, comments, subtasks, files, approvals, and sessions appear here." />
       </section>
     );
@@ -99,32 +99,32 @@ export function TaskDetailPanel({
   }
 
   return (
-    <section className="grid gap-4 rounded-[12px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-4">
+    <section className="grid gap-4 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">{taskTypeLabel(task.type)}</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">{taskTypeLabel(task.type)}</p>
           <h2 className="mt-1 text-xl font-medium tracking-[0px]">{task.title}</h2>
-          <p className="mt-2 text-sm leading-6 text-[var(--app-text-50)]">{task.description ?? "No description yet."}</p>
+          <p className="mt-2 text-sm leading-6 text-[var(--foreground-50)]">{task.description ?? "No description yet."}</p>
         </div>
         <StatusBadge status={task.status} />
       </div>
 
       {error ? (
-        <div className="rounded-[10px] border border-[rgba(239,68,68,0.36)] bg-[rgba(239,68,68,0.12)] p-3 text-sm text-red-100">
+        <div className="rounded-[10px] border border-[var(--tt-color-text-red-contrast)] bg-[var(--tt-color-text-red-contrast)] p-3 text-sm text-[var(--destructive)]">
           {error}
         </div>
       ) : null}
 
       {pendingApprovals.length ? (
-        <div className="grid gap-3 rounded-[10px] border border-[rgba(245,158,11,0.38)] bg-[rgba(245,158,11,0.1)] p-3">
-          <div className="flex items-center gap-2 text-[#ffd27c]">
+        <div className="grid gap-3 rounded-[10px] border border-[var(--tt-color-text-yellow-contrast)] bg-[var(--tt-color-text-yellow-contrast)] p-3">
+          <div className="flex items-center gap-2 text-[var(--alert)]">
             <ShieldAlert aria-hidden="true" className="size-4" />
             <h3 className="text-sm font-medium">Approval required</h3>
           </div>
           {pendingApprovals.map((approval) => (
             <div key={approval.id} className="grid gap-2">
               <p className="text-sm">{approval.title}</p>
-              {approval.description ? <p className="text-xs leading-5 text-[var(--app-text-50)]">{approval.description}</p> : null}
+              {approval.description ? <p className="text-xs leading-5 text-[var(--foreground-50)]">{approval.description}</p> : null}
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="app"
@@ -191,7 +191,7 @@ export function TaskDetailPanel({
             <Button
               variant="ghost"
               size="sm"
-              className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]"
+              className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]"
               disabled={busy === "cancel" || task.status === "completed" || task.status === "canceled"}
               onClick={() =>
                 mutate<TaskDetail>({
@@ -208,7 +208,7 @@ export function TaskDetailPanel({
         </div>
       </div>
 
-      <div className="grid gap-3 rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+      <div className="grid gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-medium">Subtasks</h3>
           <Badge variant="neutral">{task.completedSubtasks}/{task.subtasksCount}</Badge>
@@ -219,7 +219,7 @@ export function TaskDetailPanel({
               <button
                 key={subtask.id}
                 type="button"
-                className="flex items-center gap-2 rounded-[8px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-2 text-left text-sm outline-none hover:bg-[rgba(255,255,255,0.06)] focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]"
+                className="flex items-center gap-2 rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-2 text-left text-sm outline-none hover:bg-[var(--foreground-5)] focus-visible:ring-2 focus-visible:ring-[var(--focused)]"
                 onClick={() =>
                   mutate<TaskDetail>({
                     key: subtask.id,
@@ -230,13 +230,13 @@ export function TaskDetailPanel({
                   })
                 }
               >
-                {subtask.status === "completed" ? <Check aria-hidden="true" className="size-4 text-[#9df0b4]" /> : <Square aria-hidden="true" className="size-4 text-[var(--app-text-50)]" />}
+                {subtask.status === "completed" ? <Check aria-hidden="true" className="size-4 text-[var(--tt-color-text-green-contrast)]" /> : <Square aria-hidden="true" className="size-4 text-[var(--foreground-50)]" />}
                 <span>{subtask.title}</span>
               </button>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-[var(--app-text-50)]">No subtasks</p>
+          <p className="text-xs text-[var(--foreground-50)]">No subtasks</p>
         )}
         <div className="flex gap-2">
           <Input surface="dark" label="New subtask" value={subtaskTitle} onChange={(event) => setSubtaskTitle(event.target.value)} />
@@ -260,22 +260,22 @@ export function TaskDetailPanel({
         </div>
       </div>
 
-      <div className="grid gap-3 rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+      <div className="grid gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
         <div className="flex items-center gap-2">
-          <MessageSquare aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+          <MessageSquare aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
           <h3 className="text-sm font-medium">Comments</h3>
         </div>
         {task.comments.length ? (
           <div className="grid max-h-64 gap-2 overflow-y-auto">
             {task.comments.map((message) => (
-              <div key={message.id} className="rounded-[8px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-3">
-                <p className="text-xs text-[var(--app-text-50)]">{message.senderUser?.name ?? message.senderAgent?.name ?? message.senderType}</p>
+              <div key={message.id} className="rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3">
+                <p className="text-xs text-[var(--foreground-50)]">{message.senderUser?.name ?? message.senderAgent?.name ?? message.senderType}</p>
                 <p className="mt-1 text-sm leading-6">{message.body}</p>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-[var(--app-text-50)]">No comments</p>
+          <p className="text-xs text-[var(--foreground-50)]">No comments</p>
         )}
         <Textarea surface="dark" label="Comment" value={comment} onChange={(event) => setComment(event.target.value)} className="min-h-24" />
         <Button
@@ -297,22 +297,22 @@ export function TaskDetailPanel({
         </Button>
       </div>
 
-      <div className="grid gap-3 rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+      <div className="grid gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
         <div className="flex items-center gap-2">
-          <Paperclip aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+          <Paperclip aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
           <h3 className="text-sm font-medium">Attachments</h3>
         </div>
         {task.attachments.length ? (
           <div className="grid gap-2">
             {task.attachments.map((file) => (
-              <div key={file.id} className="flex items-center justify-between gap-3 rounded-[8px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-2">
+              <div key={file.id} className="flex items-center justify-between gap-3 rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-2">
                 <span className="truncate text-sm">{file.name}</span>
                 <Badge variant="neutral">{file.visibility}</Badge>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-[var(--app-text-50)]">No attachments</p>
+          <p className="text-xs text-[var(--foreground-50)]">No attachments</p>
         )}
         <FileUpload
           label="Attach files"
@@ -329,9 +329,9 @@ export function TaskDetailPanel({
         />
       </div>
 
-      <div className="grid gap-3 rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+      <div className="grid gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
         <div className="flex items-center gap-2">
-          <ShieldAlert aria-hidden="true" className="size-4 text-[var(--app-primary-light)]" />
+          <ShieldAlert aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
           <h3 className="text-sm font-medium">Approval request</h3>
         </div>
         <div className="flex gap-2">
@@ -356,14 +356,14 @@ export function TaskDetailPanel({
         </div>
       </div>
 
-      <div className="grid gap-2 rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+      <div className="grid gap-2 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
         <h3 className="text-sm font-medium">Sessions</h3>
         {task.sessions.length ? (
           task.sessions.map((session) => (
             <button
               key={session.id}
               type="button"
-              className="flex items-center justify-between gap-3 rounded-[8px] border border-[var(--app-border)] bg-[rgba(0,0,0,0.12)] p-2 text-left outline-none hover:bg-[rgba(255,255,255,0.06)] focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]"
+              className="flex items-center justify-between gap-3 rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-2 text-left outline-none hover:bg-[var(--foreground-5)] focus-visible:ring-2 focus-visible:ring-[var(--focused)]"
               onClick={() => onLaunchSession?.(session.id)}
             >
               <span className="truncate text-sm">{session.id}</span>
@@ -371,7 +371,7 @@ export function TaskDetailPanel({
             </button>
           ))
         ) : (
-          <p className="text-xs text-[var(--app-text-50)]">No sessions</p>
+          <p className="text-xs text-[var(--foreground-50)]">No sessions</p>
         )}
       </div>
     </section>

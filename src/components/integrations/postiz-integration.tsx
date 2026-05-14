@@ -45,26 +45,26 @@ export function PostizIntegration({ orgId, initialData }: { orgId: string; initi
   }
 
   return (
-    <main className="min-h-full bg-[var(--app-canvas)] p-4 text-[var(--app-text)] md:p-6">
+    <main className="min-h-full bg-[var(--background)] p-4 text-[var(--foreground-80)] md:p-6">
       <div className="mx-auto grid max-w-[1120px] gap-5">
-        <Link href={`/org/${orgId}/integrations`} className="inline-flex items-center gap-2 text-sm text-[var(--app-text-50)] hover:text-[var(--app-text)]">
+        <Link href={`/org/${orgId}/integrations`} className="inline-flex items-center gap-2 text-sm text-[var(--foreground-50)] hover:text-[var(--foreground-80)]">
           <ArrowLeft aria-hidden="true" className="size-4" />
           Integrations
         </Link>
-        <section className="grid gap-4 rounded-[12px] border border-[var(--app-border)] bg-[var(--app-panel)] p-4">
+        <section className="grid gap-4 rounded-[12px] border border-[var(--border-10)] bg-[var(--background-sidepanel)] p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <span className="grid size-10 place-items-center rounded-[9px] bg-[rgba(255,255,255,0.08)] text-[var(--app-primary-light)]">
+              <span className="grid size-10 place-items-center rounded-[9px] bg-[var(--foreground-8)] text-[var(--foreground-80)]">
                 <Megaphone aria-hidden="true" className="size-5" />
               </span>
               <div>
-                <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--app-text-50)]">Postiz</p>
+                <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">Postiz</p>
                 <h1 className="text-2xl font-medium">Social publishing channels</h1>
               </div>
             </div>
             <Badge variant={data.integration.status === "connected" ? "success" : "warning"}>{data.integration.status}</Badge>
           </div>
-          <p className="text-sm leading-6 text-[var(--app-text-50)]">{data.publishing.queueLabel}</p>
+          <p className="text-sm leading-6 text-[var(--foreground-50)]">{data.publishing.queueLabel}</p>
           <div className="grid gap-3 md:grid-cols-[220px_1fr_auto]">
             <SelectField
               surface="dark"
@@ -87,22 +87,22 @@ export function PostizIntegration({ orgId, initialData }: { orgId: string; initi
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="ghost" className="text-[var(--app-text)] hover:bg-[rgba(255,255,255,0.06)]" onClick={check}>
+            <Button variant="ghost" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={check}>
               <RefreshCw aria-hidden="true" className="size-4" />
               Check status
             </Button>
-            {message ? <span className="inline-flex items-center text-sm text-[var(--app-primary-light)]">{message}</span> : null}
+            {message ? <span className="inline-flex items-center text-sm text-[var(--foreground-80)]">{message}</span> : null}
           </div>
         </section>
-        <section className="grid gap-3 rounded-[12px] border border-[var(--app-border)] bg-[var(--app-panel)] p-4">
+        <section className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--background-sidepanel)] p-4">
           <h2 className="font-medium">Channels</h2>
           {data.channels.length ? (
             <div className="grid gap-2">
               {data.channels.map((channel) => (
-                <div key={channel.id} className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--app-border)] bg-[rgba(255,255,255,0.04)] p-3">
+                <div key={channel.id} className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-medium">{channel.displayName}</span>
-                    <span className="mt-1 block text-xs text-[var(--app-text-50)]">{channel.channelType} / {channel.mode}</span>
+                    <span className="mt-1 block text-xs text-[var(--foreground-50)]">{channel.channelType} / {channel.mode}</span>
                   </span>
                   <Badge variant="success">{channel.status}</Badge>
                 </div>
