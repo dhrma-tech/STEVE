@@ -1,4 +1,5 @@
 import * as React from "react";
+import { PricingCta } from "@/components/marketing/pricing-cta";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
 
@@ -49,6 +50,7 @@ export interface PricingCardProps extends React.HTMLAttributes<HTMLDivElement> {
   description: string;
   features: readonly string[];
   ctaLabel: string;
+  ctaHref?: string;
   highlighted?: boolean;
   onCtaClick?: () => void;
 }
@@ -61,6 +63,7 @@ export function PricingCard({
   description,
   features,
   ctaLabel,
+  ctaHref,
   highlighted = false,
   onCtaClick,
   className,
@@ -95,9 +98,13 @@ export function PricingCard({
         </ul>
       </CardContent>
       <CardFooter className="px-1">
-        <Button variant={highlighted ? "dark" : "light"} fullWidth onClick={onCtaClick}>
-          {ctaLabel}
-        </Button>
+        {ctaHref ? (
+          <PricingCta href={ctaHref} label={ctaLabel} highlighted={highlighted} />
+        ) : (
+          <Button variant="light" fullWidth onClick={onCtaClick}>
+            {ctaLabel}
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

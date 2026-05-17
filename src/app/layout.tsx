@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { EB_Garamond, Figtree, IBM_Plex_Mono, Pixelify_Sans } from "next/font/google";
 import { cn } from "@/lib/utils/cn";
+import { Toaster } from "sonner";
 import "@xyflow/react/dist/style.css";
 import "@/styles/globals.css";
 
@@ -98,6 +99,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         suppressHydrationWarning
       >
         {children}
+        <Toaster position="bottom-right" richColors closeButton theme={theme === "dark" ? "dark" : "light"} />
       </body>
     </html>
   );

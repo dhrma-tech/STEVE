@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { errorResponse } from "@/lib/api/responses";
 import { requireOrgMember } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
-import { createSandboxSessionForTask } from "@/lib/queue/sandbox-execution";
+import { completeAgentSession, startAgentSession } from "@/lib/queue/sandbox-execution";
 import {
   activeTaskStatuses,
   appTargetOptions,
@@ -802,7 +802,24 @@ async function ensureTaskThread({ orgId, taskId, userId, title }: { orgId: strin
 }
 
 async function createSessionForTask({ orgId, taskId, agentId }: { orgId: string; taskId: string; agentId: string | null }) {
-  return createSandboxSessionForTask({ orgId, taskId, agentId });
+  const task = await prisma.task.findFirst({
+    where: { id: taskId, organizationId: orgId },
+    include: { department: true, agent: { include: { department: true } } }
+  });
+  const session = await startAgentSession({ orgId, taskId, agentId });
+  if (session && task) {
+    void completeAgentSession({
+      orgId,
+      sessionId: session.id,
+      taskId,
+      agentId,
+      agentName: task.agent?.name ?? "Agent",
+      deptName: task.department?.name ?? task.agent?.department.name ?? "company",
+      taskTitle: task.title,
+      taskDescription: task.description
+    });
+  }
+  return session;
 }
 
 function buildCalendar(tasks: ReturnType<typeof serializeTaskSummary>[]) {

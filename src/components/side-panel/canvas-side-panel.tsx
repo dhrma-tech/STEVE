@@ -1,14 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Bot, Briefcase, Building2, FileText, Home, MessageSquare, RefreshCw, Send } from "lucide-react";
+import { Building2, FolderOpen, Gauge, GitBranch, Kanban, MessageSquare, RefreshCw, Send, Sparkles } from "lucide-react";
 import { AgentControlCenter } from "@/components/agents/agent-control-center";
 import { ChatWorkspace } from "@/components/chat/chat-workspace";
 import { DepartmentDetailPanel } from "@/components/departments/department-detail-panel";
 import { FileLibrary } from "@/components/files/file-library";
 import { TaskCreateDialog, type TaskCreateDefaults } from "@/components/tasks/task-create-dialog";
 import { TaskWorkspace } from "@/components/tasks/task-workspace";
-import { AdvisorChat } from "@/components/ai/advisor-chat";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -58,7 +57,7 @@ export function CanvasSidePanel({
   }
 
   return (
-    <aside className="animate-panel-slide-in flex min-h-[520px] w-full shrink-0 flex-col border-t border-[var(--border-10)] bg-[var(--background-sidepanel)] text-[var(--foreground-80)] lg:min-h-0 lg:w-[390px] lg:border-l lg:border-t-0 xl:w-[430px]">
+    <aside aria-label="Workspace panel" className="animate-panel-slide-in flex min-h-[520px] w-full shrink-0 flex-col border-t border-[var(--border-10)] bg-[var(--background-sidepanel)] text-[var(--foreground-80)] lg:h-full lg:min-h-0 lg:w-[390px] lg:border-l lg:border-t-0 xl:w-[430px] [&_button]:focus-visible:ring-offset-[var(--background-sidepanel)]">
       {selectedDepartment ? (
         <DepartmentDetailPanel
           orgId={data.organization.id}
@@ -72,31 +71,31 @@ export function CanvasSidePanel({
           <div className="border-b border-[var(--border-10)] p-2">
             <TabsList className="flex w-full gap-1 overflow-x-auto scrollbar-none">
               <TabsTrigger value="home" className="flex-1 gap-2 px-2 text-xs">
-                <Home className="size-3.5" />
+                <Gauge className="size-3.5" />
                 <span className="hidden sm:inline">Home</span>
               </TabsTrigger>
               <TabsTrigger value="cofounder" className="flex-1 gap-2 px-2 text-xs">
-                <Bot className="size-3.5" />
+                <Sparkles className="size-3.5" />
                 <span className="hidden sm:inline">AI</span>
               </TabsTrigger>
               <TabsTrigger value="company" className="flex-1 gap-2 px-2 text-xs">
-                <Building2 className="size-3.5" />
+                <GitBranch className="size-3.5" />
                 <span className="hidden sm:inline">Co</span>
               </TabsTrigger>
               <TabsTrigger value="tasks" className="flex-1 gap-2 px-2 text-xs">
-                <Briefcase className="size-3.5" />
+                <Kanban className="size-3.5" />
                 <span className="hidden sm:inline">Tasks</span>
               </TabsTrigger>
               <TabsTrigger value="library" className="flex-1 gap-2 px-2 text-xs">
-                <FileText className="size-3.5" />
+                <FolderOpen className="size-3.5" />
                 <span className="hidden sm:inline">Files</span>
               </TabsTrigger>
             </TabsList>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-4">
-            <TabsContent value="home" className="mt-0 grid gap-4 animate-tab-content-fade">
+          <div className="min-h-0 flex-1 overflow-hidden p-4 [&>[data-state=inactive]]:hidden">
+            <TabsContent value="home" className="mt-0 flex h-full flex-col gap-4 overflow-y-auto animate-tab-content-fade">
               <PanelHeading eyebrow="Home" title={greeting(data.organization.name)} icon={<MessageSquare aria-hidden="true" className="size-4" />} />
-              <section className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
+              <section className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3 shadow-[var(--shadow-outset-100)]">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-medium">Roadmap progress</h3>
@@ -104,10 +103,10 @@ export function CanvasSidePanel({
                   </div>
                   <Badge variant="brand">{data.roadmap.progress}%</Badge>
                 </div>
-                <Progress value={data.roadmap.progress} />
+                <Progress value={data.roadmap.progress} aria-label="Roadmap progress" />
                 <Button variant="app" size="sm" onClick={onOpenRoadmap}>Open roadmap</Button>
               </section>
-              <section className="grid gap-2">
+              <section className="grid gap-2 pb-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-medium">Suggested next</h3>
                   <Button variant="ghost" size="sm">
@@ -121,7 +120,9 @@ export function CanvasSidePanel({
                       key={item.id}
                       type="button"
                       disabled={item.status === "locked"}
-                      className="rounded-[10px] outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--focused)] disabled:opacity-55"
+                      aria-label={item.status === "locked" ? `${item.title} — locked until previous stage completes` : `Create task: ${item.title}`}
+                      title={item.status === "locked" ? "Complete previous roadmap items to unlock" : undefined}
+                      className="rounded-[10px] outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--focused)] disabled:opacity-55 disabled:cursor-not-allowed"
                       onClick={() => createFromSuggested(item)}
                     >
                       <MiniRow title={item.title} detail={`${item.stage} - ${item.workType}`} status={item.status} />
@@ -131,28 +132,23 @@ export function CanvasSidePanel({
                   <EmptyState surface="dark" title="No suggested tasks" description="Roadmap suggestions will appear after more items unlock." />
                 )}
               </section>
-              <AdvisorChat orgName={data.organization.name} />
             </TabsContent>
 
-            <TabsContent value="cofounder" className="mt-0 grid gap-4 animate-tab-content-fade">
+            <TabsContent value="cofounder" className="mt-0 h-full animate-tab-content-fade">
               <ChatWorkspace orgId={data.organization.id} initialKind="cofounder" compact />
             </TabsContent>
 
-            <TabsContent value="company" className="mt-0 grid gap-4 animate-tab-content-fade">
-              <PanelHeading eyebrow="Company" title={data.organization.name} icon={<Building2 aria-hidden="true" className="size-4" />} />
-              <StackStatus label="Domain" status="sandbox" />
-              <StackStatus label="Email" status="sandbox" />
-              <StackStatus label="Payment" status="trial" />
-              <StackStatus label="Hosting" status="managed" />
+            <TabsContent value="company" className="mt-0 grid h-full gap-4 overflow-y-auto animate-tab-content-fade">
               <AgentControlCenter
                 orgId={data.organization.id}
                 initialAgentId={selectedAgentId}
+                orgName={data.organization.name}
                 compact
                 onLaunchSession={onLaunchTaskSession}
               />
             </TabsContent>
 
-            <TabsContent value="tasks" className="mt-0 grid gap-4 animate-tab-content-fade">
+            <TabsContent value="tasks" className="mt-0 grid h-full gap-4 overflow-y-auto animate-tab-content-fade">
               <TaskWorkspace
                 orgId={data.organization.id}
                 initialTaskId={selectedTaskId}
@@ -161,7 +157,7 @@ export function CanvasSidePanel({
               />
             </TabsContent>
 
-            <TabsContent value="library" className="mt-0 grid gap-4 animate-tab-content-fade">
+            <TabsContent value="library" className="mt-0 grid h-full gap-4 overflow-y-auto animate-tab-content-fade">
               <FileLibrary orgId={data.organization.id} compact />
             </TabsContent>
           </div>
@@ -191,7 +187,7 @@ function PanelHeading({ eyebrow, title, icon }: { eyebrow: string; title: string
 
 function MiniRow({ title, detail, status }: { title: string; detail: string; status: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
+    <div className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3 shadow-[var(--shadow-outset-100)]">
       <div className="min-w-0">
         <h3 className="truncate text-sm font-medium">{title}</h3>
         <p className="mt-1 truncate text-xs text-[var(--foreground-50)]">{detail}</p>

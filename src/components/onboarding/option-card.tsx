@@ -20,6 +20,7 @@ export function OptionCard({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={selected}
       className={cn(
         "grid gap-2 rounded-[12px] border p-4 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
         selected ? "border-[var(--tt-brand-color-500)] bg-[rgba(98,41,255,0.08)]" : "border-[var(--border-10)] bg-[var(--background-l0)] hover:bg-white"

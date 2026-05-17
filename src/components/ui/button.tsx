@@ -1,18 +1,10 @@
 import * as React from "react";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 export type ButtonVariant = "light" | "dark" | "brand" | "ghost" | "app" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
-/*
- * Variants align to Section J tier semantics:
- *   light  — Section J "light surface" pill for marketing/auth (Slice 3: now uses Section B tokens)
- *   dark   — marketing dark gradient CTA (Section J Tier 6 canvas CTA style on light bg)
- *   brand  — brand-tinted CTA (uses --tt-brand-color-*)
- *   ghost  — Tier 3 ghost on light surface (Slice 3: now uses Section B tokens)
- *   app    — Tier 1 dark-mode primary (near-white solid, dark text) per Section J Tier 1
- *   danger — Tier 5 destructive per Section J Tier 5 (transparent + red text + border)
- */
 const variantClasses: Record<ButtonVariant, string> = {
   light:
     "border-[0.8px] border-[var(--border-10)] bg-[var(--background-l0)] text-[var(--foreground)] shadow-[var(--shadows-light-buttons-md)] hover:brightness-[1.02] active:brightness-[0.98]",
@@ -38,6 +30,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   variant?: ButtonVariant;
   size?: ButtonSize;
   fullWidth?: boolean;
+  loading?: boolean;
 }
 
 export function buttonClassName({
@@ -52,7 +45,7 @@ export function buttonClassName({
   className?: string;
 } = {}) {
   return cn(
-    "inline-flex shrink-0 items-center justify-center rounded-[8px] font-normal outline-none transition-[background,border-color,box-shadow,filter,color] duration-[var(--tt-transition-duration-short)] ease-[var(--tt-transition-easing-default)] focus-visible:ring-2 focus-visible:ring-[var(--focused)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] disabled:pointer-events-none disabled:opacity-50",
+    "inline-flex shrink-0 items-center justify-center rounded-[8px] font-normal outline-none transition-[background,border-color,box-shadow,filter,color] duration-[var(--tt-transition-duration-short)] ease-[var(--tt-transition-easing-default)] focus-visible:ring-2 focus-visible:ring-[var(--focused)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50",
     sizeClasses[size],
     variantClasses[variant],
     fullWidth && "w-full",
@@ -61,13 +54,17 @@ export function buttonClassName({
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "light", size = "md", fullWidth = false, type = "button", ...props }, ref) => (
+  ({ className, variant = "light", size = "md", fullWidth = false, loading = false, type = "button", disabled, children, ...props }, ref) => (
     <button
       ref={ref}
       type={type}
+      disabled={disabled ?? loading}
       className={buttonClassName({ variant, size, fullWidth, className })}
       {...props}
-    />
+    >
+      {loading ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : null}
+      {children}
+    </button>
   )
 );
 

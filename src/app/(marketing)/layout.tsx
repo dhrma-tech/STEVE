@@ -10,7 +10,7 @@ export default async function MarketingLayout({ children }: { children: ReactNod
   const workspaceHref = activeOrg
     ? `/org/${activeOrg.id}/canvas`
     : session.user
-      ? "/onboarding"
+      ? "/questions"
       : "/login";
 
   return (

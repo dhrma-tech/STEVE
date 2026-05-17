@@ -32,10 +32,13 @@ export function ChatThreadList({
           New
         </Button>
       </div>
-      <div className="relative">
-        <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--foreground-50)]" />
-        <Input surface="dark" label="Search threads" className="pl-9" value={query} onChange={(event) => onQueryChange(event.target.value)} />
-      </div>
+      <Input 
+        surface="dark" 
+        label="Search threads" 
+        startIcon={<Search aria-hidden="true" className="size-4" />} 
+        value={query} 
+        onChange={(event) => onQueryChange(event.target.value)} 
+      />
       {threads.length ? (
         <div className="grid max-h-[320px] gap-2 overflow-y-auto">
           {threads.map((thread) => (

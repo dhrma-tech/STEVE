@@ -3,25 +3,24 @@
 import * as React from "react";
 import {
   Background,
-  Controls,
   MarkerType,
-  MiniMap,
-  Panel,
   ReactFlow,
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
+  useReactFlow,
   type Edge,
   type Node,
   type NodeMouseHandler,
   type Viewport
 } from "@xyflow/react";
-import { GripVertical, Maximize2, Workflow } from "lucide-react";
+import { Building2, GripVertical, Maximize2, Workflow, X } from "lucide-react";
 import { Rnd } from "react-rnd";
 import { CofounderNode } from "@/components/canvas/cofounder-node";
+import { DepartmentAgentPopup } from "@/components/canvas/department-agent-popup";
 import { DepartmentNode } from "@/components/canvas/department-node";
+import { InteractiveBackground } from "@/components/canvas/interactive-background";
 import { QueryShells } from "@/components/canvas/query-shells";
-import { WorkspacePreviewCard } from "@/components/canvas/workspace-preview-card";
 import { DepartmentBoardDialog } from "@/components/departments/department-board";
 import { CanvasSidePanel } from "@/components/side-panel/canvas-side-panel";
 import { Button } from "@/components/ui/button";
@@ -72,12 +71,21 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
   const [roadmapVisible, setRoadmapVisible] = React.useState(initialRoadmapOpen);
   const [sessionVisible, setSessionVisible] = React.useState(Boolean(initialSessionId));
   const [sessionId, setSessionId] = React.useState(initialSessionId);
-  const [panelFloating, setPanelFloating] = React.useState(false);
+  const [agentPopup, setAgentPopup] = React.useState<{
+    departmentId: string;
+    departmentName: string;
+    departmentColor: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [panelFloating, setPanelFloating] = React.useState(true);
   const [panelBounds, setPanelBounds] = React.useState({ x: 0, y: 0, width: 420, height: 0 });
   React.useEffect(() => {
-    const saved = typeof window !== "undefined" ? localStorage.getItem("canvasPanelBounds") : null;
-    if (saved) {
-      try { setPanelBounds(JSON.parse(saved) as typeof panelBounds); } catch { /* ignore */ }
+    const savedBounds = typeof window !== "undefined" ? localStorage.getItem("canvasPanelBounds") : null;
+    const savedFloating = typeof window !== "undefined" ? localStorage.getItem("canvasPanelFloating") : null;
+    if (savedFloating !== null) setPanelFloating(savedFloating !== "false");
+    if (savedBounds) {
+      try { setPanelBounds(JSON.parse(savedBounds) as typeof panelBounds); } catch { /* ignore */ }
     } else {
       setPanelBounds({ x: Math.max(0, window.innerWidth - 440), y: 68, width: 420, height: window.innerHeight - 68 });
     }
@@ -90,6 +98,13 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
     if (!initialRoadmapOpen) return;
     queueMicrotask(() => setRoadmapVisible(true));
   }, [initialRoadmapOpen]);
+
+  // Allow AppShell map button to open roadmap even when modal was already closed
+  React.useEffect(() => {
+    const handler = () => setRoadmapVisible(true);
+    window.addEventListener("open-roadmap", handler);
+    return () => window.removeEventListener("open-roadmap", handler);
+  }, []);
 
   React.useEffect(() => {
     if (!initialSessionId) return;
@@ -112,10 +127,23 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
     });
   }, [activeTab, data.organization.id, selectedNodeId, viewport]);
 
-  const onNodeClick = React.useCallback<NodeMouseHandler>((_event, node) => {
+  const onNodeClick = React.useCallback<NodeMouseHandler>((event, node) => {
     if (node.type !== "department") return;
     setSelectedNodeId(node.id);
-  }, []);
+    const dept = departmentForNodeId(data.departments, node.id);
+    if (dept) {
+      const canvasRect = (event.target as HTMLElement).closest("section")?.getBoundingClientRect();
+      const relX = event.clientX - (canvasRect?.left ?? 0);
+      const relY = event.clientY - (canvasRect?.top ?? 0);
+      setAgentPopup({
+        departmentId: dept.id,
+        departmentName: dept.name,
+        departmentColor: dept.color,
+        x: relX,
+        y: relY
+      });
+    }
+  }, [data.departments]);
 
   const onNodeDoubleClick = React.useCallback<NodeMouseHandler>((_event, node) => {
     const department = node.type === "department" ? departmentForNodeId(data.departments, node.id) : null;
@@ -126,33 +154,29 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
     setSelectedNodeId(`department:${department.slug}`);
   }, []);
 
-  const launchDepartmentAgent = React.useCallback(async (department?: { id: string; name: string; defaultAgent: { id: string } | null; visual: { launchPrompt: string; setupPrompt: string } }) => {
-    if (!department) {
-      return;
-    }
+  const launchDepartmentAgent = React.useCallback(async (department?: { id: string; name: string; defaultAgent: { id: string } | null; visual?: { launchPrompt?: string; setupPrompt?: string } }) => {
+    if (!department) return;
+
+    const agentId = department.defaultAgent?.id ?? null;
+
+    // If no default agent for this department, can't launch
+    if (!agentId) return;
 
     try {
-      const response = await fetch(`/api/orgs/${data.organization.id}/tasks`, {
+      // Use agents launch API directly — reliable path that always creates + returns a session
+      const response = await fetch(`/api/orgs/${data.organization.id}/agents/${agentId}/launch`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          title: `${department.name}: ${department.visual.launchPrompt}`,
-          description: department.visual.setupPrompt,
-          departmentId: department.id,
-          agentId: department.defaultAgent?.id ?? null,
-          type: "agent_task",
-          executeMode: "now",
-          autoAssign: true,
-          appTarget: "staging",
-          source: "department_launch"
-        })
+        body: JSON.stringify({ message: null })
       });
-      const payload = await response.json() as { data?: { id: string; sessions?: Array<{ id: string }> } };
-      setSessionId(payload.data?.sessions?.[0]?.id ?? payload.data?.id ?? "new");
-      setSessionVisible(true);
+      const payload = await response.json() as { data?: { kind: string; session: { id: string } } };
+      const sid = payload.data?.session?.id ?? null;
+      if (sid) {
+        setSessionId(sid);
+        setSessionVisible(true);
+      }
     } catch {
-      setSessionId(null);
-      setSessionVisible(false);
+      // silently ignore
     }
   }, [data.organization.id]);
 
@@ -163,11 +187,12 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
 
   return (
     <ReactFlowProvider>
-      <main className="flex min-h-[calc(100dvh-68px)] flex-col bg-[var(--background)] text-[var(--foreground-80)] lg:flex-row">
+      <main className="flex h-full flex-col bg-[var(--background)] text-[var(--foreground-80)] lg:flex-row">
         <section className={cn(
-          "relative min-w-0 flex-1 overflow-hidden transition-all duration-300",
-          selectedDepartment ? "h-[200px] lg:h-auto" : "h-[calc(100dvh-140px)] lg:h-auto"
+          "relative min-w-0 flex-1 overflow-hidden transition-all duration-300 bg-[var(--background)]",
+          selectedDepartment ? "h-[200px] lg:h-full" : "h-[calc(100dvh-72px)] lg:h-full"
         )}>
+          <InteractiveBackground />
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -183,59 +208,53 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
             fitViewOptions={{ padding: 0.22 }}
             onMoveEnd={(_event, nextViewport) => setViewport(nextViewport)}
             panOnScroll
+            panOnScrollSpeed={1.8}
+            zoomOnScroll={false}
+            zoomOnPinch
+            zoomOnDoubleClick={false}
             selectionOnDrag
-            className="bg-[radial-gradient(circle_at_center,var(--foreground-8),transparent_42%),var(--background)]"
+            className="bg-transparent"
           >
-            {/* Section D: no grid dots on canvas — color transparent removes dots without structural change */}
             <Background color="transparent" gap={28} size={1} />
-            <Controls position="bottom-right" showInteractive={false} />
-            <MiniMap
-              position="bottom-right"
-              pannable
-              zoomable
-              nodeColor={(node) => (node.type === "department" ? String((node.data as DepartmentNodeData).color) : "#eeeee8")}
-              maskColor="rgba(30,30,35,0.64)"
-              className="!bottom-[88px] !bg-[var(--background-l0-80)]"
-            />
-            <Panel position="top-left" className="!m-4">
-              <div className="flex flex-wrap items-center gap-2 rounded-[12px] border border-[var(--border-10)] bg-[var(--background-l0-80)] p-2 shadow-[var(--shadow-outset-100)] backdrop-blur">
-                <Button variant="app" size="sm" onClick={() => setSelectedNodeId(null)}>
-                  <Maximize2 aria-hidden="true" className="size-4" />
-                  Overview
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setActiveTab("home")}>
-                  <Workflow aria-hidden="true" className="size-4" />
-                  Dashboard
-                </Button>
-              </div>
-            </Panel>
           </ReactFlow>
 
-          <div className="pointer-events-none absolute inset-0 hidden xl:block">
-            {data.departments.slice(0, 4).map((department, index) => (
-              <WorkspacePreviewCard
-                key={department.id}
-                department={department}
-                onSelect={() => selectDepartment(department)}
-                className={previewClass(index)}
-              />
-            ))}
-          </div>
+          {/* Agent popup — appears near clicked node */}
+          {agentPopup ? (
+            <DepartmentAgentPopup
+              orgId={data.organization.id}
+              departmentId={agentPopup.departmentId}
+              departmentName={agentPopup.departmentName}
+              departmentColor={agentPopup.departmentColor}
+              screenX={agentPopup.x}
+              screenY={agentPopup.y}
+              onClose={() => setAgentPopup(null)}
+              onLaunch={(sid) => { setSessionId(sid); setSessionVisible(true); setAgentPopup(null); }}
+              onCreateAgent={() => { setActiveTab("company"); setAgentPopup(null); }}
+            />
+          ) : null}
+
+          {/* Canvas controls — bottom-left */}
+          <CanvasControls
+            departments={data.departments}
+            onOverview={() => setSelectedNodeId(null)}
+            onDashboard={() => { setSelectedNodeId(null); setActiveTab("home"); }}
+            onSelectDepartment={selectDepartment}
+          />
         </section>
 
         {!panelFloating ? (
           <div className={cn(
-            "flex-none transition-all duration-300 lg:w-[390px] xl:w-[430px]",
-            selectedDepartment ? "flex-1" : "h-0 overflow-hidden lg:h-auto lg:overflow-visible"
+            "flex-none transition-all duration-300 lg:h-full lg:w-[390px] xl:w-[430px]",
+            selectedDepartment ? "flex-1 lg:flex-none" : "h-0 overflow-hidden lg:h-full lg:overflow-visible"
           )}>
-            <div className="hidden items-center justify-end border-b border-[var(--border-10)] bg-[var(--background-sidepanel)] px-2 py-1 lg:flex">
+            <div className="flex items-center justify-end border-b border-[var(--border-10)] bg-[var(--background-sidepanel)] px-2 py-1">
               <button
                 type="button"
                 title="Float panel"
-                onClick={() => setPanelFloating(true)}
-                className="grid size-6 place-items-center rounded text-[var(--foreground-50)] hover:text-[var(--foreground-80)]"
+                onClick={() => { setPanelFloating(true); localStorage.setItem("canvasPanelFloating", "true"); }}
+                className="grid size-6 place-items-center rounded-[6px] text-[var(--foreground-40)] hover:bg-[var(--foreground-8)] hover:text-[var(--foreground-70)]"
               >
-                <GripVertical aria-hidden="true" className="size-4" />
+                <GripVertical aria-hidden="true" className="size-3.5" />
               </button>
             </div>
             <CanvasSidePanel
@@ -274,17 +293,15 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
             style={{ zIndex: 2000 }}
           >
             <div className="flex h-full flex-col overflow-hidden rounded-[12px] border border-[var(--border-10)] bg-[var(--background-sidepanel)] shadow-[var(--tt-shadow-elevated-md)]">
-              <div className="panel-drag-handle flex cursor-move items-center justify-between border-b border-[var(--border-10)] px-3 py-2 hover:bg-[var(--foreground-5)]">
-                <span className="flex items-center gap-2 text-xs text-[var(--foreground-50)]">
-                  <GripVertical aria-hidden="true" className="size-4" />
-                  Drag to move · resize from edges
-                </span>
+              <div className="panel-drag-handle flex cursor-move items-center justify-between border-b border-[var(--border-10)] px-2 py-1 hover:bg-[var(--foreground-5)]">
+                <GripVertical aria-hidden="true" className="size-3.5 text-[var(--foreground-30)]" />
                 <button
                   type="button"
-                  onClick={() => setPanelFloating(false)}
-                  className="text-xs text-[var(--foreground-50)] hover:text-[var(--foreground-80)]"
+                  title="Dock panel"
+                  onClick={(e) => { e.stopPropagation(); setPanelFloating(false); localStorage.setItem("canvasPanelFloating", "false"); }}
+                  className="grid size-6 place-items-center rounded-[6px] text-[var(--foreground-40)] hover:bg-[var(--foreground-8)] hover:text-[var(--foreground-70)]"
                 >
-                  Dock
+                  <Maximize2 aria-hidden="true" className="size-3" />
                 </button>
               </div>
               <div className="min-h-0 flex-1 overflow-hidden">
@@ -434,11 +451,76 @@ async function persistViewState({
   }).catch(() => null);
 }
 
-function previewClass(index: number) {
-  if (index === 0) return "absolute left-6 top-24";
-  if (index === 1) return "absolute right-6 top-24";
-  if (index === 2) return "absolute bottom-8 left-6";
-  return "absolute bottom-8 right-6";
+function CanvasControls({
+  departments,
+  onOverview,
+  onDashboard,
+  onSelectDepartment
+}: {
+  departments: CanvasDepartment[];
+  onOverview: () => void;
+  onDashboard: () => void;
+  onSelectDepartment: (dept: CanvasDepartment) => void;
+}) {
+  const [showDepts, setShowDepts] = React.useState(false);
+  const { fitView } = useReactFlow();
+
+  return (
+    <div className="absolute bottom-0 left-3 z-10 pb-1">
+      {/* Departments popover */}
+      {showDepts && (
+        <>
+          <div className="fixed inset-0" onClick={() => setShowDepts(false)} />
+          <div className="absolute bottom-12 left-0 z-20 w-[240px] overflow-hidden rounded-[12px] border border-[var(--border-10)] bg-[var(--background-l0-85)] shadow-[var(--tt-shadow-elevated-md)] backdrop-blur">
+            <div className="flex items-center justify-between border-b border-[var(--border-10)] px-3 py-2">
+              <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">Departments</p>
+              <button type="button" onClick={() => setShowDepts(false)} className="text-[var(--foreground-50)] hover:text-[var(--foreground-80)]">
+                <X className="size-3.5" />
+              </button>
+            </div>
+            <div className="p-1.5">
+              {departments.length === 0 ? (
+                <p className="px-3 py-4 text-center text-xs text-[var(--foreground-50)]">No departments yet. Complete onboarding to activate them.</p>
+              ) : null}
+              {departments.map((dept) => (
+                <button
+                  key={dept.id}
+                  type="button"
+                  onClick={() => { onSelectDepartment(dept); setShowDepts(false); }}
+                  className="flex w-full items-center justify-between gap-3 rounded-[8px] px-3 py-2 text-left hover:bg-[var(--foreground-8)]"
+                >
+                  <span className="text-sm font-medium text-[var(--foreground-80)]">{dept.name}</span>
+                  <span className={`text-[10px] font-medium ${dept.availability === "active" ? "text-[var(--success-100)]" : "text-[var(--foreground-50)]"}`}>
+                    {dept.availability === "active" ? "active" : "soon"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="flex items-center gap-1">
+        {[
+          { icon: <Maximize2 className="size-3.5" />, label: "Overview", onClick: () => { onOverview(); fitView({ padding: 0.22, duration: 400 }); } },
+          { icon: <Workflow className="size-3.5" />, label: "Dashboard", onClick: onDashboard },
+          { icon: <Building2 className="size-3.5" />, label: "Departments", onClick: () => setShowDepts(!showDepts) }
+        ].map(({ icon, label, onClick }) => (
+          <button
+            key={label}
+            type="button"
+            onClick={onClick}
+            aria-label={label}
+            title={label}
+            className="flex items-center gap-1.5 rounded-[8px] border border-[var(--border-10)] bg-[var(--background-l0-80)] px-2 py-1 text-[11px] font-medium text-[var(--foreground-70)] backdrop-blur transition-colors hover:bg-[var(--foreground-10)] hover:text-[var(--foreground-80)]"
+          >
+            {icon}
+            <span className="hidden sm:inline">{label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function selectedNodeFromQuery(query: Record<string, string | string[] | undefined>) {

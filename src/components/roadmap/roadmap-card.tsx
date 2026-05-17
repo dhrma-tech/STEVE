@@ -22,9 +22,9 @@ export function RoadmapCard({
       data-roadmap-item-key={item.key}
       className={cn(
         "animate-sd-slide-up group relative grid min-h-[116px] w-full gap-3 rounded-[8px] border-[0.8px] bg-[var(--foreground-5)] p-3 text-left outline-none transition-[background,border-color,box-shadow,transform] hover:-translate-y-0.5 hover:bg-[var(--foreground-8)] focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
-        item.status === "complete" && "border-[rgba(52,168,83,0.58)]",
-        item.status === "available" && "border-[rgba(157,138,255,0.62)] shadow-[rgba(157,138,255,0.12)_0_0_0_1px]",
-        item.status === "locked" && "border-[var(--border-10)] opacity-78",
+        item.status === "complete" && "border-[var(--tt-color-text-green-contrast)]",
+        item.status === "available" && "border-[var(--primary)] shadow-[0_0_0_1px_var(--foreground-10)]",
+        item.status === "locked" && "border-[var(--border-10)] opacity-60",
         selected && "border-[var(--primary)] bg-[var(--foreground-10)] shadow-[rgba(255,255,255,0.12)_0_0_0_1px]"
       )}
       onClick={onSelect}
@@ -60,7 +60,7 @@ function CardIcon({ status, workType }: { status: string; workType: string }) {
 function iconClass(status: string) {
   if (status === "complete") return "border-[rgba(52,168,83,0.45)] bg-[rgba(52,168,83,0.15)] text-[var(--tt-color-text-green-contrast)]";
   if (status === "available") return "border-[rgba(157,138,255,0.42)] bg-[rgba(157,138,255,0.15)] text-[var(--focused)]";
-  return "border-[rgba(255,255,255,0.12)] bg-[var(--foreground-5)] text-[var(--foreground-50)]";
+  return "border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-50)]";
 }
 
 function statusVariant(status: string): BadgeVariant {

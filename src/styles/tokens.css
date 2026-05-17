@@ -551,6 +551,10 @@ html:not(.dark) {
   /* ---------- Section B — Background / Surface ---------- */
   --background: rgb(241, 241, 238);
   --background-l0: rgb(251, 251, 248);
+  --background-l0-85: rgb(251, 251, 248);
+  --background-l0-80: rgb(251, 251, 248);
+  --background-l0-50: rgb(251, 251, 248);
+  --background-sidepanel: rgb(246, 246, 243);
   --background-screen: rgb(242, 242, 238);
 
   /* ---------- Section B — Foreground / Text ---------- */

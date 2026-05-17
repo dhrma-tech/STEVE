@@ -8,6 +8,7 @@ export type PricingPlan = {
   description: string;
   usageIncluded: string;
   cta: string;
+  ctaHref: string;
   highlighted?: boolean;
   comingSoon?: boolean;
   features: string[];
@@ -22,6 +23,7 @@ export const pricingPlans: PricingPlan[] = [
     description: "Start with a managed company workspace and enough included usage to evaluate the operating loop.",
     usageIncluded: "$15 usage included",
     cta: "Start free trial",
+    ctaHref: "/login",
     features: ["7 day trial", "$15 included usage", "Managed agent workspace", "GitHub, Supabase, and Vercel graduation path"]
   },
   {
@@ -32,6 +34,7 @@ export const pricingPlans: PricingPlan[] = [
     description: "Run the full founder workspace with active departments, tasks, files, and managed integrations.",
     usageIncluded: "Usage billed separately",
     cta: "Run a company",
+    ctaHref: "/login",
     highlighted: true,
     features: ["8 department system", "Agent tasks and approvals", "Roadmap and tech tree", "All managed integrations included"]
   },
@@ -43,6 +46,7 @@ export const pricingPlans: PricingPlan[] = [
     description: "Multiplayer, shared billing, and SOC 2 for teams ready to run together. Coming soon.",
     usageIncluded: "Coming soon",
     cta: "Join waitlist",
+    ctaHref: "/login?plan=team",
     comingSoon: true,
     features: ["Team members", "Shared billing", "Role-aware organization settings", "Coming soon state"]
   }

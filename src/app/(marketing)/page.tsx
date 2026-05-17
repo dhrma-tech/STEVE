@@ -1,34 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import {
   ChaptersSection,
   DemoSections,
   FooterCtaSection,
   IndustryWordsearchSection,
+  MissionSection,
   ProductPreviewSection,
   RoadmapPreviewSection,
-  StatsSection,
-  ToolCarouselSection,
-  ValuePropsSection
+  ToolCarouselSection
 } from "@/components/marketing/home-sections";
-import { getSession } from "@/lib/auth/session";
-import { resolveActiveOrg } from "@/lib/orgs/active";
-
 export const metadata: Metadata = {
   title: "Cofounder — Run an entire company with agents",
   description: "Activate departments, build a roadmap, launch tasks, and keep humans in the loop. The company operating system, powered by agents."
 };
 
-export default async function HomePage() {
-  const session = await getSession();
-  const activeOrg = session.user ? await resolveActiveOrg(session.user.id) : null;
-  const primaryHref = activeOrg
-    ? `/org/${activeOrg.id}/canvas`
-    : session.user
-      ? "/onboarding"
-      : "/login";
-  const primaryLabel = session.user ? "Go to workspace" : "Run a company";
+export default function HomePage() {
+  const primaryHref = "/login";
+  const primaryLabel = "Run a company";
 
   return (
     <main className="bg-[var(--background)] text-[var(--foreground)]">
@@ -69,14 +58,14 @@ export default async function HomePage() {
           <Link
             href={primaryHref}
             className="animate-fade-rise-delay-2 liquid-glass mt-12 rounded-full px-14 py-5 text-base text-white transition-transform duration-300 hover:scale-[1.03]"
+            style={{ color: "white" }}
           >
             {primaryLabel}
           </Link>
         </div>
       </section>
-      <StatsSection />
+      <MissionSection />
       <ProductPreviewSection />
-      <ValuePropsSection />
       <ChaptersSection />
       <RoadmapPreviewSection />
       <DemoSections />
@@ -84,9 +73,7 @@ export default async function HomePage() {
       <IndustryWordsearchSection />
       <FooterCtaSection />
       <div className="sr-only">
-        <Link href="/resources/introducing-cofounder-2">
-          Launch article <ArrowRight aria-hidden="true" />
-        </Link>
+        <Link href="/resources/introducing-cofounder-2">Launch article</Link>
       </div>
     </main>
   );

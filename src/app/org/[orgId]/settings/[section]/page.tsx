@@ -12,7 +12,8 @@ import {
   PreferencesSettingsForm,
   SupportSettingsPanel
 } from "@/components/settings/settings-sections";
-import { SettingsShell, settingsNavItems, type SettingsSection } from "@/components/settings/settings-shell";
+import { SettingsShell } from "@/components/settings/settings-shell";
+import { settingsNavItems, type SettingsSection } from "@/components/settings/settings-constants";
 import { getBillingData } from "@/lib/billing/data";
 import { getIntegrationDetail } from "@/lib/integrations/data";
 import {

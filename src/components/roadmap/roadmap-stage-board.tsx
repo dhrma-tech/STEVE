@@ -18,7 +18,7 @@ export function RoadmapStageBoard({
   onSelectItem: (item: RoadmapItem) => void;
 }) {
   return (
-    <div className="min-h-0 overflow-x-auto pb-4">
+    <div className="h-full min-h-0 overflow-x-auto overflow-y-auto pb-4">
       <div className="flex min-w-max gap-4 pr-4">
         {roadmap.stages.map((stage) => (
           <section
@@ -43,7 +43,7 @@ export function RoadmapStageBoard({
             <div className="relative grid gap-3 p-3">
               {stage.items.length ? (
                 <>
-                  <span aria-hidden="true" className="absolute bottom-7 left-6 top-7 w-px border-l border-dashed border-[rgba(255,255,255,0.16)]" />
+                  <span aria-hidden="true" className="absolute bottom-7 left-6 top-7 w-px border-l border-dashed border-[var(--border-10)]" />
                   {stage.items.map((item, index) => (
                     <div key={item.id} className="relative grid gap-2 pl-6">
                       <span

@@ -40,6 +40,7 @@ export default function PricingPage() {
               description={`${plan.description} ${plan.usageIncluded}.`}
               features={plan.features}
               ctaLabel={plan.cta}
+              ctaHref={plan.ctaHref}
               highlighted={plan.highlighted}
             />
           ))}
@@ -47,13 +48,14 @@ export default function PricingPage() {
 
         <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <PricingCalculator />
-          <Card className="grid content-center gap-4 p-5">
+          <Card className="grid gap-4 p-5">
+            <div className="min-h-[220px] rounded-[8px] border border-[var(--color-border-card)] bg-[linear-gradient(135deg,#f4efe7,#dff2e1_45%,#d7e8ff)]" />
             <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--foreground-50)]">Data graduation</p>
             <h2 className="text-[32px] font-normal leading-[1.15] tracking-[0px]">GitHub, Supabase, and Vercel stay portable.</h2>
             <p className="text-[15px] leading-7 text-[var(--foreground-60)]">
               We manage your repository, database, and deployments so you can ship from day one — and hand the keys back whenever you want. Graduate to your own GitHub, Supabase, and Vercel accounts with one click.
             </p>
-            <Link href="/docs" className={buttonClassName({ variant: "dark" })}>
+            <Link href="/docs" className={buttonClassName({ variant: "light" })}>
               Read docs
             </Link>
           </Card>

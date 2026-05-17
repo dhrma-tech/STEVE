@@ -147,7 +147,7 @@ export function FilePreviewPanel({
           <Badge variant="neutral">{file.preview.kind}</Badge>
         </div>
         {file.preview.text ? (
-          <pre className="max-h-[240px] overflow-auto whitespace-pre-wrap rounded-[8px] bg-[var(--foreground-inverse-20)] p-3 text-xs leading-5 text-[var(--foreground-80)]">
+          <pre className="max-h-[100px] overflow-auto whitespace-pre-wrap rounded-[8px] bg-[var(--foreground-inverse-20)] p-3 text-xs leading-5 text-[var(--foreground-80)]">
             {file.preview.text}
           </pre>
         ) : (
@@ -193,7 +193,6 @@ export function FilePreviewPanel({
         <div className="flex flex-wrap gap-2 text-xs text-[var(--foreground-50)]">
           <span>Folder: {file.folder?.name ?? "none"}</span>
           <span>Updated: {formatDate(file.updatedAt)}</span>
-          <span>Storage: {file.storageKey}</span>
         </div>
       </div>
 
@@ -220,7 +219,7 @@ export function FilePreviewPanel({
           maxFiles={1}
           disabled={saving !== null}
           onFilesSelected={addVersion}
-          className="min-h-28"
+          className="min-h-16"
         />
       </div>
 

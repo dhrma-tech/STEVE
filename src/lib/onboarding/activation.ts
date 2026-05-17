@@ -12,6 +12,11 @@ export async function activateOrganization({
   organizationId: string;
   userId: string;
 }) {
+  // Remove seeded demo agents so users start with a clean slate
+  await prisma.agent.deleteMany({
+    where: { organizationId, isDefault: true }
+  });
+
   const departmentBySlug = new Map<string, string>();
 
   for (const [sortOrder, definition] of departmentDefinitions.entries()) {

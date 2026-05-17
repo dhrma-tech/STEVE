@@ -26,6 +26,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { Textarea } from "@/components/ui/textarea";
 import { OptionCard } from "@/components/onboarding/option-card";
 import { DesignOnboardingWizard } from "@/components/onboarding/design-onboarding-wizard";
+import { IdeaPanel } from "@/components/onboarding/idea-panel";
 
 type Answer = {
   questionKey: string;
@@ -63,7 +64,7 @@ type InitialState = {
 
 type ActionLog = { label: string; status: string };
 
-export function CompanyOnboardingWorkspace({ initialState }: { initialState: InitialState }) {
+export function CompanyOnboardingWorkspace({ initialState, userName }: { initialState: InitialState; userName?: string }) {
   const router = useRouter();
   const [state, setState] = React.useState(initialState);
   const [description, setDescription] = React.useState(initialState.organization.description ?? "");
@@ -169,107 +170,26 @@ export function CompanyOnboardingWorkspace({ initialState }: { initialState: Ini
   }
 
   return (
-    <main className="min-h-dvh bg-[var(--background)] p-4 text-[var(--foreground-80)]">
-      <div className="grid min-h-[calc(100dvh-32px)] gap-4 lg:grid-cols-[minmax(0,1fr)_456px]">
-        <section className="relative overflow-hidden rounded-[18px] border border-[var(--border-10)] bg-[radial-gradient(circle_at_center,rgba(98,41,255,0.18),rgba(30,30,35,0)_38%),var(--background)] p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--foreground-50)]">Company activation canvas</p>
-              <h1 className="mt-2 text-3xl font-medium tracking-[0px]">{state.organization.name}</h1>
-            </div>
-            <Badge variant={activated ? "success" : "warning"}>{activated ? "Departments active" : "Onboarding"}</Badge>
-          </div>
+    <main className="relative h-dvh overflow-hidden bg-black">
+      {/* Looping background video — replace /login-bg.mp4.mp4 with your own clip */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        className="absolute inset-0 h-full w-full object-cover"
+      >
+        <source src="/login-bg.mp4.mp4" type="video/mp4" />
+      </video>
 
-          <div className="relative mx-auto mt-10 min-h-[430px] max-w-[720px]">
-            <div className="absolute left-1/2 top-1/2 size-[310px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-white/15" />
-            <div className="absolute left-1/2 top-1/2 grid size-28 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-[18px] border border-[var(--border-10)] bg-[var(--card)]">
-              <Bot aria-hidden="true" className="size-8 text-[var(--focused)]" />
-              <span className="text-xs text-[var(--foreground-50)]">Cofounder</span>
-            </div>
-            {departmentDefinitions.map((department, index) => {
-              const angle = (Math.PI * 2 * index) / departmentDefinitions.length - Math.PI / 2;
-              const x = 50 + Math.cos(angle) * 38;
-              const y = 50 + Math.sin(angle) * 38;
-              const Icon = department.lucideIcon;
-              const built = state.departments.some((item) => item.slug === department.slug);
-              return (
-                <div key={department.slug} className="absolute grid min-w-[120px] -translate-x-1/2 -translate-y-1/2 gap-1 rounded-[12px] border border-white/10 bg-[var(--background-l0-85)] p-3 text-center" style={{ left: `${x}%`, top: `${y}%` }}>
-                  <Icon aria-hidden="true" className="mx-auto size-5" style={{ color: department.color }} />
-                  <span className="text-xs">{department.name}</span>
-                  <span className="text-[10px] uppercase text-[var(--foreground-50)]">{built ? department.availability.replace("_", " ") : "pending"}</span>
-                </div>
-              );
-            })}
-          </div>
+      {/* Subtle dark overlay so panels stay readable */}
+      <div className="absolute inset-0 bg-black/30" />
 
-          <div className="grid gap-3 lg:grid-cols-3">
-            <StatusTile label="Questions" value={`${answeredCount}/5`} />
-            <StatusTile label="Business plan" value={businessPlan ? "Generated" : "Pending"} />
-            <StatusTile label="Activation" value={activated ? "Complete" : "Pending"} />
-          </div>
-        </section>
-
-        <AppPanel className="grid content-start gap-4 overflow-y-auto p-4">
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-[10px] bg-[var(--tt-brand-color-500)]">
-              <Sparkles aria-hidden="true" className="size-5" />
-            </span>
-            <div>
-              <h2 className="font-medium tracking-[0px]">Cofounder onboarding</h2>
-              <p className="text-xs text-[var(--foreground-50)]">Company questions, business plan, activation, brand kit.</p>
-            </div>
-          </div>
-
-          {error ? <ErrorState title="Onboarding request failed" description={error} /> : null}
-
-          {!showDesign ? (
-            <div className="grid gap-4">
-              <Textarea surface="dark" label="Describe the company" value={description} onChange={(event) => setDescription(event.target.value)} description="Minimum 20 characters. Cofounder will generate 5 company questions." />
-              <Button variant="app" disabled={description.trim().length < 20 || loading === "describe"} onClick={describeCompany}>
-                {loading === "describe" ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <Send aria-hidden="true" className="size-4" />}
-                Generate questions
-              </Button>
-
-              <AnsweredQuestions answers={state.answers} />
-
-              <Button variant="brand" disabled={!allAnswered || loading === "business-plan"} onClick={generatePlan}>
-                {loading === "business-plan" ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : null}
-                Generate business plan
-              </Button>
-
-              {businessPlan ? <BusinessPlanPreview plan={businessPlan} /> : <EmptyState title="Business plan pending" description="Answer all five company questions, then generate the Product/Service and ICP sections." />}
-
-              <Button variant="app" disabled={!businessPlan || loading === "activate"} onClick={activateDepartments}>
-                {loading === "activate" ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <CheckCircle2 aria-hidden="true" className="size-4" />}
-                Accept & activate departments
-              </Button>
-            </div>
-          ) : (
-            <DesignOnboardingWizard
-              orgId={state.organization.id}
-              initialState={state.design}
-              onStatusChange={(status) => setState((current) => ({ ...current, organization: { ...current.organization, designOnboardingStatus: status } }))}
-            />
-          )}
-
-          <ActionLog actions={actions} />
-        </AppPanel>
+      {/* Floating idea panel — solid bg ensures video never bleeds through */}
+      <div className="animate-panel-slide-in pointer-events-auto fixed bottom-5 right-5 top-16 z-50 flex w-[390px] flex-col overflow-hidden rounded-[16px] border border-[var(--border-10)] bg-[var(--background-sidepanel)] shadow-[var(--tt-shadow-elevated-md)] xl:w-[420px]">
+        <IdeaPanel orgId={state.organization.id} userName={userName} />
       </div>
-
-      <QuestionDialog
-        open={questionOpen}
-        onOpenChange={setQuestionOpen}
-        question={companyQuestions[questionIndex]}
-        index={questionIndex}
-        selectedOption={selectedOption}
-        setSelectedOption={setSelectedOption}
-        freeText={freeText}
-        setFreeText={setFreeText}
-        loading={loading}
-        onAnswer={() => answerQuestion(false)}
-        onDecide={() => answerQuestion(true)}
-        onDecideAll={decideAll}
-      />
     </main>
   );
 }

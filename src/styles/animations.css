@@ -460,3 +460,89 @@
 .animate-fade-rise         { animation: fade-rise 0.8s ease-out both; }
 .animate-fade-rise-delay   { animation: fade-rise 0.8s ease-out 0.2s both; }
 .animate-fade-rise-delay-2 { animation: fade-rise 0.8s ease-out 0.4s both; }
+
+/* ─── Tab content fade ───────────────────────────────────── */
+@keyframes tab-content-fade {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-tab-content-fade { animation: tab-content-fade 0.22s ease-out both; }
+
+/* ─── Stepper check-pop ──────────────────────────────────── */
+@keyframes check-pop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-check-pop { animation: check-pop 0.25s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* ─── Wizard tile stagger ────────────────────────────────── */
+@keyframes tile-appear {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.animate-tile-appear {
+  animation: tile-appear 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ─── Wizard step slide transitions ─────────────────────── */
+@keyframes step-enter-fwd {
+  from { opacity: 0; transform: translateX(36px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes step-enter-bck {
+  from { opacity: 0; transform: translateX(-36px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-step-enter-fwd { animation: step-enter-fwd 320ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-step-enter-bck { animation: step-enter-bck 320ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* ─── Pricing CTA press + ring ──────────────────────────── */
+@keyframes pricing-btn-press {
+  0%   { transform: scale(1);     box-shadow: 0 0 0 0   rgba(0,0,0,0.10); }
+  20%  { transform: scale(0.96);  box-shadow: 0 0 0 0   rgba(0,0,0,0.06); }
+  55%  { transform: scale(1.015); box-shadow: 0 0 0 6px rgba(0,0,0,0.04); }
+  100% { transform: scale(1);     box-shadow: 0 0 0 10px rgba(0,0,0,0.00); }
+}
+.animate-pricing-btn-press {
+  animation: pricing-btn-press 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ─── Nav drawer pop-in ──────────────────────────────────── */
+@keyframes nav-drawer-pop {
+  0%   { opacity: 0; transform: scale(0.90) translateY(-10px); }
+  55%  { opacity: 1; transform: scale(1.02) translateY(2px); }
+  100% { opacity: 1; transform: scale(1)    translateY(0); }
+}
+.animate-nav-drawer-pop {
+  animation: nav-drawer-pop 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: top left;
+}
+
+/* ─── Onboarding loading screen ─────────────────────────── */
+@keyframes loading-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.06); }
+}
+.animate-loading-pulse {
+  animation: loading-pulse 3s ease-in-out infinite;
+  position: absolute;
+}
+
+@keyframes loading-orbit {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.animate-loading-orbit {
+  animation: loading-orbit 4s linear infinite;
+  position: relative;
+}
+
+@keyframes loading-dot {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50%       { opacity: 1;   transform: scale(1.2); }
+}
+.animate-loading-dot {
+  animation: loading-dot 0.9s ease-in-out infinite;
+  display: inline-block;
+}

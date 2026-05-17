@@ -1,7 +1,7 @@
 "use client";
 
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { Bot } from "lucide-react";
+import { Cpu } from "lucide-react";
 
 export function CofounderNode({ data }: NodeProps) {
   const nodeData = data as { label: string; subtitle: string; progress: number };
@@ -11,7 +11,7 @@ export function CofounderNode({ data }: NodeProps) {
       <Handle type="source" position={Position.Top} className="opacity-0" />
       <Handle type="target" position={Position.Bottom} className="opacity-0" />
       <div className="mx-auto grid size-12 place-items-center rounded-[14px] border border-[var(--border-10)] bg-[var(--primary)] text-[var(--primary-foreground)]">
-        <Bot aria-hidden="true" className="size-5" />
+        <Cpu aria-hidden="true" className="size-5" />
       </div>
       <div>
         <h2 className="text-lg font-medium tracking-[0px]">{nodeData.label}</h2>

@@ -21,7 +21,7 @@ import type { RoadmapData } from "@/lib/roadmap/data";
 
 type RoadmapItem = RoadmapData["stages"][number]["items"][number];
 type RoadmapLaunchResponse =
-  | { kind: "task_created" | "existing_task"; task: { id: string; title: string; status: string }; item: RoadmapItem }
+  | { kind: "task_created" | "existing_task"; task: { id: string; title: string; status: string }; item: RoadmapItem; sessionId?: string | null }
   | { kind: "approval_requested"; task: { id: string; title: string; status: string }; approval: { id: string; status: string }; item: RoadmapItem }
   | { kind: "already_complete"; item: RoadmapItem };
 
@@ -49,8 +49,7 @@ export function RoadmapModal({
 
   const roadmap = roadmapState.data;
   const items = React.useMemo(() => roadmap?.stages.flatMap((stage) => stage.items) ?? [], [roadmap]);
-  const defaultItem = items.find((item) => item.status === "available") ?? items.find((item) => item.status !== "complete") ?? items[0] ?? null;
-  const selectedItem = items.find((item) => item.id === selectedItemId) ?? defaultItem;
+  const selectedItem = items.find((item) => item.id === selectedItemId) ?? null;
 
   async function launchItem(item: RoadmapItem, input: string | null) {
     setLaunchState({ itemId: item.id, busy: true, message: null, error: null });
@@ -81,9 +80,10 @@ export function RoadmapModal({
     setLaunchState({ itemId: item.id, busy: false, message, error: null });
     roadmapState.reload();
 
-    if (result && "task" in result && item.workType === "agent") {
+    // Use sessionId returned by the API (not task.id which is wrong)
+    if (result && "sessionId" in result && result.sessionId) {
       onOpenChange(false);
-      onLaunchSession(result.task.id);
+      onLaunchSession(result.sessionId);
     }
   }
 
@@ -106,7 +106,7 @@ export function RoadmapModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="left-4 top-4 h-[calc(100dvh-32px)] w-[calc(100vw-32px)] max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-[16px] p-0" showClose>
+      <DialogContent className="left-4 top-4 flex h-[calc(100dvh-32px)] w-[calc(100vw-32px)] max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-[16px] p-0" showClose>
         <DialogHeader className="border-b border-[var(--border-10)] p-4 pr-12">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex items-start gap-3">
@@ -146,28 +146,31 @@ export function RoadmapModal({
           ) : null}
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-hidden p-4">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
           {roadmapState.status === "loading" && !roadmap ? <LoadingState rows={7} label="Loading roadmap" /> : null}
           {roadmapState.status === "error" ? (
             <ErrorState title="Roadmap did not load" description={roadmapState.error} retry={{ onClick: roadmapState.reload }} />
           ) : null}
           {roadmap ? (
-            <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,430px)]">
-              <div className="min-h-0">
+            <div className={`grid min-h-0 flex-1 gap-4 ${selectedItem ? "lg:grid-cols-[minmax(0,1fr)_minmax(360px,430px)]" : ""}`}>
+              {/* Board — must have h-full + overflow-hidden so inner scroll works */}
+              <div className="flex min-h-0 flex-col overflow-hidden">
                 {mode === "board" ? (
                   <RoadmapStageBoard roadmap={roadmap} selectedItemId={selectedItem?.id ?? null} onSelectItem={(item) => setSelectedItemId(item.id)} />
                 ) : (
                   <DependencyMatrix roadmap={roadmap} onSelectItem={(item) => setSelectedItemId(item.id)} />
                 )}
               </div>
-              <RoadmapDetailPanel
-                key={selectedItem?.id ?? "empty-roadmap-detail"}
-                item={selectedItem}
-                launchState={launchState}
-                completing={completingItemId === selectedItem?.id}
-                onLaunch={launchItem}
-                onComplete={completeItem}
-              />
+              {selectedItem ? (
+                <RoadmapDetailPanel
+                  key={selectedItem.id}
+                  item={selectedItem}
+                  launchState={launchState}
+                  completing={completingItemId === selectedItem.id}
+                  onLaunch={launchItem}
+                  onComplete={completeItem}
+                />
+              ) : null}
             </div>
           ) : null}
         </div>

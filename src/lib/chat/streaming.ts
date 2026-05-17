@@ -1,4 +1,4 @@
-import { generateSandboxChatResponse } from "@/lib/ai/sandbox-chat";
+import { generateChatResponse } from "@/lib/ai/sandbox-chat";
 import {
   finalizeChatMessage,
   prepareChatMessage,
@@ -85,7 +85,7 @@ export function buildChatMessageStream(input: StreamChatInput): ReadableStream<U
           }
         });
 
-        const response = generateSandboxChatResponse({
+        const response = await generateChatResponse({
           body: preparation.trimmedBody,
           organizationName: preparation.organizationName,
           threadKind: preparation.thread.kind,
@@ -93,12 +93,7 @@ export function buildChatMessageStream(input: StreamChatInput): ReadableStream<U
           attachmentNames: preparation.attachments.map((file) => file.name)
         });
 
-        const { thinking, answer } = splitThinkingFromBody(response.body);
-        if (thinking) {
-          emit({ event: "thinking", data: { body: thinking } });
-        }
-
-        for (const chunk of splitForStreaming(answer)) {
+        for (const chunk of splitForStreaming(response.body)) {
           emit({ event: "token", data: { delta: chunk } });
           await delay(TOKEN_CHUNK_DELAY_MS);
         }
@@ -120,12 +115,6 @@ export function buildChatMessageStream(input: StreamChatInput): ReadableStream<U
       }
     }
   });
-}
-
-function splitThinkingFromBody(body: string): { thinking: string | null; answer: string } {
-  const match = body.match(/^<thinking>\n?([\s\S]*?)\n?<\/thinking>\s*([\s\S]*)$/);
-  if (!match) return { thinking: null, answer: body };
-  return { thinking: match[1].trim() || null, answer: match[2].trim() };
 }
 
 function delay(ms: number): Promise<void> {

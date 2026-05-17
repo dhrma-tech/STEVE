@@ -1,279 +1,303 @@
 "use client";
 
 import * as React from "react";
-import { Copy, ExternalLink, FileText, Loader2, Maximize2, MessageSquare, MoreHorizontal, Play, RotateCw, Save, TerminalSquare } from "lucide-react";
+import { CheckCircle2, Circle, Loader2, Paperclip, SendHorizonal, Sparkles, TerminalSquare, X, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ErrorState } from "@/components/ui/error-state";
-import { FileUpload } from "@/components/ui/file-upload";
 import { LoadingState } from "@/components/ui/loading-state";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import type { AgentSessionDetail } from "@/components/agents/types";
+import { cn } from "@/lib/utils/cn";
 
 type ApiPayload<T> = { data?: T; error?: { message: string } };
 
+const ACTION_LABELS: Record<string, string> = {
+  "session.start": "Starting up",
+  "context.load": "Reading context",
+  "workspace.write": "Doing the work",
+  "verification.run": "Checking output",
+  "review.prepare": "Wrapping up"
+};
+
 export function AgentWorkspaceDialog({
-  orgId,
-  sessionId,
-  open,
-  onOpenChange
+  orgId, sessionId, open, onOpenChange
 }: {
-  orgId: string;
-  sessionId: string | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  orgId: string; sessionId: string | null; open: boolean; onOpenChange: (open: boolean) => void;
 }) {
   const [session, setSession] = React.useState<AgentSessionDetail | null>(null);
-  const [scratchpad, setScratchpad] = React.useState("");
-  const [message, setMessage] = React.useState("");
-  const [attachmentNames, setAttachmentNames] = React.useState<string[]>([]);
   const [loading, setLoading] = React.useState(false);
-  const [busy, setBusy] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const browserFrameRef = React.useRef<HTMLDivElement>(null);
+  const [message, setMessage] = React.useState("");
+  const [sending, setSending] = React.useState(false);
+  const isPolling = React.useRef(false);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [attachments, setAttachments] = React.useState<string[]>([]);
 
-  const loadSession = React.useCallback(() => {
+  const loadSession = React.useCallback((opts: { silent?: boolean; attempt?: number } = {}) => {
     if (!sessionId || !open) return;
+    const { silent = false, attempt = 0 } = opts;
     const controller = new AbortController();
-    queueMicrotask(() => setLoading(true));
+
+    if (!silent) setLoading(true);
+
     fetch(`/api/orgs/${orgId}/sessions/${sessionId}`, { signal: controller.signal })
-      .then((response) => response.json() as Promise<ApiPayload<AgentSessionDetail>>)
+      .then((r) => r.json() as Promise<ApiPayload<AgentSessionDetail>>)
       .then((payload) => {
-        if (!payload.data) throw new Error(payload.error?.message ?? "Agent session did not load.");
+        if (!payload.data) {
+          if (attempt < 3 && !controller.signal.aborted) {
+            setTimeout(() => loadSession({ silent, attempt: attempt + 1 }), 800);
+            return;
+          }
+          throw new Error(payload.error?.message ?? "Session did not load.");
+        }
         setSession(payload.data);
-        setScratchpad(payload.data.scratchpad ?? "");
         setError(null);
       })
-      .catch((caught) => {
-        if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : "Agent session did not load.");
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
+      .catch((e) => { if (!controller.signal.aborted) setError(e instanceof Error ? e.message : "Session did not load."); })
+      .finally(() => { if (!controller.signal.aborted && !silent) setLoading(false); });
+
     return () => controller.abort();
   }, [open, orgId, sessionId]);
 
+  // Initial load
+  React.useEffect(() => { return loadSession(); }, [loadSession]);
+
+  // Silent poll while running — no loading state so no flicker
   React.useEffect(() => {
-    return loadSession();
-  }, [loadSession]);
+    if (session?.status !== "running") { isPolling.current = false; return; }
+    isPolling.current = true;
+    const id = setInterval(() => loadSession({ silent: true }), 3000);
+    return () => { clearInterval(id); isPolling.current = false; };
+  }, [loadSession, session?.status]);
 
-  async function mutate<T>({ key, path, method = "POST", body, selectSession }: { key: string; path: string; method?: "POST" | "PATCH"; body?: unknown; selectSession: (payload: T) => AgentSessionDetail | null | undefined }) {
-    setBusy(key);
-    setError(null);
-    try {
-      const response = await fetch(path, {
-        method,
-        headers: body ? { "content-type": "application/json" } : undefined,
-        body: body ? JSON.stringify(body) : undefined
-      });
-      const payload = (await response.json()) as ApiPayload<T>;
-      const nextSession = payload.data ? selectSession(payload.data) : null;
-      if (!response.ok || !nextSession) throw new Error(payload.error?.message ?? "Session update failed.");
-      setSession(nextSession);
-      setScratchpad(nextSession.scratchpad ?? "");
-      return nextSession;
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Session update failed.");
-      return null;
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function saveScratchpad() {
-    if (!session) return;
-    await mutate<AgentSessionDetail>({
-      key: "scratchpad",
-      method: "PATCH",
-      path: `/api/orgs/${orgId}/sessions/${session.id}/scratchpad`,
-      body: { scratchpad },
-      selectSession: (payload) => payload
-    });
-  }
+  React.useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [session?.messages?.length]);
 
   async function sendMessage() {
-    if (!session || !message.trim()) return;
-    setBusy("message");
-    setError(null);
+    if (!session || !message.trim() || sending) return;
+    setSending(true);
     try {
-      if (attachmentNames.length) {
+      if (attachments.length) {
         await fetch(`/api/orgs/${orgId}/tasks/${session.task.id}/attachments`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ attachmentNames })
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ attachmentNames: attachments })
         });
       }
-      const response = await fetch(`/api/orgs/${orgId}/tasks/${session.task.id}/comments`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
+      const r = await fetch(`/api/orgs/${orgId}/tasks/${session.task.id}/comments`, {
+        method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ body: message })
       });
-      if (!response.ok) throw new Error("Message could not be sent.");
-      setMessage("");
-      setAttachmentNames([]);
-      loadSession();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Message could not be sent.");
-    } finally {
-      setBusy(null);
-    }
+      if (!r.ok) throw new Error("Message could not be sent.");
+      setMessage(""); setAttachments([]);
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+      loadSession({ silent: true });
+    } catch { /* silent */ } finally { setSending(false); }
   }
 
-  const browserUrl = session?.browserUrl ?? `/org/${orgId}/canvas`;
+  const isRunning = session?.status === "running";
+  const isComplete = session?.status === "completed";
+
+  // Parse scratchpad — split off the working header, show the body
+  const output = React.useMemo(() => {
+    if (!session?.scratchpad) return "";
+    const lines = session.scratchpad.split("\n");
+    const bodyStart = lines.findIndex((l) => l.startsWith("---"));
+    return bodyStart >= 0 ? lines.slice(bodyStart + 1).join("\n").trim() : session.scratchpad;
+  }, [session?.scratchpad]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[94dvh] max-w-[1180px] overflow-y-auto p-0">
-        <DialogHeader className="border-b border-[var(--border-10)] p-4 pr-12">
-          <DialogTitle className="flex items-center gap-2">
-            <TerminalSquare aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
+      <DialogContent className="flex h-[94dvh] max-w-[1100px] flex-col gap-0 overflow-hidden p-0">
+
+        {/* Header */}
+        <DialogHeader className="flex shrink-0 flex-row items-center justify-between border-b border-[var(--border-10)] px-4 py-3 pr-10">
+          <DialogTitle className="flex items-center gap-2 text-sm font-medium">
+            <TerminalSquare aria-hidden="true" className="size-4 text-[var(--foreground-50)]" />
             Agent Workspace
           </DialogTitle>
-          <DialogDescription>
-            Watch the agent browser, action log, task chat, scratchpad, and replay for this run.
-          </DialogDescription>
+          {session ? (
+            <div className="flex items-center gap-2">
+              <Badge variant={isComplete ? "success" : isRunning ? "running" : "neutral"}>
+                {session.status}
+              </Badge>
+              <span className="font-mono text-[10px] text-[var(--foreground-40)]">{formatMs(session.elapsedMs)}</span>
+            </div>
+          ) : null}
         </DialogHeader>
 
-        {loading ? <div className="p-5"><LoadingState rows={8} label="Loading agent session" /></div> : null}
-        {error ? <div className="p-5"><ErrorState title="Agent session issue" description={error} retry={{ onClick: loadSession }} /></div> : null}
+        {/* Initial loading */}
+        {loading && !session ? (
+          <div className="flex flex-1 items-center justify-center p-6">
+            <LoadingState rows={5} label="Starting agent…" />
+          </div>
+        ) : null}
 
-        {!loading && session ? (
-          <div className="animate-agent-cue-pop grid min-h-[680px] gap-0 lg:grid-cols-[minmax(0,1.2fr)_380px]">
-            <section className="grid min-h-0 gap-0 border-b border-[var(--border-10)] lg:border-b-0 lg:border-r">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-10)] p-4">
-                <div className="min-w-0">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">{session.agent?.department.name ?? "Agent"}</p>
-                  <h2 className="mt-1 truncate text-xl font-medium">{session.task.title}</h2>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant={session.status === "running" ? "running" : session.status === "completed" ? "success" : "neutral"}>{session.status}</Badge>
-                  <Badge variant="neutral">{formatMs(session.elapsedMs)}</Badge>
+        {!loading && error && !session ? (
+          <div className="flex flex-1 items-center justify-center p-6">
+            <ErrorState title="Session issue" description={error} retry={{ onClick: () => loadSession({ attempt: 0 }) }} />
+          </div>
+        ) : null}
+
+        {session ? (
+          <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_340px]">
+
+            {/* LEFT — output */}
+            <section className="flex min-h-0 flex-col border-r border-[var(--border-10)]">
+              {/* Task bar */}
+              <div className="flex shrink-0 items-center gap-3 border-b border-[var(--border-10)] px-4 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="font-mono text-[10px] uppercase tracking-wide text-[var(--foreground-40)]">
+                    {session.agent?.department.name ?? "Agent"}
+                  </p>
+                  <p className="truncate text-sm font-semibold text-[var(--foreground-80)]">{session.task.title}</p>
                 </div>
               </div>
 
-              <Tabs defaultValue="browser" className="grid min-h-0 gap-0">
-                <div className="border-b border-[var(--border-10)] p-3">
-                  <TabsList>
-                    <TabsTrigger value="browser">Agent Browser</TabsTrigger>
-                    <TabsTrigger value="scratchpad">Scratchpad</TabsTrigger>
-                    <TabsTrigger value="replay">Replay</TabsTrigger>
-                  </TabsList>
-                </div>
-
-                <TabsContent value="browser" className="m-0 grid gap-3 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="truncate rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-3)] px-3 py-2 font-mono text-xs text-[var(--foreground-50)]">
-                      {browserUrl}
-                    </span>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={() => navigator.clipboard?.writeText(browserUrl)}>
-                        <Copy aria-hidden="true" className="size-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={() => browserFrameRef.current?.requestFullscreen?.()}>
-                        <Maximize2 aria-hidden="true" className="size-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={() => window.open(browserUrl, "_blank", "noopener,noreferrer")}>
-                        <ExternalLink aria-hidden="true" className="size-4" />
-                      </Button>
+              {/* Output area */}
+              <div className="flex-1 overflow-y-auto px-5 py-5">
+                {isRunning && !output ? (
+                  <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+                    <div className="relative">
+                      <div className="size-14 rounded-full bg-[var(--foreground-5)] flex items-center justify-center">
+                        <Zap className="size-6 text-[var(--foreground-40)]" aria-hidden="true" />
+                      </div>
+                      <span className="absolute -right-1 -top-1 flex size-4">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--primary)] opacity-40" />
+                        <span className="relative inline-flex size-4 rounded-full bg-[var(--primary)] opacity-80" />
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-[var(--foreground-70)]">Agent is working…</p>
+                      <p className="mt-1 text-xs text-[var(--foreground-40)]">Results will appear here when ready</p>
+                    </div>
+                    <div className="flex gap-1.5">
+                      {[0, 1, 2].map((i) => (
+                        <span key={i} className="size-1.5 rounded-full bg-[var(--foreground-20)] animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                      ))}
                     </div>
                   </div>
-                  <div ref={browserFrameRef} className="min-h-[430px] overflow-hidden rounded-[12px] border border-[var(--border-10)] bg-[var(--background-l-negative-50-100)]">
-                    <iframe title="Agent browser" src={browserUrl} className="h-[430px] w-full border-0 bg-white" />
+                ) : output ? (
+                  <div className="prose prose-sm max-w-none">
+                    <OutputRenderer text={output} />
                   </div>
-                </TabsContent>
-
-                <TabsContent value="scratchpad" className="m-0 grid gap-3 p-4">
-                  <Textarea surface="dark" label="Scratchpad" value={scratchpad} onChange={(event) => setScratchpad(event.target.value)} className="min-h-[420px] font-mono text-sm" />
-                  <Button variant="app" onClick={saveScratchpad} disabled={busy === "scratchpad"}>
-                    {busy === "scratchpad" ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <Save aria-hidden="true" className="size-4" />}
-                    Save scratchpad
-                  </Button>
-                </TabsContent>
-
-                <TabsContent value="replay" className="m-0 p-4">
-                  {session.status === "completed" ? (
-                    <div className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-4">
-                      <div className="flex items-center gap-2">
-                        <FileText aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
-                        <h3 className="text-sm font-medium">Replay ready</h3>
-                      </div>
-                      <p className="text-sm leading-6 text-[var(--foreground-50)]">The recorded replay is saved alongside the completed run and action log.</p>
-                      <Button variant="app" onClick={() => session.replayUrl && window.open(session.replayUrl, "_blank", "noopener,noreferrer")}>Open replay</Button>
-                    </div>
-                  ) : (
-                    <div className="grid min-h-[360px] place-items-center rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-6 text-center">
-                      <div>
-                        <Loader2 aria-hidden="true" className="mx-auto size-7 animate-spin text-[var(--foreground-80)]" />
-                        <h3 className="mt-3 text-sm font-medium">Recording session</h3>
-                        <p className="mt-2 max-w-[40ch] text-xs leading-5 text-[var(--foreground-50)]">Replay becomes available once the agent finishes its run.</p>
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-2 py-16 text-center text-[var(--foreground-40)]">
+                    <TerminalSquare className="size-8 opacity-40" />
+                    <p className="text-sm">No output yet</p>
+                  </div>
+                )}
+              </div>
             </section>
 
-            <aside className="grid min-h-0 content-start gap-4 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">Task chat</p>
-                  <h3 className="mt-1 truncate text-base font-medium">{session.agent?.name ?? "Agent"}</h3>
-                  <p className="mt-1 text-xs text-[var(--foreground-50)]">{session.task.status} / updated {formatDateTime(session.updatedAt)}</p>
+            {/* RIGHT — steps + chat */}
+            <aside className="flex min-h-0 flex-col">
+              {/* Agent info */}
+              <div className="flex shrink-0 items-center gap-2.5 border-b border-[var(--border-10)] px-4 py-2.5">
+                <div className="grid size-8 shrink-0 place-items-center rounded-[8px] bg-[var(--foreground-8)]">
+                  <Sparkles className="size-4 text-[var(--foreground-60)]" aria-hidden="true" />
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Button variant="ghost" size="sm" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={() => onOpenChange(false)}>
-                    Go back
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="px-2 text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" aria-label="Session options">
-                        <MoreHorizontal aria-hidden="true" className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Session options</DropdownMenuLabel>
-                      <DropdownMenuItem onSelect={() => navigator.clipboard?.writeText(window.location.href)}>
-                        Copy session link
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => navigator.clipboard?.writeText(session.task.id)}>
-                        Copy task id
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem disabled={!session.replayUrl} onSelect={() => session.replayUrl && navigator.clipboard?.writeText(session.replayUrl)}>
-                        Copy replay link
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-[var(--foreground-80)]">{session.agent?.name ?? "Agent"}</p>
+                  <p className="text-[10px] text-[var(--foreground-40)]">{formatDateTime(session.updatedAt)}</p>
                 </div>
               </div>
 
-              <ActionLog session={session} onAdvance={(finish) =>
-                mutate<AgentSessionDetail>({
-                  key: finish ? "finish" : "advance",
-                  path: `/api/orgs/${orgId}/sessions/${session.id}/actions`,
-                  body: { finish },
-                  selectSession: (payload) => payload
-                })
-              } busy={busy} />
+              {/* Steps */}
+              {session.actions.length > 0 ? (
+                <div className="shrink-0 border-b border-[var(--border-10)] px-4 py-3">
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.07em] text-[var(--foreground-40)]">Progress</p>
+                  <div className="grid gap-2">
+                    {session.actions.map((action) => (
+                      <div key={action.id} className="flex items-center gap-2.5">
+                        {action.status === "completed" ? (
+                          <CheckCircle2 className="size-3.5 shrink-0 text-[var(--tt-color-text-green-contrast)]" aria-hidden="true" />
+                        ) : action.status === "running" ? (
+                          <Loader2 className="size-3.5 shrink-0 animate-spin text-[var(--primary)]" aria-hidden="true" />
+                        ) : (
+                          <Circle className="size-3.5 shrink-0 text-[var(--foreground-20)]" aria-hidden="true" />
+                        )}
+                        <span className={cn("text-xs", action.status === "completed" ? "text-[var(--foreground-60)]" : action.status === "running" ? "font-medium text-[var(--foreground-80)]" : "text-[var(--foreground-30)]")}>
+                          {ACTION_LABELS[action.actionType] ?? action.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
-              <div className="grid max-h-[280px] gap-2 overflow-y-auto rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto px-4 py-3">
                 {session.messages.length ? (
-                  session.messages.map((item) => <ChatMessage key={item.id} message={item} />)
+                  <div className="grid gap-3">
+                    {session.messages.map((item) => <ChatMessage key={item.id} message={item} />)}
+                    <div ref={messagesEndRef} />
+                  </div>
                 ) : (
-                  <EmptyState surface="dark" icon={<MessageSquare aria-hidden="true" className="size-4" />} title="No task chat yet" description="Messages and agent action notes will appear here." />
+                  <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-[var(--foreground-30)]">
+                    <p className="text-xs">Messages will appear here as the agent works</p>
+                  </div>
                 )}
               </div>
 
-              <Textarea surface="dark" label="Message" value={message} onChange={(event) => setMessage(event.target.value)} className="min-h-24" placeholder="@engineering review the latest run" />
-              <FileUpload label="Attach files" description={attachmentNames.length ? attachmentNames.join(", ") : "Attach files to this task chat."} maxFiles={4} multiple onFilesSelected={(files) => setAttachmentNames(files.map((file) => file.name))} />
-              <Button variant="app" onClick={sendMessage} disabled={!message.trim() || busy === "message"}>
-                {busy === "message" ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <MessageSquare aria-hidden="true" className="size-4" />}
-                Send
-              </Button>
+              {/* Chat composer */}
+              <div className="shrink-0 border-t border-[var(--border-10)] p-3">
+                {attachments.length > 0 ? (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {attachments.map((name) => (
+                      <span key={name} className="inline-flex items-center gap-1 rounded-[5px] border border-[var(--border-10)] px-1.5 py-0.5 text-[10px] text-[var(--foreground-50)]">
+                        <Paperclip className="size-2.5" />{name}
+                        <button type="button" onClick={() => setAttachments((p) => p.filter((n) => n !== name))} className="hover:text-[var(--foreground-80)]">
+                          <X className="size-2.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                <div className={cn("flex items-end gap-2 rounded-[10px] border bg-[var(--foreground-5)] px-3 py-2 transition-colors", "border-[var(--border-10)] focus-within:border-[var(--focused)]")}>
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="mb-0.5 shrink-0 text-[var(--foreground-30)] transition-colors hover:text-[var(--foreground-60)]">
+                    <Paperclip className="size-3.5" aria-hidden="true" />
+                  </button>
+                  <textarea
+                    ref={textareaRef}
+                    value={message}
+                    onChange={(e) => {
+                      setMessage(e.target.value);
+                      e.target.style.height = "auto";
+                      e.target.style.height = `${Math.min(e.target.scrollHeight, 90)}px`;
+                    }}
+                    onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); void sendMessage(); } }}
+                    placeholder="Ask the agent a question…"
+                    disabled={sending}
+                    rows={1}
+                    className="flex-1 resize-none bg-transparent text-xs text-[var(--foreground-80)] placeholder:text-[var(--foreground-30)] focus:outline-none disabled:opacity-50"
+                    style={{ minHeight: "22px", maxHeight: "90px" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void sendMessage()}
+                    disabled={!message.trim() || sending}
+                    className="mb-0.5 grid size-6 shrink-0 place-items-center rounded-[6px] bg-[var(--foreground-10)] text-[var(--foreground-50)] transition-all hover:bg-[var(--foreground-20)] hover:text-[var(--foreground-80)] disabled:pointer-events-none disabled:opacity-30 active:scale-90"
+                  >
+                    {sending ? <Loader2 className="size-3 animate-spin" /> : <SendHorizonal className="size-3" />}
+                  </button>
+                </div>
+                <p className="mt-1 text-[10px] text-[var(--foreground-30)]">Ctrl+Enter to send</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    setAttachments((p) => [...new Set([...p, ...files.map((f) => f.name)])]);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
             </aside>
           </div>
         ) : null}
@@ -282,95 +306,58 @@ export function AgentWorkspaceDialog({
   );
 }
 
-function ActionLog({ session, onAdvance, busy }: { session: AgentSessionDetail; onAdvance: (finish: boolean) => void; busy: string | null }) {
+function OutputRenderer({ text }: { text: string }) {
   return (
-    <div className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <TerminalSquare aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
-          <h3 className="text-sm font-medium">Action log</h3>
-        </div>
-        <Badge variant="neutral">{session.actions.length}</Badge>
-      </div>
-      <div className="grid gap-2">
-        {session.actions.map((action) => (
-          <div key={action.id} className="rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-2">
-            <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-sm">{action.label}</span>
-              <Badge variant={action.status === "running" ? "running" : action.status === "completed" ? "success" : "neutral"}>{action.status}</Badge>
-            </div>
-            {typeof action.payload.detail === "string" ? <p className="mt-1 text-xs leading-5 text-[var(--foreground-50)]">{action.payload.detail}</p> : null}
-          </div>
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Button variant="app" size="sm" onClick={() => onAdvance(false)} disabled={session.status !== "running" || busy === "advance"}>
-          {busy === "advance" ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <Play aria-hidden="true" className="size-4" />}
-          Run next
-        </Button>
-        <Button variant="ghost" size="sm" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={() => onAdvance(true)} disabled={session.status !== "running" || busy === "finish"}>
-          <RotateCw aria-hidden="true" className="size-4" />
-          Finish
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function ChatMessage({ message }: { message: AgentSessionDetail["messages"][number] }) {
-  return (
-    <div className="rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-[var(--foreground-50)]">
-          {message.senderUser?.name ?? message.senderAgent?.name ?? message.senderType} / {formatDateTime(message.createdAt)}
-        </p>
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={() => navigator.clipboard?.writeText(message.body)}>
-          <Copy aria-hidden="true" className="size-3.5" />
-        </Button>
-      </div>
-      <RichMessage body={message.body} />
-    </div>
-  );
-}
-
-function RichMessage({ body }: { body: string }) {
-  const parts = body.split(/```/g);
-  return (
-    <div className="mt-2 grid gap-2 text-sm leading-6">
-      {parts.map((part, index) => {
-        const key = `${index}-${part.slice(0, 12)}`;
-        if (index % 2 === 1) {
-          return <pre key={key} className="overflow-x-auto rounded-[8px] bg-[var(--foreground-inverse-30)] p-3 font-mono text-xs text-[var(--foreground-80)]">{part.trim()}</pre>;
-        }
-        return <p key={key} className={part.includes("<thinking>") ? "rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-2 text-xs text-[var(--foreground-50)]" : ""}>{linkify(part)}</p>;
+    <div className="grid gap-2">
+      {text.split("\n").map((line, i) => {
+        if (line.startsWith("# "))
+          return <h2 key={i} className="text-base font-semibold text-[var(--foreground-80)]">{line.slice(2)}</h2>;
+        if (line.startsWith("## "))
+          return <h3 key={i} className="mt-2 text-xs font-semibold uppercase tracking-wide text-[var(--foreground-50)]">{line.slice(3)}</h3>;
+        if (line.startsWith("- ") || line.startsWith("* "))
+          return (
+            <p key={i} className="flex gap-2 text-sm leading-6 text-[var(--foreground-70)]">
+              <span className="mt-2.5 size-1 shrink-0 rounded-full bg-[var(--foreground-30)]" />
+              <span>{line.slice(2)}</span>
+            </p>
+          );
+        if (/^\d+\.\s/.test(line))
+          return <p key={i} className="text-sm leading-6 text-[var(--foreground-70)] pl-4">{line}</p>;
+        if (line.trim() === "---" || line.trim() === "")
+          return <div key={i} className="h-1" />;
+        if (line.startsWith("**") && line.endsWith("**"))
+          return <p key={i} className="text-sm font-semibold text-[var(--foreground-80)]">{line.slice(2, -2)}</p>;
+        return <p key={i} className="text-sm leading-6 text-[var(--foreground-70)]">{line}</p>;
       })}
     </div>
   );
 }
 
-function linkify(value: string) {
-  const urlPattern = /(https?:\/\/[^\s]+)/g;
-  const pieces = value.split(urlPattern);
-  return pieces.map((piece, index) =>
-    urlPattern.test(piece) ? (
-      <a key={`${piece}-${index}`} className="text-[var(--tt-color-text-blue)] underline" href={piece} target="_blank" rel="noreferrer">{piece}</a>
-    ) : (
-      <React.Fragment key={`${piece}-${index}`}>{piece}</React.Fragment>
-    )
+function ChatMessage({ message }: { message: AgentSessionDetail["messages"][number] }) {
+  const isUser = message.senderType === "user";
+  const isSystem = message.senderType === "system";
+  if (isSystem) {
+    return (
+      <p className="text-center text-[10px] text-[var(--foreground-30)]">{message.body}</p>
+    );
+  }
+  return (
+    <div className={cn("flex flex-col gap-1", isUser ? "items-end" : "items-start")}>
+      <div className={cn("max-w-[90%] rounded-[10px] px-3 py-2 text-xs leading-5",
+        isUser
+          ? "rounded-tr-[3px] bg-[var(--foreground-10)] text-[var(--foreground-80)]"
+          : "rounded-tl-[3px] bg-[var(--foreground-5)] text-[var(--foreground-70)]")}>
+        {message.body}
+      </div>
+    </div>
   );
 }
 
 function formatMs(value: number) {
-  const seconds = Math.max(1, Math.round(value / 1000));
-  if (seconds < 60) return `${seconds}s`;
-  return `${Math.round(seconds / 60)}m`;
+  const s = Math.max(1, Math.round(value / 1000));
+  return s < 60 ? `${s}s` : `${Math.round(s / 60)}m`;
 }
 
 function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  }).format(new Date(value));
+  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
 }

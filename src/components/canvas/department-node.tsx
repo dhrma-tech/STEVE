@@ -17,7 +17,7 @@ export function DepartmentNode({ data, selected }: NodeProps) {
   return (
     <div
       className={cn(
-        "grid w-[190px] gap-3 rounded-[14px] border bg-[var(--background-l0-85)] p-3 text-[var(--foreground-80)] shadow-[var(--shadow-dept-agent-node-dark)] backdrop-blur transition-[border-color,box-shadow] duration-200",
+        "grid w-[190px] gap-3 rounded-[14px] border bg-[var(--background-l0-85)] p-3 text-[var(--foreground-80)] shadow-[var(--shadow-dept-agent-node-dark)] backdrop-blur transition-[border-color,box-shadow,transform] duration-200 hover:scale-[1.02] hover:shadow-[0_8px_32px_rgba(0,0,0,0.12)]",
         selected && "animate-node-select-pop"
       )}
       style={{

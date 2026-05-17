@@ -62,16 +62,13 @@ export function CommandPalette({
           </DialogTitle>
         </DialogHeader>
         <div className="grid gap-3 p-4">
-          <div className="relative">
-            <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--foreground-50)]" />
-            <Input
-              label="Search workspace"
-              className="pl-9"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              autoFocus
-            />
-          </div>
+          <Input
+            label="Search workspace"
+            startIcon={<Search aria-hidden="true" className="size-4" />}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            autoFocus
+          />
           <div className="max-h-[54vh] overflow-y-auto">
             {loading ? (
               <div className="flex items-center gap-2 px-1 py-8 text-sm text-[var(--foreground-50)]">

@@ -18,7 +18,10 @@ export function MarketingFooter() {
               Activate departments, ship the roadmap, and keep humans in the loop on the work that matters. Your company, run by agents you direct.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link href="/login" className={buttonClassName({ variant: "dark" })}>
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center rounded-full bg-[#fdf8f0] px-5 py-2 text-sm font-semibold text-[#1a1917] transition-all duration-300 hover:scale-[1.03] hover:bg-white"
+              >
                 Run a company
               </Link>
               <Link href="/docs" className={buttonClassName({ variant: "light" })}>

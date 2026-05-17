@@ -16,7 +16,7 @@ export function Stepper({ steps, current }: { steps: string[]; current: number }
                 complete ? "border-[var(--success)] bg-[var(--success)] text-white" : active ? "border-[var(--tt-brand-color-500)] bg-[var(--tt-brand-color-500)] text-white" : "border-[var(--border-10)] text-[var(--foreground-50)]"
               )}
             >
-              {complete ? <Check aria-hidden="true" className="size-4" /> : index + 1}
+              {complete ? <Check aria-hidden="true" className="size-4 animate-check-pop" /> : index + 1}
             </span>
             <span className={cn("text-xs leading-4", active ? "text-[var(--foreground)]" : "text-[var(--foreground-50)]")}>{step}</span>
           </li>

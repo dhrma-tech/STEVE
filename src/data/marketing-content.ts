@@ -31,10 +31,10 @@ export const marketingNav = {
     { label: "Start", href: "/how-to/start" },
     { label: "Build", href: "/how-to/build" },
     { label: "Sell", href: "/how-to/sell" },
-    { label: "Scale", href: "/how-to/scale" }
+    { label: "Scale", href: "/how-to/scale" },
+    { label: "Resources", href: "/how-to/resources" }
   ],
   primary: [
-    { label: "Resources", href: "/resources" },
     { label: "Pricing", href: "/pricing" }
   ]
 };
@@ -205,7 +205,7 @@ export const footerLinks = [
   { label: "Privacy", href: "/privacy-policy" },
   { label: "Terms", href: "/terms" },
   { label: "Docs", href: "/docs" },
-  { label: "Resources", href: "/resources" },
+  { label: "Resources", href: "/how-to/resources" },
   { label: "Pricing", href: "/pricing" }
 ];
 

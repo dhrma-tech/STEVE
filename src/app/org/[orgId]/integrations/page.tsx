@@ -14,8 +14,8 @@ type IntegrationsPageProps = {
 export default async function IntegrationsPage({ params }: IntegrationsPageProps) {
   const { orgId } = await params;
   return (
-    <main className="min-h-full bg-[var(--app-canvas)] p-4 text-[var(--app-text)] md:p-6">
-      <div className="mx-auto max-w-[1320px]">
+    <main className="min-h-full bg-[var(--background)] p-6 text-[var(--foreground)] md:p-8">
+      <div className="mx-auto max-w-[1100px]">
         <IntegrationCenter orgId={orgId} initialData={await getIntegrationsData(orgId)} />
       </div>
     </main>

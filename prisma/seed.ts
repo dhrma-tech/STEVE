@@ -206,23 +206,6 @@ async function main() {
     });
 
     departmentBySlug.set(slug, department.id);
-
-    await prisma.agent.upsert({
-      where: { organizationId_slug: { organizationId: organization.id, slug: `${slug}-default` } },
-      update: {},
-      create: {
-        organizationId: organization.id,
-        departmentId: department.id,
-        name: `${name} Agent`,
-        slug: `${slug}-default`,
-        description: `Default ${name} department agent.`,
-        isDefault: true,
-        status: "idle",
-        model: "claude-sonnet-sandbox",
-        toolsJson: json({ sandbox: true }),
-        permissionsJson: json({ dangerousActionsRequireApproval: true })
-      }
-    });
   }
 
   const existingGeneralFolder = await prisma.folder.findFirst({

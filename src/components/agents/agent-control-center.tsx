@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Bot, Filter, Plus, RefreshCw, Search } from "lucide-react";
+import { ArrowLeft, Cpu, Loader2, Plus, RefreshCw, Search } from "lucide-react";
 import { AgentList, MarketplaceSkills } from "@/components/agents/agent-cards";
 import { AgentConfigPanel } from "@/components/agents/agent-config-panel";
 import { AgentCreateDialog } from "@/components/agents/agent-create-dialog";
@@ -18,11 +18,13 @@ type ApiPayload<T> = { data?: T; error?: { message: string } };
 export function AgentControlCenter({
   orgId,
   initialAgentId = null,
+  orgName,
   compact = false,
   onLaunchSession
 }: {
   orgId: string;
   initialAgentId?: string | null;
+  orgName?: string;
   compact?: boolean;
   onLaunchSession: (sessionId: string) => void;
 }) {
@@ -95,19 +97,40 @@ export function AgentControlCenter({
     return () => controller.abort();
   }, [orgId, selectedAgentId]);
 
+  const [activating, setActivating] = React.useState(false);
+
+  async function activateDepartments() {
+    setActivating(true);
+    try {
+      await fetch(`/api/orgs/${orgId}/activate-departments`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({})
+      });
+      refresh();
+    } catch { /* ignore */ }
+    finally { setActivating(false); }
+  }
+
+  const [launchingId, setLaunchingId] = React.useState<string | null>(null);
+
   async function launchAgent(agentId: string) {
+    setLaunchingId(agentId);
+    setError(null);
     try {
       const response = await fetch(`/api/orgs/${orgId}/agents/${agentId}/launch`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message: "Start a sandbox agent run." })
+        body: JSON.stringify({ message: null })
       });
       const payload = (await response.json()) as ApiPayload<{ kind: "launched"; session: { id: string } }>;
-      if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? "Agent could not launch.");
+      if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? "Agent could not start.");
       onLaunchSession(payload.data.session.id);
       refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Agent could not launch.");
+      setError(caught instanceof Error ? caught.message : "Agent could not start.");
+    } finally {
+      setLaunchingId(null);
     }
   }
 
@@ -125,11 +148,11 @@ export function AgentControlCenter({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid size-9 place-items-center rounded-[9px] border border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-80)]">
-            <Bot aria-hidden="true" className="size-4" />
+            <Cpu aria-hidden="true" className="size-4" />
           </span>
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">Agents</p>
-            <h2 className="text-lg font-medium tracking-[0px]">Company team</h2>
+            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">Company</p>
+            <h2 className="text-lg font-medium tracking-[0px]">{orgName ?? "Your agents"}</h2>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -145,14 +168,13 @@ export function AgentControlCenter({
       </div>
 
       <div className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
-        <div className="flex items-center gap-2">
-          <Filter aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
-          <h3 className="text-sm font-medium">Filters</h3>
-        </div>
-        <div className="relative">
-          <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--foreground-50)]" />
-          <Input surface="dark" label="Search agents" className="pl-9" value={query} onChange={(event) => setQuery(event.target.value)} />
-        </div>
+        <Input
+          surface="dark"
+          label="Search agents"
+          startIcon={<Search aria-hidden="true" className="size-4" />}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
         <div className="grid gap-3 md:grid-cols-2">
           <SelectField surface="dark" label="Department" value={departmentId} onValueChange={setDepartmentId} options={departmentOptions} />
           <SelectField surface="dark" label="Status" value={status} onValueChange={setStatus} options={statusOptions} />
@@ -162,14 +184,63 @@ export function AgentControlCenter({
       {error ? <ErrorState title="Agents did not load" description={error} retry={{ onClick: refresh }} /> : null}
       {loading ? <LoadingState rows={5} label="Loading agents" /> : null}
 
+      {!loading && data && data.departments.length === 0 ? (
+        <div className="rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-4 text-center">
+          <p className="text-sm font-medium text-[var(--foreground-80)]">Departments not set up yet</p>
+          <p className="mt-1 text-xs text-[var(--foreground-50)]">Activate your company to create departments and agents.</p>
+          <Button
+            variant="app"
+            size="sm"
+            className="mt-3"
+            disabled={activating}
+            onClick={() => void activateDepartments()}
+          >
+            {activating ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : null}
+            {activating ? "Activating…" : "Activate company"}
+          </Button>
+        </div>
+      ) : null}
+
       {!loading && data ? (
-        <div className={`grid gap-4 ${compact ? "" : "2xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"}`}>
+        compact ? (
+          // Compact: list-or-detail navigation (one panel at a time)
+          selectedAgentId ? (
+            <div className="grid gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-fit text-[var(--foreground-70)] hover:bg-[var(--foreground-5)]"
+                onClick={() => setSelectedAgentId(null)}
+              >
+                <ArrowLeft aria-hidden="true" className="size-3.5" />
+                All agents
+              </Button>
+              {detailLoading ? (
+                <LoadingState rows={5} label="Loading agent" />
+              ) : (
+                <AgentConfigPanel
+                  orgId={orgId}
+                  agent={selectedAgent}
+                  catalog={data}
+                  onAgentChange={(agent) => { setSelectedAgent(agent); refresh(); }}
+                  onLaunchSession={onLaunchSession}
+                />
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              <AgentList agents={data.agents} selectedAgentId={selectedAgentId} onSelect={setSelectedAgentId} onLaunch={launchAgent} launchingId={launchingId} />
+              <MarketplaceSkills skills={data.skills} selectedDepartmentSlug={null} />
+            </div>
+          )
+        ) : (
+        <div className="grid gap-4 2xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <div className="grid gap-4 content-start">
-            <AgentList agents={data.agents} selectedAgentId={selectedAgentId} onSelect={setSelectedAgentId} onLaunch={launchAgent} />
+            <AgentList agents={data.agents} selectedAgentId={selectedAgentId} onSelect={setSelectedAgentId} onLaunch={launchAgent} launchingId={launchingId} />
             <MarketplaceSkills skills={selectedAgent?.recommendedSkills ?? data.skills} selectedDepartmentSlug={selectedAgent?.department.slug ?? null} />
           </div>
           {detailLoading ? (
-            <LoadingState rows={5} label="Loading agent detail" />
+            <LoadingState rows={5} label="Loading agent" />
           ) : (
             <AgentConfigPanel
               orgId={orgId}
@@ -183,6 +254,7 @@ export function AgentControlCenter({
             />
           )}
         </div>
+        )
       ) : null}
 
       <AgentCreateDialog

@@ -1,8 +1,9 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { githubStateCookieName } from "@/lib/auth/github-provider";
-import { destinationForSession, getSession, setSessionCookie } from "@/lib/auth/session";
+import { setSessionCookie } from "@/lib/auth/session";
 import { findOrCreateSandboxUser } from "@/lib/auth/sandbox";
+import { prisma } from "@/lib/db/client";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -32,7 +33,11 @@ export async function GET(request: Request) {
     displayName: "Sandbox Founder",
     email: "sandbox-founder@example.com"
   });
+  // Reset onboarding so dev users always land on /questions
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { onboardingStatus: "not_started" }
+  });
   await setSessionCookie(user.id);
-  const session = await getSession();
-  return NextResponse.redirect(new URL(destinationForSession(session), url.origin));
+  return NextResponse.redirect(new URL("/questions", url.origin));
 }

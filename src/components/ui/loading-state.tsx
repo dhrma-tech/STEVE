@@ -10,7 +10,7 @@ export interface LoadingStateProps extends React.HTMLAttributes<HTMLDivElement> 
 
 export function LoadingState({ rows = 3, surface = "dark", label = "Loading", className, ...props }: LoadingStateProps) {
   return (
-    <div role="status" aria-label={label} className={cn("grid gap-3 rounded-[14px] border-[0.8px] p-4", surface === "dark" ? "border-[var(--border-10)]" : "border-[var(--color-border-card)]", className)} {...props}>
+    <div role="status" aria-label={label} className={cn("grid gap-3 rounded-[14px] border-[0.8px] p-4", surface === "dark" ? "border-[var(--border-10)]" : "border-[var(--border-20)]", className)} {...props}>
       {Array.from({ length: rows }).map((_, index) => (
         <Skeleton
           key={index}

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Bot, Building2, CheckCircle2, Files, ListTodo } from "lucide-react";
+import { Building2, CheckCircle2, Cpu, Files, ListTodo } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -35,7 +35,7 @@ export function SidePanelTabs({ shell }: { shell: OrgShellData }) {
             <MetricGrid shell={shell} />
           </TabsContent>
           <TabsContent value="cofounder" className="mt-0 grid gap-4">
-            <PanelHeader icon={<Bot aria-hidden="true" className="size-4" />} title="Cofounder" label="Assistant" />
+            <PanelHeader icon={<Cpu aria-hidden="true" className="size-4" />} title="Cofounder" label="Assistant" />
             <p className="text-sm leading-6 text-[var(--foreground-50)]">
               Cofounder has organization context, roadmap state, departments, files, and activation history ready for chat wiring.
             </p>

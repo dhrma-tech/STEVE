@@ -32,7 +32,7 @@ export function DepartmentDetailPanel({
     <div className="min-h-0 flex-1 overflow-y-auto p-4">
       <Button variant="ghost" size="sm" onClick={onBack} className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]">
         <ArrowLeft aria-hidden="true" className="size-4" />
-        Back to dashboard
+        Back
       </Button>
 
       <div className="mt-4 grid gap-4">
@@ -65,14 +65,10 @@ export function DepartmentDetailPanel({
             <section className="grid gap-4 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">Department detail</p>
-                  <h2 className="mt-1 text-2xl font-medium tracking-[0px]">{state.detail.name}</h2>
-                  <p className="mt-3 font-mono text-xs leading-6 text-[var(--foreground-50)]">{state.detail.description}</p>
+                  <h2 className="text-xl font-medium tracking-[0px]">{state.detail.name}</h2>
+                  <p className="mt-2 text-xs leading-5 text-[var(--foreground-50)]">{state.detail.description}</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant={state.detail.availability === "active" ? "success" : "warning"}>{state.detail.statusLabel}</Badge>
-                  <Badge variant="neutral">{state.detail.defaultAgentName}</Badge>
-                </div>
+                <Badge variant={state.detail.availability === "active" ? "success" : "warning"}>{state.detail.statusLabel}</Badge>
               </div>
 
               <div className="grid gap-2 sm:grid-cols-3">

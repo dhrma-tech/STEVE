@@ -1,6 +1,7 @@
+import { ollamaChatSafe, OLLAMA_OFFLINE_MESSAGE } from "@/lib/ai/ollama";
 import type { ChatMention } from "@/lib/chat/data";
 
-export function generateSandboxChatResponse({
+export async function generateChatResponse({
   body,
   organizationName,
   threadKind,
@@ -12,32 +13,23 @@ export function generateSandboxChatResponse({
   threadKind: string;
   mentions: ChatMention[];
   attachmentNames: string[];
-}) {
-  const cleanBody = body.trim();
-  const mentionedDepartments = mentions.filter((mention) => mention.type === "department");
-  const mentionSummary = mentionedDepartments.length
-    ? mentionedDepartments.map((mention) => mention.label).join(", ")
-    : "the active company context";
-  const attachmentSummary = attachmentNames.length
-    ? ` I attached ${attachmentNames.length} file${attachmentNames.length === 1 ? "" : "s"} to this thread context.`
-    : "";
-  const focus = threadKind === "task" ? "task thread" : threadKind === "department" ? "department thread" : "Cofounder thread";
+}): Promise<{ body: string; metadata: Record<string, unknown> }> {
+  const threadLabel =
+    threadKind === "task" ? "task discussion"
+    : threadKind === "department" ? "department chat"
+    : "company chat";
 
-  return {
-    body: `<thinking>\nContext checked: ${organizationName}, ${focus}, ${mentionSummary}.\n</thinking>\n\nI read your note: "${truncate(cleanBody, 140)}"\n\nHere is the next useful move:\n- Keep ${mentionSummary} in the loop.\n- Convert any concrete decision into a task if it needs execution.\n- Use attached files as source context before changing workspace state.${attachmentSummary}\n\n\`\`\`plan\n1. Clarify the target outcome.\n2. Assign the right department or agent.\n3. Run the smallest verifiable next step.\n\`\`\``,
-    metadata: {
-      kind: "ai_response",
-      provider: "sandbox",
-      status: "complete",
-      transport: "request_response_sse_ready",
-      thinkingVisible: true,
-      mentionKeys: mentions.map((mention) => mention.key),
-      attachmentNames
-    }
-  };
-}
+  const system = [
+    `You are Cofounder, an AI assistant for ${organizationName}.`,
+    `You help the team plan work, create tasks, run agents, and make decisions.`,
+    `This is a ${threadLabel}. Be concise and direct. Give actionable answers.`,
+    mentions.length ? `Relevant: ${mentions.map((m) => m.label).join(", ")}.` : "",
+    attachmentNames.length ? `Files: ${attachmentNames.join(", ")}.` : ""
+  ].filter(Boolean).join(" ");
 
-function truncate(value: string, limit: number) {
-  if (value.length <= limit) return value;
-  return `${value.slice(0, limit - 1).trim()}...`;
+  const content = await ollamaChatSafe({ system, user: body });
+
+  return content
+    ? { body: content, metadata: { kind: "ai_response", provider: "ollama", status: "complete" } }
+    : { body: OLLAMA_OFFLINE_MESSAGE, metadata: { kind: "ai_response", provider: "ollama", status: "error" } };
 }

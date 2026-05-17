@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, Files, ListChecks, MessageSquareText } from "lucide-react";
+import { Cpu, Files, ListChecks, MessageSquareText } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -17,7 +17,7 @@ type DepartmentDetail = NonNullable<DepartmentDetailData>;
 export function DepartmentSections({ department }: { department: DepartmentDetail }) {
   return (
     <Accordion type="multiple" defaultValue={["agents", "tasks", "files", "context"]} className="grid gap-2">
-      <DepartmentAccordionItem value="agents" icon={<Bot aria-hidden="true" className="size-4" />} title="Agents" count={department.agents.length}>
+      <DepartmentAccordionItem value="agents" icon={<Cpu aria-hidden="true" className="size-4" />} title="Agents" count={department.agents.length}>
         {department.agents.length ? (
           <div className="grid gap-2">
             {department.agents.map((agent) => (
@@ -25,7 +25,7 @@ export function DepartmentSections({ department }: { department: DepartmentDetai
             ))}
           </div>
         ) : (
-          <EmptyState surface="dark" title="No agents connected" description="Activation creates a default agent for every department." />
+          <EmptyState surface="dark" title="No agents yet" description="Launch this department to create a default agent." />
         )}
       </DepartmentAccordionItem>
 
@@ -37,7 +37,7 @@ export function DepartmentSections({ department }: { department: DepartmentDetai
             ))}
           </div>
         ) : (
-          <EmptyState surface="dark" title="No department tasks" description="Roadmap launches and manual task creation will populate this section." />
+          <EmptyState surface="dark" title="No tasks yet" description="Tasks created for this department will appear here." />
         )}
       </DepartmentAccordionItem>
 
@@ -49,11 +49,11 @@ export function DepartmentSections({ department }: { department: DepartmentDetai
             ))}
           </div>
         ) : (
-          <EmptyState surface="dark" title="No department files" description="Files attached to this department will appear here with visibility and folder context." />
+          <EmptyState surface="dark" title="No files yet" description="Files added to this department will appear here." />
         )}
       </DepartmentAccordionItem>
 
-      <DepartmentAccordionItem value="context" icon={<MessageSquareText aria-hidden="true" className="size-4" />} title="Context" count={Object.keys(department.context).length}>
+      <DepartmentAccordionItem value="context" icon={<MessageSquareText aria-hidden="true" className="size-4" />} title="Details" count={Object.keys(department.context).length}>
         <DepartmentContextTabs slug={department.slug} context={department.context} />
       </DepartmentAccordionItem>
     </Accordion>

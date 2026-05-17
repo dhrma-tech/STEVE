@@ -43,22 +43,38 @@ export function MarketingNav({ signedIn = false, workspaceHref = "/login" }: Mar
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-[201] h-[90.8px] w-full overflow-hidden transition-colors",
-        scrolled ? "border-b-[0.8px] border-[#e8e7e6] bg-[var(--background)]" : "bg-transparent"
+        "fixed inset-x-0 top-0 z-[201] h-[90.8px] w-full overflow-hidden transition-all duration-300",
+        scrolled ? "border-b border-[var(--border-10)] bg-[var(--background)]/95 backdrop-blur-md" : "bg-transparent"
       )}
     >
       <MarketingNavContainer className="h-full max-w-full justify-between">
-        <Link href="/" className="text-[18px] font-medium tracking-[0px] text-[var(--foreground)]" aria-label="Cofounder home">
+        {/* Logo — white on dark hero, foreground on light scrolled */}
+        <Link
+          href="/"
+          className={cn(
+            "text-[18px] font-medium tracking-[0px] transition-colors",
+            scrolled ? "text-[var(--foreground)]" : "text-white"
+          )}
+          aria-label="Cofounder home"
+        >
           Cofounder
         </Link>
 
-        <nav className="hidden items-center gap-1 rounded-full border border-black/5 bg-white/35 px-2 py-1 text-[15px] font-[410] leading-[22.5px] tracking-[0.15px] backdrop-blur-md lg:flex">
+        {/* Nav pill — glass on dark, subtle on light */}
+        <nav className={cn(
+          "hidden items-center gap-1 rounded-full px-2 py-1 text-[15px] font-[410] leading-[22.5px] tracking-[0.15px] transition-all duration-300 lg:flex",
+          scrolled
+            ? "border border-[var(--border-10)] bg-[var(--foreground-5)] backdrop-blur-none"
+            : "border border-white/10 bg-white/15 backdrop-blur-md"
+        )}>
           <DropdownMenu open={howToOpen} onOpenChange={setHowToOpen}>
             <DropdownMenuTrigger
               onPointerEnter={() => setHowToOpen(true)}
               className={cn(
                 "inline-flex h-9 items-center gap-1 rounded-full px-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
-                pathname.startsWith("/how-to") ? "bg-[var(--foreground)] text-white" : "text-[var(--foreground-80)] hover:bg-white/55"
+                pathname.startsWith("/how-to")
+                  ? scrolled ? "bg-[var(--foreground-10)] text-[var(--foreground)] shadow-sm" : "bg-white text-[var(--foreground)] shadow-sm"
+                  : scrolled ? "text-[var(--foreground-70)] hover:bg-[var(--foreground-8)]" : "text-white hover:bg-white/20"
               )}
             >
               How To
@@ -75,12 +91,14 @@ export function MarketingNav({ signedIn = false, workspaceHref = "/login" }: Mar
 
           {marketingNav.howTo.map((item) => (
             <React.Fragment key={item.href}>
-              <span className="text-[var(--foreground-50)]">|</span>
+              <span className={scrolled ? "text-[var(--foreground-20)]" : "text-white/30"}>|</span>
               <Link
                 href={item.href}
                 className={cn(
                   "rounded-full px-3 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
-                  isActive(item.href) ? "bg-[var(--foreground)] text-white" : "hover:bg-white/55"
+                  isActive(item.href)
+                    ? scrolled ? "bg-[var(--foreground-10)] text-[var(--foreground)] shadow-sm" : "bg-white text-[var(--foreground)] shadow-sm"
+                    : scrolled ? "text-[var(--foreground-70)] hover:bg-[var(--foreground-8)]" : "text-white hover:bg-white/20"
                 )}
               >
                 {item.label}
@@ -90,12 +108,14 @@ export function MarketingNav({ signedIn = false, workspaceHref = "/login" }: Mar
 
           {marketingNav.primary.map((item) => (
             <React.Fragment key={item.href}>
-              <span className="text-[var(--foreground-50)]">|</span>
+              <span className={scrolled ? "text-[var(--foreground-20)]" : "text-white/30"}>|</span>
               <Link
                 href={item.href}
                 className={cn(
                   "rounded-full px-3 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
-                  isActive(item.href) ? "bg-[var(--foreground)] text-white" : "hover:bg-white/55"
+                  isActive(item.href)
+                    ? scrolled ? "bg-[var(--foreground-10)] text-[var(--foreground)] shadow-sm" : "bg-white text-[var(--foreground)] shadow-sm"
+                    : scrolled ? "text-[var(--foreground-70)] hover:bg-[var(--foreground-8)]" : "text-white hover:bg-white/20"
                 )}
               >
                 {item.label}
@@ -104,11 +124,24 @@ export function MarketingNav({ signedIn = false, workspaceHref = "/login" }: Mar
           ))}
         </nav>
 
+        {/* Right CTA — white on dark, dark on light */}
         <div className="hidden items-center gap-2 lg:flex">
-          <Link href={primaryCtaHref} className="rounded-[8px] px-3 py-2 text-[15px] text-[var(--foreground-80)] outline-none hover:bg-white/45 focus-visible:ring-2 focus-visible:ring-[var(--focused)]">
+          <Link
+            href={primaryCtaHref}
+            className={cn(
+              "rounded-[8px] px-3 py-2 text-[15px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
+              scrolled
+                ? "text-[var(--foreground-70)] hover:bg-[var(--foreground-8)]"
+                : "text-white hover:bg-white/20"
+            )}
+          >
             {loginLabel}
           </Link>
-          <Link href={primaryCtaHref} aria-label={primaryCtaLabel} className={buttonClassName({ variant: "light" })}>
+          <Link
+            href={primaryCtaHref}
+            aria-label={primaryCtaLabel}
+            className={buttonClassName({ variant: scrolled ? "dark" : "light" })}
+          >
             {primaryCtaLabel}
           </Link>
         </div>

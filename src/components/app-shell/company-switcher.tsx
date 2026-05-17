@@ -16,16 +16,15 @@ import type { OrgShellData } from "@/lib/orgs/shell";
 export function CompanySwitcher({ shell }: { shell: OrgShellData }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex min-w-0 items-center gap-2 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-5)] px-2 py-2 text-left outline-none transition-colors hover:bg-[var(--foreground-10)] focus-visible:ring-2 focus-visible:ring-[var(--focused)]">
-        <Avatar className="size-8">
+      <DropdownMenuTrigger className="flex min-w-0 items-center gap-2 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-5)] px-2.5 py-1.5 text-left outline-none transition-colors hover:bg-[var(--foreground-10)] focus-visible:ring-2 focus-visible:ring-[var(--focused)]">
+        <Avatar className="size-6">
           <AvatarImage src={shell.user.avatarUrl ?? undefined} alt="" />
-          <AvatarFallback>{initials(shell.organization.name)}</AvatarFallback>
+          <AvatarFallback className="text-[10px]">{initials(shell.organization.name)}</AvatarFallback>
         </Avatar>
-        <span className="hidden min-w-0 sm:grid">
-          <span className="truncate text-sm font-medium text-[var(--foreground-80)]">{shell.organization.name}</span>
-          <span className="truncate text-xs text-[var(--foreground-50)]">{shell.membershipRole}</span>
+        <span className="hidden truncate text-sm font-medium text-[var(--foreground-80)] sm:block">
+          {shell.organization.name}
         </span>
-        <ChevronDown aria-hidden="true" className="size-4 text-[var(--foreground-50)]" />
+        <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-[var(--foreground-50)]" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
         <DropdownMenuLabel>Companies</DropdownMenuLabel>
@@ -42,7 +41,7 @@ export function CompanySwitcher({ shell }: { shell: OrgShellData }) {
         ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/onboarding">New company</Link>
+          <Link href="/questions">New company</Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

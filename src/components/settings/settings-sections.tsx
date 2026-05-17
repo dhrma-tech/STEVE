@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, CheckCircle2, Copy, ExternalLink, KeyRound, Plus, RefreshCw, Save } from "lucide-react";
+import { AlertTriangle, Copy, ExternalLink, KeyRound, Plus, RefreshCw, Save } from "lucide-react";
+import { toast } from "sonner";
 import type {
   AdvancedSettingsData,
   AiSettingsData,
@@ -46,15 +47,13 @@ export function PreferencesSettingsForm({ orgId, initialData }: { orgId: string;
   const [theme, setTheme] = React.useState(initialData.preferences.theme);
   const [shadowsEnabled, setShadowsEnabled] = React.useState(initialData.preferences.shadowsEnabled);
   const [busy, setBusy] = React.useState(false);
-  const [message, setMessage] = React.useState<string | null>(null);
 
   async function save() {
     if (!preferredName.trim()) {
-      setMessage("Preferred name cannot be empty.");
+      toast.error("Preferred name cannot be empty.");
       return;
     }
     setBusy(true);
-    setMessage(null);
     const payload = await api<PReferencesSettingsDataCompat>(`/api/orgs/${orgId}/settings/preferences`, {
       method: "PATCH",
       body: { preferredName, timezone, theme, shadowsEnabled }
@@ -62,9 +61,9 @@ export function PreferencesSettingsForm({ orgId, initialData }: { orgId: string;
     setBusy(false);
     if (payload.data) {
       setData(payload.data);
-      setMessage("Preferences saved.");
+      toast.success("Preferences saved.");
     } else {
-      setMessage(payload.error?.message ?? "Preferences could not be saved.");
+      toast.error(payload.error?.message ?? "Preferences could not be saved.");
     }
   }
 
@@ -72,7 +71,6 @@ export function PreferencesSettingsForm({ orgId, initialData }: { orgId: string;
     const file = files[0];
     if (!file) return;
     setBusy(true);
-    setMessage(null);
     const dataUrl = file.type === "image/webp" && file.size < 750_000 ? await fileToDataUrl(file) : null;
     const payload = await api<PReferencesSettingsDataCompat>(`/api/orgs/${orgId}/settings/preferences/avatar`, {
       method: "POST",
@@ -81,9 +79,9 @@ export function PreferencesSettingsForm({ orgId, initialData }: { orgId: string;
     setBusy(false);
     if (payload.data) {
       setData(payload.data);
-      setMessage("Profile photo saved.");
+      toast.success("Profile photo saved.");
     } else {
-      setMessage(payload.error?.message ?? "Profile photo could not be saved.");
+      toast.error(payload.error?.message ?? "Profile photo could not be saved.");
     }
   }
 
@@ -116,7 +114,6 @@ export function PreferencesSettingsForm({ orgId, initialData }: { orgId: string;
         disabled={busy}
         onFilesSelected={uploadAvatar}
       />
-      <StatusLine message={message} />
       <div className="flex flex-wrap gap-2">
         <Button variant="app" onClick={save} disabled={busy}>
           <Save aria-hidden="true" className="size-4" />
@@ -135,7 +132,6 @@ export function AiSettingsForm({ orgId, initialData }: { orgId: string; initialD
   const [data, setData] = React.useState(initialData);
   const [prompt, setPrompt] = React.useState(initialData.promptPersonalization);
   const [busy, setBusy] = React.useState(false);
-  const [message, setMessage] = React.useState<string | null>(null);
 
   async function patch(body: Record<string, unknown>) {
     setBusy(true);
@@ -144,9 +140,9 @@ export function AiSettingsForm({ orgId, initialData }: { orgId: string; initialD
     if (payload.data) {
       setData(payload.data);
       setPrompt(payload.data.promptPersonalization);
-      setMessage("AI settings saved.");
+      toast.success("AI settings saved.");
     } else {
-      setMessage(payload.error?.message ?? "AI settings could not be saved.");
+      toast.error(payload.error?.message ?? "AI settings could not be saved.");
     }
   }
 
@@ -188,7 +184,6 @@ export function AiSettingsForm({ orgId, initialData }: { orgId: string; initialD
         <Badge variant="neutral">{data.byok.label}</Badge>
       </div>
       <UsageStrip used={data.creditUsage.usedCents} included={data.creditUsage.includedUsageCents} remaining={data.creditUsage.remainingCents} />
-      <StatusLine message={message} />
     </SettingsPanel>
   );
 }
@@ -198,8 +193,6 @@ export function EnvFilesSettingsPanel({ orgId, initialData }: { orgId: string; i
   const [key, setKey] = React.useState("STRIPE_SECRET_KEY");
   const [value, setValue] = React.useState("");
   const [environment, setEnvironment] = React.useState("staging");
-  const [message, setMessage] = React.useState<string | null>(null);
-
   async function upload(files: File[]) {
     const file = files[0];
     if (!file) return;
@@ -210,9 +203,9 @@ export function EnvFilesSettingsPanel({ orgId, initialData }: { orgId: string; i
     });
     if (payload.data) {
       setData(payload.data);
-      setMessage("Env file saved and pushed to Vercel.");
+      toast.success("Env file saved and pushed to Vercel.");
     } else {
-      setMessage(payload.error?.message ?? "Env file could not be saved.");
+      toast.error(payload.error?.message ?? "Env file could not be saved.");
     }
   }
 
@@ -224,9 +217,9 @@ export function EnvFilesSettingsPanel({ orgId, initialData }: { orgId: string; i
     if (payload.data) {
       setData(payload.data);
       setValue("");
-      setMessage("Secret metadata saved. Value remains write-only.");
+      toast.success("Secret saved. Value remains write-only.");
     } else {
-      setMessage(payload.error?.message ?? "Secret could not be saved.");
+      toast.error(payload.error?.message ?? "Secret could not be saved.");
     }
   }
 
@@ -260,7 +253,6 @@ export function EnvFilesSettingsPanel({ orgId, initialData }: { orgId: string; i
       </div>
       <SecretList secrets={data.secrets} />
       <KeyValueRows rows={data.exportLinks.map((link) => [link.label, link.status])} />
-      <StatusLine message={message} />
     </SettingsPanel>
   );
 }
@@ -288,14 +280,12 @@ export function OrganizationSettingsForm({ orgId, initialData }: { orgId: string
   const [description, setDescription] = React.useState(initialData.organization.description ?? "");
   const [source, setSource] = React.useState("Claude");
   const [content, setContent] = React.useState("");
-  const [message, setMessage] = React.useState<string | null>(null);
-
   async function saveOrg() {
     const payload = await api<OrganizationSettingsData>(`/api/orgs/${orgId}/settings/organization`, { method: "PATCH", body: { name, description } });
     if (payload.data) {
       setData(payload.data);
-      setMessage("Organization saved.");
-    } else setMessage(payload.error?.message ?? "Organization could not be saved.");
+      toast.success("Organization saved.");
+    } else toast.error(payload.error?.message ?? "Organization could not be saved.");
   }
 
   async function importContext() {
@@ -303,8 +293,8 @@ export function OrganizationSettingsForm({ orgId, initialData }: { orgId: string
     if (payload.data) {
       setData(payload.data);
       setContent("");
-      setMessage("Context imported.");
-    } else setMessage(payload.error?.message ?? "Context could not be imported.");
+      toast.success("Context imported.");
+    } else toast.error(payload.error?.message ?? "Context could not be imported.");
   }
 
   return (
@@ -333,7 +323,6 @@ export function OrganizationSettingsForm({ orgId, initialData }: { orgId: string
       </div>
       <MemberList members={data.members} />
       <KeyValueRows rows={data.contextImports.map((item) => [item.source, `${item.content.length} chars`])} emptyLabel="No context imports yet." />
-      <StatusLine message={message} />
     </SettingsPanel>
   );
 }
@@ -398,8 +387,6 @@ export function AdvancedSettingsPanel({ orgId, initialData }: { orgId: string; i
   const [repoUrl, setRepoUrl] = React.useState("https://github.com/company/repo");
   const [confirmation, setConfirmation] = React.useState("");
   const [action, setAction] = React.useState<"supabase" | "repo" | null>(null);
-  const [message, setMessage] = React.useState<string | null>(null);
-
   async function confirm() {
     if (!action) return;
     const path = action === "supabase" ? "import-supabase" : "switch-repo";
@@ -409,9 +396,9 @@ export function AdvancedSettingsPanel({ orgId, initialData }: { orgId: string; i
       setData(payload.data);
       setAction(null);
       setConfirmation("");
-      setMessage("Advanced setting updated.");
+      toast.success("Advanced setting updated.");
     } else {
-      setMessage(payload.error?.message ?? "Advanced action failed.");
+      toast.error(payload.error?.message ?? "Advanced action failed.");
     }
   }
 
@@ -444,20 +431,18 @@ export function AdvancedSettingsPanel({ orgId, initialData }: { orgId: string; i
         </div>
       ) : null}
       <KeyValueRows rows={data.auditLogs.map((log) => [log.action, log.createdAt])} emptyLabel="No advanced actions yet." />
-      <StatusLine message={message} />
     </SettingsPanel>
   );
 }
 
 export function PaymentsSettingsPanel({ orgId, initialData }: { orgId: string; initialData: NonNullable<IntegrationDetailData> }) {
   const [data, setData] = React.useState(initialData);
-  const [message, setMessage] = React.useState<string | null>(null);
   async function action(kind: "connect" | "check" | "disconnect") {
     const payload = await api<NonNullable<IntegrationDetailData>>(`/api/orgs/${orgId}/integrations/stripe/${kind}`, { method: "POST", body: kind === "connect" ? { config: { testMode: "configured", liveMode: "needs_live_keys", webhookStatus: "sandbox_ready" } } : undefined });
     if (payload.data) {
       setData(payload.data);
-      setMessage(`Stripe ${kind} complete.`);
-    } else setMessage(payload.error?.message ?? `Stripe ${kind} failed.`);
+      toast.success(`Stripe ${kind} complete.`);
+    } else toast.error(payload.error?.message ?? `Stripe ${kind} failed.`);
   }
   return (
     <SettingsPanel>
@@ -469,7 +454,6 @@ export function PaymentsSettingsPanel({ orgId, initialData }: { orgId: string; i
         <Button variant="ghost" className="text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={() => action("check")}><RefreshCw aria-hidden="true" className="size-4" />Check</Button>
         <Button variant="danger" onClick={() => action("disconnect")}>Disconnect</Button>
       </div>
-      <StatusLine message={message} />
     </SettingsPanel>
   );
 }
@@ -501,15 +485,6 @@ function KeyValueRows({ rows, emptyLabel = "No records." }: { rows: Array<[strin
   );
 }
 
-function StatusLine({ message }: { message: string | null }) {
-  if (!message) return null;
-  return (
-    <p className="flex items-center gap-2 text-sm text-[var(--foreground-50)]">
-      <CheckCircle2 aria-hidden="true" className="size-4 text-[var(--success-100)]" />
-      {message}
-    </p>
-  );
-}
 
 function DangerNote({ label, detail }: { label: string; detail: string }) {
   return (

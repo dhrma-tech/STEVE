@@ -131,7 +131,7 @@ export function DesignOnboardingWizard({
       {step === 0 ? (
         <Card variant="deep" className="grid gap-4 rounded-[12px] p-4">
           <Palette aria-hidden="true" className="size-6 text-[var(--focused)]" />
-          <h3 className="text-lg font-medium">Choose a vibe or skip setup.</h3>
+          <h3 className="text-lg font-medium text-[var(--foreground)]">Choose a vibe or skip setup.</h3>
           <p className="text-sm leading-6 text-[var(--foreground-50)]">
             Skipping can reduce output quality because design context will be missing from future agent work.
           </p>

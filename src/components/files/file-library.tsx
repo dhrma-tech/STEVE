@@ -113,7 +113,7 @@ export function FileLibrary({
   const defaultFolderId = folderId === "all" ? data?.generalFolderId ?? "all" : folderId;
 
   return (
-    <div className={cn("grid gap-4", className)}>
+    <div className={cn("grid min-w-0 gap-4 overflow-x-hidden", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid size-9 place-items-center rounded-[9px] border border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-80)]">
@@ -141,7 +141,7 @@ export function FileLibrary({
       </div>
 
       {data ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className={cn("grid gap-2", compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4")}>
           <Stat label="Files" value={data.stats.totalFiles} />
           <Stat label="Folders" value={data.stats.totalFolders} />
           <Stat label="Dept files" value={data.stats.departmentFiles} />
@@ -150,11 +150,15 @@ export function FileLibrary({
       ) : null}
 
       <section className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
-        <div className="flex items-center gap-2">
-          <Search aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
-          <h3 className="text-sm font-medium">Find and organize</h3>
-        </div>
-        <Input surface="dark" label="Search files" placeholder="Business Plan" value={query} onChange={(event) => setQuery(event.target.value)} />
+        <h3 className="text-sm font-medium">Find and organize</h3>
+        <Input 
+          surface="dark" 
+          label="Search files" 
+          placeholder="Business Plan" 
+          startIcon={<Search aria-hidden="true" className="size-4" />}
+          value={query} 
+          onChange={(event) => setQuery(event.target.value)} 
+        />
         <SelectField surface="dark" label="Department" value={departmentId} onValueChange={setDepartmentId} options={departmentOptions} />
       </section>
 
@@ -162,8 +166,8 @@ export function FileLibrary({
       {loading ? <LoadingState rows={5} label="Loading file library" /> : null}
 
       {data && !loading ? (
-        <div className={cn("grid gap-4", compact ? "" : "xl:grid-cols-[280px_minmax(0,1fr)_360px]")}>
-          <section className="grid content-start gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
+        <div className={cn("grid min-w-0 items-start gap-4", compact ? "" : "xl:grid-cols-[280px_minmax(0,1fr)_360px]")}>
+          <section className="grid min-w-0 content-start gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-medium">Folders</h3>
               <Badge variant="neutral">{data.folders.length}</Badge>
@@ -177,7 +181,7 @@ export function FileLibrary({
             />
           </section>
 
-          <section className="grid content-start gap-3">
+          <section className="grid min-w-0 content-start gap-3">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-medium">Current files</h3>
               <Badge variant="neutral">{data.files.length}</Badge>
@@ -185,13 +189,15 @@ export function FileLibrary({
             <FileList files={data.files} selectedFileId={selectedFileId} onSelectFile={setSelectedFileId} />
           </section>
 
-          <FilePreviewPanel
-            orgId={orgId}
-            file={selectedFile}
-            data={data}
-            onFileChange={upsertFile}
-            onArchived={removeFile}
-          />
+          {!compact ? (
+            <FilePreviewPanel
+              orgId={orgId}
+              file={selectedFile}
+              data={data}
+              onFileChange={upsertFile}
+              onArchived={removeFile}
+            />
+          ) : null}
         </div>
       ) : null}
 

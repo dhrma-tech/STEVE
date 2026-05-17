@@ -41,7 +41,7 @@ export function RoadmapDetailPanel({
   const showInput = item.status === "available" && (needsInput || needsApproval);
 
   return (
-    <aside className="animate-sd-slide-up grid min-h-0 gap-4 overflow-y-auto rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-5)] p-4 lg:w-[390px] xl:w-[430px]">
+    <aside className="animate-sd-slide-up grid min-h-0 w-full min-w-0 gap-4 overflow-y-auto rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-5)] p-4">
       <div className="grid gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -142,12 +142,12 @@ function RoadmapDependencyGraph({ item }: { item: RoadmapItem }) {
         <GitBranch aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
         <h3 className="text-sm font-medium">Dependency graph</h3>
       </div>
-      <div className="grid items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
+      <div className="grid items-start gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
         <GraphStack label="Required" items={left} empty="Start" />
-        <div className="hidden items-center gap-2 text-[var(--foreground-50)] sm:flex">
-          <span className="h-px w-8 border-t border-dashed border-[var(--border-10)]" />
-          <ArrowRight aria-hidden="true" className="size-4" />
-          <span className="h-px w-8 border-t border-dashed border-[var(--border-10)]" />
+        <div className="hidden items-center gap-1 pt-8 text-[var(--foreground-50)] sm:flex">
+          <span className="h-px w-4 border-t border-dashed border-[var(--border-10)]" />
+          <ArrowRight aria-hidden="true" className="size-3.5 shrink-0" />
+          <span className="h-px w-4 border-t border-dashed border-[var(--border-10)]" />
         </div>
         <GraphStack label="Unlocks" items={right} empty="End" />
       </div>
@@ -169,15 +169,13 @@ function GraphStack({
       <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">{label}</p>
       {items.length ? (
         items.map((entry) => (
-          <div key={entry.id} className="rounded-[8px] border border-dashed border-[var(--border-10)] bg-[var(--foreground-3)] p-2 text-xs">
-            <div className="flex items-center justify-between gap-2">
-              <span className="truncate">{entry.title}</span>
-              <Badge variant={entry.status === "complete" ? "success" : entry.status === "available" ? "brand" : "neutral"}>{entry.status}</Badge>
-            </div>
+          <div key={entry.id} className="min-w-0 rounded-[8px] border border-dashed border-[var(--border-10)] bg-[var(--foreground-3)] p-2 text-xs">
+            <p className="truncate font-medium leading-5">{entry.title}</p>
+            <Badge variant={entry.status === "complete" ? "success" : entry.status === "available" ? "brand" : "neutral"} className="mt-1">{entry.status}</Badge>
           </div>
         ))
       ) : (
-        <div className="rounded-[8px] border border-dashed border-[var(--border-10)] bg-[var(--foreground-3)] p-2 text-xs text-[var(--foreground-50)]">{empty}</div>
+        <div className="min-w-0 rounded-[8px] border border-dashed border-[var(--border-10)] bg-[var(--foreground-3)] p-2 text-xs text-[var(--foreground-50)]">{empty}</div>
       )}
     </div>
   );
@@ -207,12 +205,12 @@ function DetailList({
       {items.length ? (
         <div className="grid gap-2">
           {items.map((entry) => (
-            <div key={entry.id} className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3">
-              <div className="min-w-0">
+            <div key={entry.id} className="flex min-w-0 items-center justify-between gap-2 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] p-3">
+              <div className="min-w-0 flex-1">
                 <h4 className="truncate text-sm font-medium">{entry.title}</h4>
-                <p className="mt-1 truncate text-xs text-[var(--foreground-50)]">{entry.stage ?? "Roadmap"}</p>
+                <p className="mt-0.5 truncate text-xs text-[var(--foreground-50)]">{entry.stage ?? "Roadmap"}</p>
               </div>
-              <Badge variant={entry.status === "complete" ? "success" : entry.status === "available" ? "brand" : "neutral"}>{entry.status}</Badge>
+              <Badge variant={entry.status === "complete" ? "success" : entry.status === "available" ? "brand" : "neutral"} className="shrink-0">{entry.status}</Badge>
             </div>
           ))}
         </div>

@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { errorResponse } from "@/lib/api/responses";
 import { requireOrgMember } from "@/lib/auth/session";
-import { generateSandboxChatResponse } from "@/lib/ai/sandbox-chat";
+import { generateChatResponse } from "@/lib/ai/sandbox-chat";
 import { prisma } from "@/lib/db/client";
 
 const json = (value: unknown) => JSON.stringify(value);
@@ -337,7 +337,7 @@ export async function sendChatMessage(input: ChatMessageInput) {
   const preparation = await prepareChatMessage(input);
   if (!preparation) return null;
 
-  const sandboxResponse = generateSandboxChatResponse({
+  const response = await generateChatResponse({
     body: preparation.trimmedBody,
     organizationName: preparation.organizationName,
     threadKind: preparation.thread.kind,
@@ -349,8 +349,8 @@ export async function sendChatMessage(input: ChatMessageInput) {
     orgId: input.orgId,
     threadId: input.threadId,
     preparation,
-    responseBody: sandboxResponse.body,
-    responseMetadata: sandboxResponse.metadata
+    responseBody: response.body,
+    responseMetadata: response.metadata
   });
 }
 

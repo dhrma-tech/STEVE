@@ -1,54 +1,28 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+import { ollamaChat, OLLAMA_OFFLINE_MESSAGE } from "@/lib/ai/ollama";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as {
-      messages: Array<{ role: "user" | "assistant"; content: string }>;
+    const { messages, systemPrompt } = (await request.json()) as {
+      messages: Array<{ role: string; content: string }>;
       systemPrompt?: string;
     };
-    const { messages, systemPrompt } = body;
 
     if (!messages?.length) {
-      return NextResponse.json({ error: "messages array is required" }, { status: 400 });
+      return NextResponse.json({ error: "No messages provided" }, { status: 400 });
     }
 
-    const system = systemPrompt ?? "You are a helpful AI assistant.";
+    const userMsg = messages.at(-1)?.content ?? "";
+    const system = systemPrompt ?? "You are a helpful AI assistant helping founders build and run their company.";
 
-    const response = await client.messages.create({
-      model: "claude-opus-4-7",
-      max_tokens: 1024,
-      thinking: { type: "adaptive" },
-      system: [
-        {
-          type: "text",
-          text: system,
-          cache_control: { type: "ephemeral" }
-        }
-      ],
-      messages
-    });
-
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      return NextResponse.json({ error: "No text response from Claude" }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      content: textBlock.text,
-      usage: {
-        input_tokens: response.usage.input_tokens,
-        output_tokens: response.usage.output_tokens,
-        cache_read_input_tokens: response.usage.cache_read_input_tokens ?? 0,
-        cache_creation_input_tokens: response.usage.cache_creation_input_tokens ?? 0
-      }
-    });
+    const content = await ollamaChat({ system, user: userMsg });
+    return NextResponse.json({ content, usage: { input_tokens: 0, output_tokens: 0 } });
   } catch (error) {
-    const message = error instanceof Anthropic.APIError
-      ? `Claude API error (${error.status}): ${error.message}`
-      : error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "AI request failed";
+    const isOffline = msg.includes("fetch") || msg.includes("ECONNREFUSED") || msg.includes("connect") || msg.includes("timeout");
+    return NextResponse.json(
+      { error: isOffline ? OLLAMA_OFFLINE_MESSAGE : msg },
+      { status: isOffline ? 503 : 500 }
+    );
   }
 }

@@ -20,9 +20,7 @@ export function useDepartmentDetail(orgId: string, departmentId: string) {
 
   React.useEffect(() => {
     let active = true;
-    queueMicrotask(() => {
-      if (active) setState({ status: "loading", detail: null, error: null });
-    });
+    setState({ status: "loading", detail: null, error: null });
     fetch(`/api/orgs/${orgId}/departments/${encodeURIComponent(departmentId)}`)
       .then(async (response) => {
         if (!response.ok) {

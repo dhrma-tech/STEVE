@@ -20,13 +20,13 @@ export function ErrorState({ title, description, retry, surface = "dark", classN
       className={cn(
         "grid place-items-center gap-3 rounded-[14px] border-[0.8px] p-6 text-center",
         surface === "dark"
-          ? "border-[var(--tt-color-text-red-contrast)] bg-[var(--tt-color-text-red-contrast)] text-[var(--foreground-80)]"
+          ? "border-[rgba(239,68,68,0.25)] bg-[rgba(239,68,68,0.08)] text-[var(--foreground-80)]"
           : "border-[rgba(239,68,68,0.35)] bg-[#fff6f6] text-[var(--foreground)]",
         className
       )}
       {...props}
     >
-      <div className="grid size-10 place-items-center rounded-[8px] bg-[var(--tt-color-text-red-contrast)] text-[var(--destructive)]">
+      <div className="grid size-10 place-items-center rounded-[8px] bg-[rgba(239,68,68,0.15)] text-[var(--destructive)]">
         <AlertTriangle aria-hidden="true" className="size-5" />
       </div>
       <div className="grid gap-1">

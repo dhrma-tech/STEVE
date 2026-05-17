@@ -180,7 +180,7 @@ export function TaskWorkspace({
           </span>
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">Tasks</p>
-            <h2 className="text-lg font-medium tracking-[0px]">Work queue</h2>
+            <h2 className="text-lg font-medium tracking-[0px]">Tasks</h2>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -235,10 +235,13 @@ export function TaskWorkspace({
           <Filter aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
           <h3 className="text-sm font-medium">Filters</h3>
         </div>
-        <div className="relative">
-          <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--foreground-50)]" />
-          <Input surface="dark" label="Search" className="pl-9" value={query} onChange={(event) => setQuery(event.target.value)} />
-        </div>
+        <Input 
+          surface="dark" 
+          label="Search" 
+          startIcon={<Search aria-hidden="true" className="size-4" />} 
+          value={query} 
+          onChange={(event) => setQuery(event.target.value)} 
+        />
         <div className="grid gap-3 md:grid-cols-2">
           <SelectField surface="dark" label="Status" value={status} onValueChange={setStatus} options={statusOptions} />
           <SelectField surface="dark" label="Department" value={departmentId} onValueChange={setDepartmentId} options={departmentOptions} />

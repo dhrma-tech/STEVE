@@ -35,24 +35,26 @@ export function DepartmentBoardDialog({
 }) {
   return (
     <Dialog open={Boolean(department)} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[88dvh] max-w-[920px] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex h-[88dvh] max-w-[920px] flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b border-[var(--border-10)] px-5 py-4 pr-12">
           <DialogTitle>{department?.name ?? "Department"} board</DialogTitle>
           <DialogDescription>
-            Setup prompt, context, attachments, launch action, and roadmap work for the selected department.
+            Setup prompt, context, attachments, and roadmap for this department.
           </DialogDescription>
         </DialogHeader>
-        {department ? (
-          <DepartmentBoard
-            orgId={orgId}
-            department={department}
-            onClose={() => onOpenChange(false)}
-            onLaunchAgent={(detail) => {
-              onLaunchAgent(detail);
-              onOpenChange(false);
-            }}
-          />
-        ) : null}
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          {department ? (
+            <DepartmentBoard
+              orgId={orgId}
+              department={department}
+              onClose={() => onOpenChange(false)}
+              onLaunchAgent={(detail) => {
+                onLaunchAgent(detail);
+                onOpenChange(false);
+              }}
+            />
+          ) : null}
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -72,7 +74,11 @@ function DepartmentBoard({
   const state = useDepartmentDetail(orgId, department.slug);
 
   if (state.status === "loading") {
-    return <LoadingState rows={6} label={`Loading ${department.name} board`} />;
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <LoadingState rows={6} label={`Loading ${department.name} board`} />
+      </div>
+    );
   }
 
   if (state.status === "error") {

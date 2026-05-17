@@ -1,9 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Bot, CheckCircle2, Clipboard, Code2, FileText, TerminalSquare, UserRound } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Code2, Sparkles, TerminalSquare } from "lucide-react";
 import type { ChatMessage } from "@/components/chat/types";
 import { cn } from "@/lib/utils/cn";
 
@@ -15,7 +13,7 @@ export function MessageList({
   streaming?: boolean;
 }) {
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-4 py-2">
       {messages.map((message) => (
         <ChatMessageBubble key={message.id} message={message} />
       ))}
@@ -25,156 +23,119 @@ export function MessageList({
 }
 
 export function ChatMessageBubble({ message }: { message: ChatMessage }) {
-  const metadata = message.metadata as { kind?: string; attachments?: Array<{ id: string; name: string; visibility: string }>; mentions?: Array<{ key: string; label: string; color?: string | null }> };
+  const metadata = message.metadata as { kind?: string };
   const isUser = message.senderType === "user";
-  const senderName = message.senderUser?.name ?? message.senderAgent?.name ?? (message.senderType === "system" ? "System" : "Cofounder");
 
-  if (metadata.kind === "action_log") {
-    return <ActionLogMessage message={message} />;
+  if (metadata.kind === "action_log" || metadata.kind === "agent_action_log") {
+    return <SystemLine message={message} />;
+  }
+
+  if (isUser) {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[80%] rounded-[14px] rounded-tr-[4px] bg-[var(--foreground-10)] px-3.5 py-2.5 text-sm leading-6 text-[var(--foreground-80)]">
+          <RichMessage body={message.body} />
+        </div>
+      </div>
+    );
   }
 
   return (
-    <article className={cn("grid gap-2 rounded-[12px] border p-3", isUser ? "border-[var(--primary)] bg-[var(--foreground-8)]" : "border-[var(--border-10)] bg-[var(--foreground-3)]")}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="grid size-7 shrink-0 place-items-center rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-80)]">
-            {isUser ? <UserRound aria-hidden="true" className="size-3.5" /> : <Bot aria-hidden="true" className="size-3.5" />}
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{senderName}</p>
-            <p className="text-[11px] text-[var(--foreground-50)]">{formatDateTime(message.createdAt)}</p>
-          </div>
-        </div>
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-[var(--foreground-80)] hover:bg-[var(--foreground-5)]" onClick={() => navigator.clipboard?.writeText(message.body)}>
-          <Clipboard aria-hidden="true" className="size-3.5" />
-        </Button>
+    <div className="flex items-start gap-2.5">
+      <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full border border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-50)]">
+        <Sparkles className="size-3.5" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1 rounded-[14px] rounded-tl-[4px] bg-[var(--foreground-5)] px-3.5 py-2.5 text-sm leading-6 text-[var(--foreground-80)]">
+        <RichMessage body={message.body} />
       </div>
-      <RichMessage body={message.body} />
-      {metadata.mentions?.length ? (
-        <div className="flex flex-wrap gap-1.5">
-          {metadata.mentions.map((mention) => (
-            <Badge key={mention.key} variant="neutral" style={mention.color ? { borderColor: mention.color, color: mention.color } : undefined}>
-              @{mention.key}
-            </Badge>
-          ))}
-        </div>
-      ) : null}
-      {metadata.attachments?.length ? (
-        <div className="grid gap-2">
-          {metadata.attachments.map((file) => (
-            <div key={file.id} className="flex items-center justify-between gap-2 rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-inverse-10)] px-2 py-1.5 text-xs">
-              <span className="inline-flex min-w-0 items-center gap-1">
-                <FileText aria-hidden="true" className="size-3.5 text-[var(--foreground-80)]" />
-                <span className="truncate">{file.name}</span>
-              </span>
-              <span className="text-[var(--foreground-50)]">{file.visibility}</span>
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </article>
+    </div>
   );
 }
 
-function ActionLogMessage({ message }: { message: ChatMessage }) {
+const CASUAL_LABELS: Record<string, string> = {
+  "Writing to workspace and saving run state.": "Scribbling notes...",
+  "Ran 4 actions and prepared this task for review.": "Wrapped up, handing it over.",
+  "Ran 1 action.": "Just warming up.",
+  "Ran 2 actions.": "Making progress.",
+  "Ran 3 actions.": "Almost there.",
+};
+
+function casualize(body: string): string {
+  if (CASUAL_LABELS[body]) return CASUAL_LABELS[body];
+  if (body.toLowerCase().includes("writing")) return "Scribbling notes...";
+  if (body.toLowerCase().includes("ran") && body.toLowerCase().includes("action")) return "Wrapped up, handing it over.";
+  if (body.toLowerCase().includes("context")) return "Surfing through the context...";
+  if (body.toLowerCase().includes("verification")) return "Running a quick sanity check...";
+  if (body.toLowerCase().includes("review")) return "Polishing things up...";
+  if (body.toLowerCase().includes("started")) return "Engines running...";
+  return body;
+}
+
+function SystemLine({ message }: { message: ChatMessage }) {
   return (
-    <article className="rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-inverse-20)] p-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="inline-flex min-w-0 items-center gap-2 text-sm">
-          <TerminalSquare aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
-          <span className="truncate">{message.body}</span>
-        </span>
-        <Badge variant="success">log</Badge>
-      </div>
-      <p className="mt-1 text-[11px] text-[var(--foreground-50)]">{formatDateTime(message.createdAt)}</p>
-    </article>
+    <div className="flex items-center gap-2 px-1 text-xs text-[var(--foreground-30)]">
+      <TerminalSquare className="size-3.5 shrink-0" aria-hidden="true" />
+      <span className="truncate">{casualize(message.body)}</span>
+    </div>
   );
 }
 
 function RichMessage({ body }: { body: string }) {
-  const parts = body.split(/```/g);
+  // Strip thinking tags from display
+  const cleaned = body.replace(/<thinking>[\s\S]*?<\/thinking>/g, "").trim();
+  const parts = cleaned.split(/```/g);
+
   return (
-    <div className="grid gap-2 text-sm leading-6">
+    <div className="grid gap-2">
       {parts.map((part, index) => {
-        const key = `${index}-${part.slice(0, 14)}`;
+        const key = `${index}-${part.slice(0, 12)}`;
         if (index % 2 === 1) {
           return (
-            <pre key={key} className="overflow-x-auto rounded-[8px] bg-[var(--foreground-inverse-30)] p-3 font-mono text-xs text-[var(--foreground-80)]">
-              <span className="mb-2 flex items-center gap-2 text-[var(--foreground-50)]">
-                <Code2 aria-hidden="true" className="size-3.5" />
+            <pre key={key} className="overflow-x-auto rounded-[8px] bg-[var(--foreground-inverse-20)] p-3 font-mono text-xs text-[var(--foreground-80)]">
+              <span className="mb-1 flex items-center gap-1.5 text-[var(--foreground-40)]">
+                <Code2 className="size-3.5" aria-hidden="true" />
                 code
               </span>
               {part.trim()}
             </pre>
           );
         }
-        return renderParagraphs(part, key);
+        return (
+          <div key={key} className="grid gap-1">
+            {part.split(/\n{2,}/).filter(Boolean).map((para, i) => (
+              <p key={i} className="leading-6">{linkify(para.trim())}</p>
+            ))}
+          </div>
+        );
       })}
     </div>
   );
 }
 
-function renderParagraphs(value: string, keyPrefix: string) {
-  const thinkingPattern = /<thinking>([\s\S]*?)<\/thinking>/g;
-  const segments: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = thinkingPattern.exec(value))) {
-    const before = value.slice(lastIndex, match.index);
-    if (before.trim()) segments.push(<p key={`${keyPrefix}-p-${lastIndex}`}>{linkify(before)}</p>);
-    segments.push(
-      <div key={`${keyPrefix}-thinking-${match.index}`} className="rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-2 text-xs leading-5 text-[var(--foreground-50)]">
-        <span className="mb-1 inline-flex items-center gap-1 text-[var(--foreground-80)]">
-          <CheckCircle2 aria-hidden="true" className="size-3.5" />
-          thinking
-        </span>
-        <p>{match[1]?.trim()}</p>
-      </div>
-    );
-    lastIndex = match.index + match[0].length;
-  }
-
-  const rest = value.slice(lastIndex);
-  if (rest.trim()) {
-    rest.split(/\n{2,}/).forEach((paragraph, index) => {
-      if (paragraph.trim()) segments.push(<p key={`${keyPrefix}-rest-${index}`}>{linkify(paragraph)}</p>);
-    });
-  }
-
-  return <React.Fragment key={keyPrefix}>{segments}</React.Fragment>;
-}
-
 function linkify(value: string) {
-  const urlPattern = /(https?:\/\/[^\s]+)/g;
-  const pieces = value.split(urlPattern);
-  return pieces.map((piece, index) =>
+  const pieces = value.split(/(https?:\/\/[^\s]+)/g);
+  return pieces.map((piece, i) =>
     piece.match(/^https?:\/\//) ? (
-      <a key={`${piece}-${index}`} className="text-[var(--tt-color-text-blue)] underline" href={piece} target="_blank" rel="noreferrer">{piece}</a>
+      <a key={i} className="underline opacity-70 hover:opacity-100" href={piece} target="_blank" rel="noreferrer">
+        {piece}
+      </a>
     ) : (
-      <React.Fragment key={`${piece}-${index}`}>{piece}</React.Fragment>
+      <React.Fragment key={i}>{piece}</React.Fragment>
     )
   );
 }
 
 function TypingIndicator() {
   return (
-    <div className="flex items-center gap-2 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3 text-sm text-[var(--foreground-50)]">
-      <span className="flex gap-1">
-        <span className="size-1.5 animate-typing-dot rounded-full bg-[var(--foreground-50)]" />
-        <span className="size-1.5 animate-typing-dot rounded-full bg-[var(--foreground-50)] [animation-delay:160ms]" />
-        <span className="size-1.5 animate-typing-dot rounded-full bg-[var(--foreground-50)] [animation-delay:320ms]" />
+    <div className="flex items-start gap-2.5">
+      <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full border border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-50)]">
+        <Sparkles className="size-3.5" aria-hidden="true" />
       </span>
-      Cofounder is writing
+      <div className="flex items-center gap-1 rounded-[14px] rounded-tl-[4px] bg-[var(--foreground-5)] px-3.5 py-3">
+        <span className="size-1.5 animate-typing-dot rounded-full bg-[var(--foreground-40)]" />
+        <span className="size-1.5 animate-typing-dot rounded-full bg-[var(--foreground-40)] [animation-delay:160ms]" />
+        <span className="size-1.5 animate-typing-dot rounded-full bg-[var(--foreground-40)] [animation-delay:320ms]" />
+      </div>
     </div>
   );
-}
-
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  }).format(new Date(value));
 }

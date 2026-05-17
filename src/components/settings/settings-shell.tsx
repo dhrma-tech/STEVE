@@ -3,36 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  Bell,
-  Bot,
-  Building2,
-  CreditCard,
   Database,
-  Inbox,
-  KeyRound,
-  LifeBuoy,
   LogOut,
-  Settings,
-  ShieldAlert,
-  Sparkles,
-  WalletCards
+  Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { settingsNavItems, type SettingsSection } from "./settings-constants";
 
-export const settingsNavItems = [
-  { section: "preferences", label: "Preferences", icon: Settings },
-  { section: "ai", label: "AI Settings", icon: Bot },
-  { section: "env-files", label: "Env & Secrets", icon: KeyRound },
-  { section: "notifications", label: "Notifications", icon: Bell },
-  { section: "organization", label: "Organization", icon: Building2 },
-  { section: "inbox", label: "Inbox", icon: Inbox },
-  { section: "support", label: "Support", icon: LifeBuoy },
-  { section: "payments", label: "Stripe/Payments", icon: CreditCard },
-  { section: "billing", label: "Billing", icon: WalletCards },
-  { section: "advanced", label: "Advanced", icon: ShieldAlert }
-] as const;
-
-export type SettingsSection = (typeof settingsNavItems)[number]["section"];
+export { settingsNavItems, type SettingsSection };
 
 export function SettingsShell({
   orgId,
@@ -100,11 +78,11 @@ export function SettingsShell({
             Sign out
           </button>
         </aside>
-        <section className="grid content-start gap-5">
-          <div className="rounded-[12px] border border-[var(--border-10)] bg-[var(--background-sidepanel)] p-4">
-            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">Settings</p>
-            <h2 className="mt-1 text-2xl font-medium tracking-[0px]">{title}</h2>
-            <p className="mt-2 max-w-[82ch] text-sm leading-6 text-[var(--foreground-50)]">{description}</p>
+        <section className="grid content-start gap-6">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--foreground-40)]">Settings</p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-[-0.5px] text-[var(--foreground)]">{title}</h2>
+            <p className="mt-1.5 max-w-[70ch] text-sm leading-6 text-[var(--foreground-50)]">{description}</p>
           </div>
           {children}
         </section>

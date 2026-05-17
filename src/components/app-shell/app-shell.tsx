@@ -2,39 +2,32 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
+  ArrowLeft,
   Bell,
-  Bot,
-  Boxes,
+  Cpu,
   CreditCard,
   Files,
   LayoutDashboard,
   ListTodo,
+  LogOut,
+  Map,
   Menu,
   Plus,
   Search,
   Settings,
   Sparkles,
-  Workflow
+  Workflow,
+  X
 } from "lucide-react";
-import { AppBreadcrumb } from "@/components/app-shell/breadcrumb";
-import { CompanySwitcher } from "@/components/app-shell/company-switcher";
 import { SidePanelTabs } from "@/components/app-shell/side-panel-tabs";
 import { UpgradeModal } from "@/components/app-shell/upgrade-modal";
 import { CommandPalette } from "@/components/command-palette/command-palette";
 import { InboxPanel } from "@/components/notifications/inbox-panel";
 import { TaskCreateDialog } from "@/components/tasks/task-create-dialog";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
-import { IconButton } from "@/components/ui/icon-button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils/cn";
 import type { OrgShellData } from "@/lib/orgs/shell";
 
@@ -42,7 +35,7 @@ const navItems = [
   { label: "Canvas", href: "canvas", icon: LayoutDashboard },
   { label: "Roadmap", href: "canvas?open_tech_tree=1", icon: Workflow },
   { label: "Tasks", href: "canvas?tab=tasks", icon: ListTodo },
-  { label: "Agents", href: "canvas?tab=company", icon: Bot },
+  { label: "Agents", href: "canvas?tab=company", icon: Cpu },
   { label: "Files", href: "canvas?tab=library", icon: Files },
   { label: "Settings", href: "settings/preferences", icon: Settings }
 ] as const;
@@ -50,11 +43,17 @@ const navItems = [
 export function AppShell({ shell, children }: { shell: OrgShellData; children: React.ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const isCanvas = pathname.includes("/canvas");
   const [commandOpen, setCommandOpen] = React.useState(false);
   const [taskCreateOpen, setTaskCreateOpen] = React.useState(false);
   const [inboxOpen, setInboxOpen] = React.useState(false);
   const [upgradeOpen, setUpgradeOpen] = React.useState(false);
+  const [navOpen, setNavOpen] = React.useState(false);
   const [unreadCount, setUnreadCount] = React.useState(shell.unreadInboxCount);
+
+  // Close nav on route change
+  React.useEffect(() => { setNavOpen(false); }, [pathname]);
 
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -62,77 +61,181 @@ export function AppShell({ shell, children }: { shell: OrgShellData; children: R
         event.preventDefault();
         setCommandOpen(true);
       }
+      if (event.key === "Escape") setNavOpen(false);
     }
-
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  const isOnboarding = pathname.includes("/onboarding");
+
+  // Minimal onboarding shell — just a logout button, no nav
+  if (isOnboarding) {
+    return (
+      <div className="h-dvh overflow-hidden text-[var(--foreground-80)]">
+        <div className="pointer-events-none absolute left-4 top-4 z-30">
+          <button
+            type="button"
+            aria-label="Log out"
+            onClick={async () => {
+              await fetch("/api/auth/logout", { method: "POST" });
+              window.location.href = "/login";
+            }}
+            className="pointer-events-auto flex items-center gap-2 rounded-[10px] border border-[var(--border-10)] bg-[var(--background-l0)] px-3 py-2 text-sm text-[var(--foreground-80)] shadow-sm transition-colors hover:bg-[var(--foreground-10)]"
+          >
+            <LogOut aria-hidden="true" className="size-4" />
+            Log out
+          </button>
+        </div>
+        {children}
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-dvh bg-[var(--background)] text-[var(--foreground-80)]">
-      <div className="flex min-h-dvh">
-        <aside className="hidden w-[76px] shrink-0 border-r border-[var(--border-10)] bg-[var(--card)] p-3 lg:flex lg:flex-col lg:items-center lg:gap-3">
-          <Link href={`/org/${shell.organization.id}/canvas`} className="grid size-11 place-items-center rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-8)] text-[var(--foreground-80)]" aria-label={shell.organization.name}>
-            <Boxes aria-hidden="true" className="size-5" />
-          </Link>
-          <nav className="mt-2 grid gap-2" aria-label="App navigation">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const href = `/org/${shell.organization.id}/${item.href}`;
-              const active = isNavActive({ itemHref: item.href, itemLabel: item.label, pathname, searchParams });
-              return (
-                <Link
-                  key={item.label}
-                  href={href}
-                  aria-label={item.label}
-                  className={cn(
-                    "grid size-10 place-items-center rounded-[10px] border text-[var(--foreground-50)] outline-none transition-colors hover:border-[var(--border-10)] hover:bg-[var(--foreground-8)] hover:text-[var(--foreground-80)] focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
-                    active ? "border-[var(--foreground-80)] bg-[var(--foreground-10)] text-[var(--foreground-80)]" : "border-transparent"
-                  )}
-                >
-                  <Icon aria-hidden="true" className="size-4" />
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="mt-auto grid gap-2">
-            <IconButton icon={<Bell aria-hidden="true" />} label="Open inbox" tooltip="Inbox" onClick={() => setInboxOpen(true)} />
-            <IconButton icon={<Plus aria-hidden="true" />} label="New task" tooltip="New task" onClick={() => setTaskCreateOpen(true)} />
-          </div>
-        </aside>
+    <div className="h-dvh overflow-hidden bg-[var(--background)] text-[var(--foreground-80)]">
+      {/* Nav drawer backdrop */}
+      {navOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/10"
+          onClick={() => setNavOpen(false)}
+        />
+      )}
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex min-h-[68px] items-center gap-3 border-b border-[var(--border-10)] bg-[var(--background-l0-85)] px-3 backdrop-blur md:px-4">
-            <CompanySwitcher shell={shell} />
-            <AppBreadcrumb shell={shell} />
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                type="button"
-                className="hidden h-10 min-w-[220px] items-center gap-2 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-5)] px-3 text-left text-sm text-[var(--foreground-50)] outline-none transition-colors hover:bg-[var(--foreground-10)] focus-visible:ring-2 focus-visible:ring-[var(--focused)] md:flex"
-                onClick={() => setCommandOpen(true)}
-              >
-                <Search aria-hidden="true" className="size-4" />
-                <span className="min-w-0 flex-1 truncate">Search or run command</span>
-                <span className="rounded-[6px] border border-[var(--border-10)] px-1.5 py-0.5 font-mono text-[10px]">Ctrl K</span>
-              </button>
-              <IconButton icon={<Search aria-hidden="true" />} label="Search" className="md:hidden" onClick={() => setCommandOpen(true)} />
-              <button
-                type="button"
-                className="relative grid size-10 place-items-center rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-80)] outline-none transition-colors hover:bg-[var(--foreground-10)] focus-visible:ring-2 focus-visible:ring-[var(--focused)]"
-                aria-label="Open inbox"
-                onClick={() => setInboxOpen(true)}
-              >
-                <Bell aria-hidden="true" className="size-4" />
-                {unreadCount > 0 ? <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-[var(--alert)] px-1 text-[10px] text-[var(--foreground-inverse-80)]">{unreadCount}</span> : null}
-              </button>
-              <ActionMenu shell={shell} onUpgrade={() => setUpgradeOpen(true)} />
+      {/* Nav drawer panel */}
+      <div className={cn(
+        "fixed left-3 top-3 z-50 flex w-[260px] flex-col rounded-[16px] border border-[var(--border-10)] bg-[var(--background-l0-85)] shadow-[var(--tt-shadow-elevated-md)] backdrop-blur-[20px]",
+        navOpen
+          ? "animate-nav-drawer-pop pointer-events-auto"
+          : "opacity-0 scale-90 -translate-y-2 pointer-events-none transition-all duration-200 ease-in"
+      )}>
+        {/* Drawer header */}
+        <div className="flex items-center justify-between border-b border-[var(--border-10)] px-4 py-3">
+          <div className="flex items-center gap-3">
+            <span className="grid size-8 place-items-center rounded-[8px] bg-[var(--foreground-10)] text-sm font-semibold text-[var(--foreground-80)]">
+              {shell.organization.name.slice(0, 1).toUpperCase()}
+            </span>
+            <div>
+              <p className="text-sm font-medium text-[var(--foreground-80)]">{shell.organization.name}</p>
+              <p className="text-xs text-[var(--foreground-50)]">{shell.user.name}</p>
             </div>
-          </header>
-
-          <div className="flex min-h-0 flex-1">
-            <div className="min-w-0 flex-1 overflow-y-auto pb-20 lg:pb-0">{children}</div>
-            {pathname.includes("/canvas") ? null : <SidePanelTabs shell={shell} />}
           </div>
+          <button
+            type="button"
+            onClick={() => setNavOpen(false)}
+            className="grid size-7 place-items-center rounded-[6px] text-[var(--foreground-50)] hover:bg-[var(--foreground-8)] hover:text-[var(--foreground-80)]"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Account */}
+        <nav className="p-3">
+          <p className="mb-2 px-2 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--foreground-30)]">Account</p>
+          <div className="grid gap-0.5">
+            <button
+              type="button"
+              onClick={() => { setNavOpen(false); setUpgradeOpen(true); }}
+              className="flex items-center gap-3 rounded-[8px] px-3 py-2.5 text-sm text-[var(--foreground-60)] hover:bg-[var(--foreground-5)] hover:text-[var(--foreground-80)]"
+            >
+              <Sparkles aria-hidden="true" className="size-4 shrink-0" />
+              Upgrade plan
+            </button>
+            <Link
+              href={`/org/${shell.organization.id}/settings/billing`}
+              className="flex items-center gap-3 rounded-[8px] px-3 py-2.5 text-sm text-[var(--foreground-60)] hover:bg-[var(--foreground-5)] hover:text-[var(--foreground-80)]"
+            >
+              <CreditCard aria-hidden="true" className="size-4 shrink-0" />
+              Billing
+            </Link>
+            <Link
+              href={`/org/${shell.organization.id}/settings/preferences`}
+              className="flex items-center gap-3 rounded-[8px] px-3 py-2.5 text-sm text-[var(--foreground-60)] hover:bg-[var(--foreground-5)] hover:text-[var(--foreground-80)]"
+            >
+              <Settings aria-hidden="true" className="size-4 shrink-0" />
+              Settings
+            </Link>
+          </div>
+        </nav>
+
+        {/* Logout at bottom */}
+        <div className="border-t border-[var(--border-10)] p-3">
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 rounded-[8px] px-3 py-2.5 text-sm text-[var(--foreground-60)] hover:bg-[var(--foreground-5)] hover:text-[var(--foreground-80)]"
+            onClick={async () => {
+              await fetch("/api/auth/logout", { method: "POST" });
+              window.location.href = "/login";
+            }}
+          >
+            <LogOut aria-hidden="true" className="size-4 shrink-0" />
+            Log out
+          </button>
+        </div>
+      </div>
+
+      {/* Main layout — no header */}
+      <div className="flex h-full flex-col">
+        {/* Back-to-canvas bar — settings and integrations pages (in flow, no overlap) */}
+        {pathname.includes("/settings") || pathname.includes("/integrations") ? (
+          <div className="shrink-0 border-b border-[var(--border-10)] px-4 py-2">
+            <Link
+              href={`/org/${shell.organization.id}/canvas`}
+              className="inline-flex items-center gap-2 rounded-[8px] px-2 py-1.5 text-sm text-[var(--foreground-60)] transition-colors hover:bg-[var(--foreground-8)] hover:text-[var(--foreground-80)]"
+            >
+              <ArrowLeft aria-hidden="true" className="size-4" />
+              Canvas
+            </Link>
+          </div>
+        ) : null}
+
+        {/* Floating top-left controls — hidden on settings and integrations pages */}
+        <div className={pathname.includes("/settings") || pathname.includes("/integrations") ? "hidden" : "pointer-events-none absolute left-4 top-4 z-30 flex items-center gap-2"}>
+          <button
+            type="button"
+            onClick={() => setNavOpen(true)}
+            aria-label="Open navigation"
+            className="pointer-events-auto grid size-9 place-items-center rounded-[10px] border border-[var(--border-10)] bg-[var(--background-l0)] text-[var(--foreground-80)] transition-colors hover:bg-[var(--foreground-10)]"
+          >
+            <Menu aria-hidden="true" className="size-4" />
+          </button>
+          <button
+            type="button"
+            className="pointer-events-auto relative grid size-9 place-items-center rounded-[10px] border border-[var(--border-10)] bg-[var(--background-l0)] text-[var(--foreground-80)] transition-colors hover:bg-[var(--foreground-10)]"
+            aria-label="Open inbox"
+            onClick={() => setInboxOpen(true)}
+          >
+            <Bell aria-hidden="true" className="size-4" />
+            {unreadCount > 0 ? <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-[var(--alert)] px-1 text-[10px] text-[var(--foreground-inverse-80)]">{unreadCount}</span> : null}
+          </button>
+          <ThemeToggle />
+          <button
+            type="button"
+            aria-label="Open roadmap"
+            onClick={() => {
+              if (isCanvas) {
+                window.dispatchEvent(new CustomEvent("open-roadmap"));
+              } else {
+                router.push(`/org/${shell.organization.id}/canvas?open_tech_tree=1`);
+              }
+            }}
+            className="pointer-events-auto grid size-9 place-items-center rounded-[10px] border border-[var(--border-10)] bg-[var(--background-l0)] text-[var(--foreground-80)] transition-colors hover:bg-[var(--foreground-10)]"
+          >
+            <Map aria-hidden="true" className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setCommandOpen(true)}
+            aria-label="Search"
+            className="pointer-events-auto grid size-9 place-items-center rounded-[10px] border border-[var(--border-10)] bg-[var(--background-l0)] text-[var(--foreground-80)] transition-colors hover:bg-[var(--foreground-10)]"
+          >
+            <Search aria-hidden="true" className="size-4" />
+          </button>
+        </div>
+
+        <div className="flex min-h-0 flex-1">
+          <div className={cn("min-w-0 flex-1 pb-20 lg:pb-0", pathname.includes("/canvas") ? "overflow-hidden" : "overflow-y-auto")}>{children}</div>
+          {pathname.includes("/canvas") || pathname.includes("/onboarding") ? null : <SidePanelTabs shell={shell} />}
         </div>
       </div>
 
@@ -142,39 +245,6 @@ export function AppShell({ shell, children }: { shell: OrgShellData; children: R
       <InboxPanel orgId={shell.organization.id} open={inboxOpen} onOpenChange={setInboxOpen} onUnreadCountChange={setUnreadCount} />
       <UpgradeModal shell={shell} open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </div>
-  );
-}
-
-function ActionMenu({ shell, onUpgrade }: { shell: OrgShellData; onUpgrade: () => void }) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className="grid size-10 place-items-center rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-80)] outline-none transition-colors hover:bg-[var(--foreground-10)] focus-visible:ring-2 focus-visible:ring-[var(--focused)]" aria-label="Open action menu">
-        <Menu aria-hidden="true" className="size-4" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60">
-        <DropdownMenuLabel>{shell.user.name}</DropdownMenuLabel>
-        <DropdownMenuItem onSelect={onUpgrade}>
-          <Sparkles aria-hidden="true" className="mr-2 size-4" />
-          Upgrade plan
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href={`/org/${shell.organization.id}/settings/billing`}>
-            <CreditCard aria-hidden="true" className="mr-2 size-4" />
-            Billing
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href={`/org/${shell.organization.id}/settings/preferences`}>
-            <Settings aria-hidden="true" className="mr-2 size-4" />
-            Settings
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/api/auth/logout">Log out</Link>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }
 

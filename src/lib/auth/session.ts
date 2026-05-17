@@ -203,13 +203,13 @@ export function destinationForSession(session: SessionShape) {
   }
 
   if (session.user.onboardingStatus !== "complete") {
-    return "/onboarding";
+    return "/questions";
   }
 
   const activeOrg = session.organizations.find((organization) => organization.id === session.activeOrgId) ?? session.organizations[0];
 
   if (!activeOrg) {
-    return "/onboarding";
+    return "/questions";
   }
 
   if (activeOrg.status !== "active" || activeOrg.designOnboardingStatus !== "complete") {

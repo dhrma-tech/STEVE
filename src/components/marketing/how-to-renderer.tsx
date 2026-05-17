@@ -69,7 +69,7 @@ export function HowToRenderer({ chapter }: { chapter: HowToChapter }) {
         {chapter.sections.map((section) => (
           <section key={section.id} id={section.id} className="scroll-mt-[120px] rounded-[16px] border border-[var(--border-10)] bg-[var(--background-l0)] p-5">
             <h2 className="text-[28px] font-normal leading-[1.15] tracking-[0px]">{section.title}</h2>
-            <p className="mt-4 text-[15px] leading-7 text-[var(--foreground-60)]">{section.body}</p>
+            <div className="mt-4 text-[15px] leading-7 text-[var(--foreground-60)] [&_p]:mb-4 [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-1">{section.body}</div>
             {section.callout ? <FeatureCallout className="mt-5" label="Guide note" title={section.title} description={section.callout} /> : null}
           </section>
         ))}
@@ -96,7 +96,7 @@ function Toc({ chapter, active, className }: { chapter: HowToChapter; active: st
             key={section.id}
             href={`#${section.id}`}
             className={`rounded-[8px] px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focused)] ${
-              active === section.id ? "bg-[var(--foreground)] text-white" : "text-[var(--foreground-60)] hover:bg-[var(--background)]"
+              active === section.id ? "bg-white text-[var(--foreground)] shadow-[0_1px_3px_rgba(0,0,0,0.08)]" : "text-[var(--foreground-60)] hover:bg-[var(--background)]"
             }`}
           >
             {section.title}

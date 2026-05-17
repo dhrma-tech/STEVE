@@ -24,11 +24,12 @@ export default async function OrgOnboardingPage({ params }: PageProps) {
   const state = await getCompanyOnboardingState(orgId);
 
   if (!state.organization) {
-    redirect("/onboarding");
+    redirect("/questions");
   }
 
   return (
     <CompanyOnboardingWorkspace
+      userName={session.user.preferredName ?? "there"}
       initialState={{
         organization: {
           id: state.organization.id,

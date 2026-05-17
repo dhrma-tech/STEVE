@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Bot, Loader2, Plus } from "lucide-react";
+import { Cpu, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -90,13 +90,22 @@ export function AgentCreateDialog({
       <DialogContent className="max-h-[92dvh] max-w-[720px] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Bot aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
+            <Cpu aria-hidden="true" className="size-4 text-[var(--foreground-80)]" />
             New agent
           </DialogTitle>
           <DialogDescription>
-            Configure a department agent, model, permissions, prompt, and skills before adding it to the company team.
+            Configure a department agent, model, permissions, prompt, and skills.
           </DialogDescription>
         </DialogHeader>
+
+        {!catalog?.departments.length ? (
+          <div className="rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-4 text-center">
+            <p className="text-sm font-medium text-[var(--foreground-80)]">No departments available</p>
+            <p className="mt-1 text-xs text-[var(--foreground-50)]">
+              Activate your company first — go to the Co tab and click "Activate company".
+            </p>
+          </div>
+        ) : null}
 
         <div className="grid gap-4">
           {error ? (
