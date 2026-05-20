@@ -305,18 +305,32 @@ export function PersonalOnboardingWizard({ initialProfile: _ }: { initialProfile
             <h2 className="text-center text-[22px] font-medium leading-snug text-[var(--foreground)]">
               Create your company
             </h2>
-            <label className="grid gap-2 text-sm text-[var(--foreground-60)]">
-              Company name
-              <input
-                autoFocus
-                type="text"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") void next(); }}
-                placeholder="Your company"
-                className="rounded-[10px] border border-[var(--border-10)] bg-white px-4 py-3 text-[15px] text-[var(--foreground)] outline-none transition-colors placeholder:text-[var(--foreground-30)] focus:border-[var(--tt-brand-color-500)]"
-              />
-            </label>
+            <div className="grid gap-3">
+              <label className="grid gap-2 text-sm text-[var(--foreground-60)]">
+                Company name
+                <input
+                  autoFocus
+                  type="text"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") void next(); }}
+                  placeholder="Your company"
+                  className="rounded-[10px] border border-[var(--border-10)] bg-white px-4 py-3 text-[15px] text-[var(--foreground)] outline-none transition-colors placeholder:text-[var(--foreground-30)] focus:border-[var(--tt-brand-color-500)]"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => setCompanyName("To be decided")}
+                className={cn(
+                  "w-full rounded-[10px] border px-4 py-3 text-left text-[15px] transition-all duration-100 active:scale-[0.99]",
+                  companyName === "To be decided"
+                    ? "border-[var(--tt-brand-color-500)] bg-[rgba(98,41,255,0.04)] text-[var(--foreground)]"
+                    : "border-[var(--border-10)] bg-white text-[var(--foreground-50)] hover:border-[var(--foreground-20)] hover:text-[var(--foreground-70)]"
+                )}
+              >
+                To be decided
+              </button>
+            </div>
             {error ? <p className="text-sm text-[var(--destructive)]">{error}</p> : null}
             <div className="grid gap-3 text-center">
               <ContinueBtn onClick={() => void next()} loading={loading} enabled={canContinue} />

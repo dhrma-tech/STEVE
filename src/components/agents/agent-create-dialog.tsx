@@ -8,7 +8,10 @@ import { Input } from "@/components/ui/input";
 import { SelectField } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { AgentDetail, AgentWorkspacePayload } from "@/components/agents/types";
-import { agentModelOptions, permissionModeOptions } from "@/data/agents";
+import { agentModelOptions } from "@/data/agents";
+import { PermissionModeSelector } from "@/components/agents/permission-mode-selector";
+import { PromptTextarea } from "@/components/agents/prompt-textarea";
+import { cn } from "@/lib/utils/cn";
 
 type ApiPayload<T> = { data?: T; error?: { message: string } };
 
@@ -124,23 +127,51 @@ export function AgentCreateDialog({
             />
             <SelectField surface="dark" label="Model" value={model} onValueChange={setModel} options={agentModelOptions} />
           </div>
-          <SelectField surface="dark" label="Permissions" value={permissionMode} onValueChange={setPermissionMode} options={permissionModeOptions} />
+          <div>
+            <p className="mb-2 text-sm font-medium">Permissions</p>
+            <PermissionModeSelector value={permissionMode} onChange={setPermissionMode} />
+          </div>
           <Input surface="dark" label="Description" value={description} onChange={(event) => setDescription(event.target.value)} />
-          <Textarea surface="dark" label="Prompt personalization" value={prompt} onChange={(event) => setPrompt(event.target.value)} className="min-h-32" />
+          {/* Fix 12 — department-aware prompt textarea with character counter */}
+          <PromptTextarea
+            label="Prompt personalization"
+            value={prompt}
+            onChange={setPrompt}
+            departmentSlug={department?.slug}
+          />
 
+          {/* Fix 14 — skills section with counter badge */}
           <section className="grid gap-2">
-            <h3 className="text-sm font-medium">Tools and skills</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium">Tools and skills</h3>
+              <span
+                className={cn(
+                  "rounded border px-1.5 py-0.5 text-xs tabular-nums",
+                  skillKeys.length >= 10
+                    ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
+                    : "border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-40)]"
+                )}
+              >
+                {skillKeys.length} / 10
+              </span>
+            </div>
             <div className="grid gap-2 sm:grid-cols-2">
               {departmentSkillOptions.map((skill) => {
                 const selected = skillKeys.includes(skill.key);
+                const isAtLimit = skillKeys.length >= 10;
+                const isDisabled = isAtLimit && !selected;
                 return (
                   <button
                     key={skill.key}
                     type="button"
-                    className={`rounded-[10px] border p-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focused)] ${
-                      selected ? "border-[var(--primary)] bg-[var(--foreground-8)]" : "border-[var(--border-10)] bg-[var(--foreground-3)]"
-                    }`}
-                    onClick={() => setSkillKeys((current) => selected ? current.filter((key) => key !== skill.key) : [...current, skill.key])}
+                    disabled={isDisabled}
+                    title={isDisabled ? "Remove a skill to add another (max 10)" : undefined}
+                    className={cn(
+                      "rounded-[10px] border p-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
+                      selected ? "border-[var(--primary)] bg-[var(--foreground-8)]" : "border-[var(--border-10)] bg-[var(--foreground-3)]",
+                      isDisabled && "cursor-not-allowed opacity-40"
+                    )}
+                    onClick={() => !isDisabled && setSkillKeys((current) => selected ? current.filter((key) => key !== skill.key) : [...current, skill.key])}
                   >
                     <span className="block text-sm font-medium">{skill.name}</span>
                     <span className="mt-1 block text-xs leading-5 text-[var(--foreground-50)]">{skill.description}</span>
@@ -148,6 +179,12 @@ export function AgentCreateDialog({
                 );
               })}
             </div>
+            {skillKeys.length === 0 && (
+              <p className="text-xs text-[var(--foreground-30)]">Select up to 10 skills for this agent</p>
+            )}
+            {skillKeys.length >= 10 && (
+              <p className="text-xs text-amber-400">Maximum skills reached — remove one to add another</p>
+            )}
           </section>
         </div>
 

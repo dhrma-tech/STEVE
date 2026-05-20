@@ -229,14 +229,14 @@ export function AgentControlCenter({
             </div>
           ) : (
             <div className="grid gap-4">
-              <AgentList agents={data.agents} selectedAgentId={selectedAgentId} onSelect={setSelectedAgentId} onLaunch={launchAgent} launchingId={launchingId} />
+              <AgentList agents={data.agents} selectedAgentId={selectedAgentId} onSelect={setSelectedAgentId} onLaunch={launchAgent} launchingId={launchingId} onCreateAgent={() => setCreateOpen(true)} />
               <MarketplaceSkills skills={data.skills} selectedDepartmentSlug={null} />
             </div>
           )
         ) : (
         <div className="grid gap-4 2xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <div className="grid gap-4 content-start">
-            <AgentList agents={data.agents} selectedAgentId={selectedAgentId} onSelect={setSelectedAgentId} onLaunch={launchAgent} launchingId={launchingId} />
+            <AgentList agents={data.agents} selectedAgentId={selectedAgentId} onSelect={setSelectedAgentId} onLaunch={launchAgent} launchingId={launchingId} onCreateAgent={() => setCreateOpen(true)} />
             <MarketplaceSkills skills={selectedAgent?.recommendedSkills ?? data.skills} selectedDepartmentSlug={selectedAgent?.department.slug ?? null} />
           </div>
           {detailLoading ? (

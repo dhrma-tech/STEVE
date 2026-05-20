@@ -25,6 +25,17 @@
    component references Section V tokens directly.
    ============================================================ */
 :root {
+  /* Terminal (agent workspace) — light mode */
+  --terminal-bg:          #ffffff;
+  --terminal-chrome:      #f0eeeb;
+  --terminal-border:      #e5e3df;
+  --terminal-text:        #374151;
+  --terminal-text-bright: #111827;
+  --terminal-text-muted:  #9ca3af;
+  --terminal-green:       #166534;
+  --terminal-amber:       #b45309;
+  --terminal-cursor:      #166534;
+
   --background: #f5f5f2;
   --foreground: #171717;
   --color-surface: #f5f5f2;
@@ -494,6 +505,17 @@ html.dark {
      --caret, --logo-background, --logo-tag are already declared in
      their primary groups above (matching Section V's listing where
      they appear under both Group 19 and their earlier groups). */
+
+  /* Terminal (agent workspace) — dark mode */
+  --terminal-bg:          #0a0a0a;
+  --terminal-chrome:      #141414;
+  --terminal-border:      #1f1f1f;
+  --terminal-text:        #c9c9c9;
+  --terminal-text-bright: #f3f4f6;
+  --terminal-text-muted:  #6b7280;
+  --terminal-green:       #4ade80;
+  --terminal-amber:       #fbbf24;
+  --terminal-cursor:      #4ade80;
 }
 
 /* ============================================================

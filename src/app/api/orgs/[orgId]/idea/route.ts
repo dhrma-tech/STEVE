@@ -9,8 +9,8 @@ Rules:
 - Only ask questions directly related to the business idea (target users, problem, revenue, competition, or unique advantage)
 - Generate exactly 4 specific answer options relevant to THIS idea, plus "Other" as the 5th option
 - The first option must be the most likely fit and must end with " (Recommended)"
-- Ask between 2 and 5 questions total. After you have enough context, set done to true.
-- NEVER ask more than 5 questions total. If you already have 4 or 5 answers, always set done to true.
+- Ask at most 2 questions total. If the idea is clear enough after 1 question, set done to true immediately.
+- NEVER ask more than 2 questions. If you already have 1 or 2 answers, always set done to true.
 - Respond ONLY with a raw JSON object — no markdown, no explanation, no extra text
 
 JSON when asking a question:

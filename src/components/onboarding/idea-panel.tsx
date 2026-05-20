@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CheckCircle, Download, Loader2, Maximize2, Send, X } from "lucide-react";
+import { CheckCircle, Download, Loader2, Maximize2, RotateCcw, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
 
@@ -9,7 +9,7 @@ type QA = { question: string; answer: string };
 
 type Message =
   | { role: "user"; content: string }
-  | { role: "ai"; content: string; options?: string[]; isPlan?: boolean; isTyping?: boolean };
+  | { role: "ai"; content: string; options?: string[]; isPlan?: boolean; isTyping?: boolean; isError?: boolean };
 
 function PlanContent({ text }: { text: string }) {
   return (
@@ -70,6 +70,7 @@ export function IdeaPanel({ orgId, userName }: { orgId: string; userName?: strin
   const [qas, setQas] = React.useState<QA[]>([]);
   const [selectedOption, setSelectedOption] = React.useState("");
   const [otherText, setOtherText] = React.useState("");
+  const [showOtherInput, setShowOtherInput] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [phase, setPhase] = React.useState<"describe" | "questions" | "plan">("describe");
   const [planContent, setPlanContent] = React.useState("");
@@ -78,10 +79,16 @@ export function IdeaPanel({ orgId, userName }: { orgId: string; userName?: strin
   const [showFullPlan, setShowFullPlan] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const bottomRef = React.useRef<HTMLDivElement>(null);
+  const retryRef = React.useRef<(() => Promise<void>) | null>(null);
 
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  async function handleRetry() {
+    setMessages((m) => m.slice(0, -1));
+    if (retryRef.current) await retryRef.current();
+  }
 
   async function callIdea(
     p: "question" | "plan" | "revise",
@@ -120,14 +127,27 @@ export function IdeaPanel({ orgId, userName }: { orgId: string; userName?: strin
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong.";
-      setMessages((m) => [...m, { role: "ai", content: `Error: ${msg}` }]);
+      const retry = async () => {
+        retryRef.current = retry;
+        setLoading(true);
+        try {
+          const data = await callIdea("question", text, []) as { question: string; options: string[]; done: boolean };
+          if (data.done) { await runPlan(text, []); }
+          else { setMessages((m) => [...m, { role: "ai", content: data.question, options: data.options }]); setPhase("questions"); }
+        } catch (e) {
+          const m2 = e instanceof Error ? e.message : "Something went wrong.";
+          setMessages((m) => [...m, { role: "ai", content: `Error: ${m2}`, isError: true }]);
+        } finally { setLoading(false); }
+      };
+      retryRef.current = retry;
+      setMessages((m) => [...m, { role: "ai", content: `Error: ${msg}`, isError: true }]);
     } finally {
       setLoading(false);
     }
   }
 
   async function submitAnswer() {
-    const answer = selectedOption === "Other" ? otherText.trim() : selectedOption;
+    const answer = showOtherInput && otherText.trim() ? otherText.trim() : selectedOption;
     if (!answer || loading) return;
 
     const lastAI = [...messages].reverse().find((m) => m.role === "ai" && m.options);
@@ -137,6 +157,7 @@ export function IdeaPanel({ orgId, userName }: { orgId: string; userName?: strin
     setQas(newQAs);
     setSelectedOption("");
     setOtherText("");
+    setShowOtherInput(false);
 
     setMessages((m) => [
       ...m.map((msg) => ({ ...msg, options: undefined })),
@@ -153,7 +174,21 @@ export function IdeaPanel({ orgId, userName }: { orgId: string; userName?: strin
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong.";
-      setMessages((m) => [...m, { role: "ai", content: `Error: ${msg}` }]);
+      const capturedDesc = description.trim();
+      const retry = async () => {
+        retryRef.current = retry;
+        setLoading(true);
+        try {
+          const data = await callIdea("question", capturedDesc, newQAs) as { question: string; options: string[]; done: boolean };
+          if (data.done) { await runPlan(capturedDesc, newQAs); }
+          else { setMessages((m) => [...m, { role: "ai", content: data.question, options: data.options }]); }
+        } catch (e) {
+          const m2 = e instanceof Error ? e.message : "Something went wrong.";
+          setMessages((m) => [...m, { role: "ai", content: `Error: ${m2}`, isError: true }]);
+        } finally { setLoading(false); }
+      };
+      retryRef.current = retry;
+      setMessages((m) => [...m, { role: "ai", content: `Error: ${msg}`, isError: true }]);
     } finally {
       setLoading(false);
     }
@@ -164,6 +199,7 @@ export function IdeaPanel({ orgId, userName }: { orgId: string; userName?: strin
     try {
       const data = await callIdea("plan", desc, currentQAs) as { plan: string };
       setPlanContent(data.plan);
+      sessionStorage.setItem("businessPlan", data.plan);
       setMessages((m) => [
         ...m.filter((msg) => !("isTyping" in msg && msg.isTyping)),
         { role: "ai", content: data.plan, isPlan: true }
@@ -171,9 +207,14 @@ export function IdeaPanel({ orgId, userName }: { orgId: string; userName?: strin
       setPhase("plan");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to generate business plan.";
+      const retry = async () => {
+        retryRef.current = retry;
+        await runPlan(desc, currentQAs);
+      };
+      retryRef.current = retry;
       setMessages((m) => [
         ...m.filter((msg) => !("isTyping" in msg && msg.isTyping)),
-        { role: "ai", content: `Error: ${msg}` }
+        { role: "ai", content: `Error: ${msg}`, isError: true }
       ]);
     }
   }
@@ -236,7 +277,7 @@ export function IdeaPanel({ orgId, userName }: { orgId: string; userName?: strin
     return (last as { options?: string[] } | undefined)?.options;
   })();
 
-  const canAnswer = selectedOption && (selectedOption !== "Other" || otherText.trim().length > 0);
+  const canAnswer = (selectedOption && selectedOption !== "Other") || (showOtherInput && otherText.trim().length > 0);
 
   return (
     <>
@@ -305,45 +346,77 @@ export function IdeaPanel({ orgId, userName }: { orgId: string; userName?: strin
                       </div>
                     )}
 
+                    {msg.isError && i === messages.length - 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleRetry()}
+                        disabled={loading}
+                        className="flex w-fit items-center gap-1.5 rounded-[8px] border border-[var(--border-10)] bg-[var(--background-l0)] px-3 py-1.5 text-xs text-[var(--foreground-60)] transition-all hover:border-[var(--foreground-20)] hover:text-[var(--foreground-80)] disabled:opacity-40"
+                      >
+                        <RotateCcw className="size-3" />
+                        Retry
+                      </button>
+                    ) : null}
+
                     {i === messages.length - 1 && activeOptions && !loading ? (
                       <div className="grid gap-2 pl-1">
-                        {activeOptions.map((opt) => {
+                        {activeOptions.filter((opt) => opt !== "Other").map((opt) => {
                           const isRec = opt.endsWith("(Recommended)");
-                          const isOther = opt === "Other";
                           const label = isRec ? opt.replace(" (Recommended)", "") : opt;
                           const isSelected = selectedOption === opt;
                           return (
-                            <div key={opt}>
-                              <button
-                                type="button"
-                                onClick={() => { setSelectedOption(opt); if (!isOther) setOtherText(""); }}
-                                className={cn(
-                                  "flex w-full items-center justify-between gap-3 rounded-[10px] border px-3.5 py-2.5 text-left text-sm transition-all duration-150 active:scale-[0.99]",
-                                  isSelected
-                                    ? "border-[var(--tt-brand-color-500)] bg-[rgba(98,41,255,0.07)] text-[var(--foreground)]"
-                                    : "border-[var(--border-10)] bg-[var(--background-l0)] text-[var(--foreground-70)] hover:border-[var(--foreground-20)]"
-                                )}
-                              >
-                                <span>{label}</span>
-                                {isRec ? (
-                                  <span className="shrink-0 rounded-full bg-[var(--tt-brand-color-500)] px-2 py-0.5 font-mono text-[9px] uppercase tracking-wide text-white">
-                                    Recommended
-                                  </span>
-                                ) : null}
-                              </button>
-                              {isOther && isSelected ? (
-                                <textarea
-                                  autoFocus
-                                  value={otherText}
-                                  onChange={(e) => setOtherText(e.target.value)}
-                                  placeholder="Describe your answer…"
-                                  rows={3}
-                                  className="mt-2 w-full resize-none rounded-[10px] border border-[var(--tt-brand-color-500)] bg-[var(--foreground-3)] p-3 text-sm text-[var(--foreground-80)] outline-none placeholder:text-[var(--foreground-30)]"
-                                />
+                            <button
+                              key={opt}
+                              type="button"
+                              onClick={() => { setSelectedOption(opt); setShowOtherInput(false); setOtherText(""); }}
+                              className={cn(
+                                "flex w-full items-center justify-between gap-3 rounded-[10px] border px-3.5 py-2.5 text-left text-sm transition-all duration-150 active:scale-[0.99]",
+                                isSelected
+                                  ? "border-[var(--tt-brand-color-500)] bg-[rgba(98,41,255,0.07)] text-[var(--foreground)]"
+                                  : "border-[var(--border-10)] bg-[var(--background-l0)] text-[var(--foreground-70)] hover:border-[var(--foreground-20)]"
+                              )}
+                            >
+                              <span>{label}</span>
+                              {isRec ? (
+                                <span className="shrink-0 rounded-full bg-[var(--tt-brand-color-500)] px-2 py-0.5 font-mono text-[9px] uppercase tracking-wide text-white">
+                                  Recommended
+                                </span>
                               ) : null}
-                            </div>
+                            </button>
                           );
                         })}
+
+                        {/* "Add anything else" toggle */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = !showOtherInput;
+                            setShowOtherInput(next);
+                            if (next) setSelectedOption("");
+                            else setOtherText("");
+                          }}
+                          className={cn(
+                            "flex w-full items-center gap-2 rounded-[10px] border px-3.5 py-2.5 text-left text-sm transition-all duration-150 active:scale-[0.99]",
+                            showOtherInput
+                              ? "border-[var(--tt-brand-color-500)] bg-[rgba(98,41,255,0.07)] text-[var(--foreground)]"
+                              : "border-dashed border-[var(--border-10)] bg-transparent text-[var(--foreground-40)] hover:border-[var(--foreground-20)] hover:text-[var(--foreground-70)]"
+                          )}
+                        >
+                          <span className="text-base leading-none">{showOtherInput ? "−" : "+"}</span>
+                          <span>Add anything else</span>
+                        </button>
+
+                        {showOtherInput ? (
+                          <textarea
+                            autoFocus
+                            value={otherText}
+                            onChange={(e) => setOtherText(e.target.value)}
+                            placeholder="Describe your answer…"
+                            rows={3}
+                            className="w-full resize-none rounded-[10px] border border-[var(--tt-brand-color-500)] bg-[var(--foreground-3)] p-3 text-sm text-[var(--foreground-80)] outline-none placeholder:text-[var(--foreground-30)]"
+                          />
+                        ) : null}
+
                         <Button
                           variant="app"
                           size="sm"

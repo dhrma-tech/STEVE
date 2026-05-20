@@ -546,3 +546,10 @@
   animation: loading-dot 0.9s ease-in-out infinite;
   display: inline-block;
 }
+
+/* ─── Running agent banner sweep ─────────────────────────── */
+@keyframes gradient-sweep {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}

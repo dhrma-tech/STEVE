@@ -3,9 +3,9 @@
  * Model: mistral (running in WSL2 via `OLLAMA_HOST=0.0.0.0 ollama serve`)
  */
 
-export const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://localhost:11434";
+export const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://localhost:11435";
 export const OLLAMA_MODEL = "mistral";
-export const OLLAMA_TIMEOUT_MS = 25000;
+export const OLLAMA_TIMEOUT_MS = 600000;
 
 export const OLLAMA_OFFLINE_MESSAGE =
   "AI is offline. Start Ollama in WSL2: `OLLAMA_HOST=0.0.0.0 ollama serve`, then retry.";

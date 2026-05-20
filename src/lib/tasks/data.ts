@@ -558,6 +558,48 @@ export async function reviewTaskApproval({
     })
   ]);
 
+  if (status === "approved") {
+    try {
+      const task = await prisma.task.findFirst({
+        where: { id: taskId, organizationId: orgId, archivedAt: null },
+        include: { department: true }
+      });
+      if (task?.departmentId) {
+        const agent =
+          (await prisma.agent.findFirst({
+            where: { organizationId: orgId, departmentId: task.departmentId, isDefault: true, archivedAt: null }
+          })) ??
+          (await prisma.agent.findFirst({
+            where: { organizationId: orgId, departmentId: task.departmentId, archivedAt: null }
+          }));
+        if (agent) {
+          await prisma.task.update({
+            where: { id: taskId },
+            data: { status: "running", agentId: agent.id, startedAt: new Date() }
+          });
+          const session = await startAgentSession({ orgId, taskId, agentId: agent.id });
+          if (session) {
+            void completeAgentSession({
+              orgId,
+              sessionId: session.id,
+              taskId,
+              agentId: agent.id,
+              agentName: agent.name,
+              deptName: task.department?.name ?? "company",
+              taskTitle: task.title,
+              taskDescription: task.description
+            });
+            console.log(`Auto-started agent session ${session.id} for task ${taskId} after approval`);
+          }
+        } else {
+          console.log(`No agent available for auto-start after approval of task ${taskId}`);
+        }
+      }
+    } catch (err) {
+      console.log(`Auto-start agent session failed for task ${taskId} after approval:`, err);
+    }
+  }
+
   return getTaskDetail(orgId, taskId);
 }
 

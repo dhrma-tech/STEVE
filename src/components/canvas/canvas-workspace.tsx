@@ -14,8 +14,8 @@ import {
   type NodeMouseHandler,
   type Viewport
 } from "@xyflow/react";
-import { Building2, GripVertical, Maximize2, Workflow, X } from "lucide-react";
-import { Rnd } from "react-rnd";
+import { Building2, Maximize2, Workflow, X } from "lucide-react";
+import { Z_CANVAS_CHROME } from "@/lib/z-index";
 import { CofounderNode } from "@/components/canvas/cofounder-node";
 import { DepartmentAgentPopup } from "@/components/canvas/department-agent-popup";
 import { DepartmentNode } from "@/components/canvas/department-node";
@@ -71,6 +71,27 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
   const [roadmapVisible, setRoadmapVisible] = React.useState(initialRoadmapOpen);
   const [sessionVisible, setSessionVisible] = React.useState(Boolean(initialSessionId));
   const [sessionId, setSessionId] = React.useState(initialSessionId);
+  const [ollamaStatus, setOllamaStatus] = React.useState<"checking" | "up" | "down">("checking");
+  const prevOllamaStatus = React.useRef<"checking" | "up" | "down">("checking");
+
+  React.useEffect(() => {
+    async function check() {
+      try {
+        const res = await fetch("/api/health/ollama");
+        setOllamaStatus(res.ok ? "up" : "down");
+      } catch {
+        setOllamaStatus("down");
+      }
+    }
+    void check();
+    const id = setInterval(() => void check(), 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  React.useEffect(() => {
+    prevOllamaStatus.current = ollamaStatus;
+  }, [ollamaStatus]);
+
   const [agentPopup, setAgentPopup] = React.useState<{
     departmentId: string;
     departmentName: string;
@@ -78,18 +99,6 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
     x: number;
     y: number;
   } | null>(null);
-  const [panelFloating, setPanelFloating] = React.useState(true);
-  const [panelBounds, setPanelBounds] = React.useState({ x: 0, y: 0, width: 420, height: 0 });
-  React.useEffect(() => {
-    const savedBounds = typeof window !== "undefined" ? localStorage.getItem("canvasPanelBounds") : null;
-    const savedFloating = typeof window !== "undefined" ? localStorage.getItem("canvasPanelFloating") : null;
-    if (savedFloating !== null) setPanelFloating(savedFloating !== "false");
-    if (savedBounds) {
-      try { setPanelBounds(JSON.parse(savedBounds) as typeof panelBounds); } catch { /* ignore */ }
-    } else {
-      setPanelBounds({ x: Math.max(0, window.innerWidth - 440), y: 68, width: 420, height: window.innerHeight - 68 });
-    }
-  }, []);
   const selectedDepartment = React.useMemo(() => departmentForNodeId(data.departments, selectedNodeId), [data.departments, selectedNodeId]);
   const [nodes, setNodes, onNodesChange] = useNodesState<WorkspaceNode>(React.useMemo(() => buildNodes(data, selectedNodeId), [data, selectedNodeId]));
   const [edges, , onEdgesChange] = useEdgesState(React.useMemo(() => buildEdges(data), [data]));
@@ -233,6 +242,27 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
             />
           ) : null}
 
+          {/* Ollama status indicator — bottom-right */}
+          <div
+            className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full border border-[var(--border-10)] bg-[var(--background-sidepanel)] px-2.5 py-1 text-[11px] text-[var(--foreground-50)]"
+            style={{ zIndex: Z_CANVAS_CHROME }}
+            title={
+              ollamaStatus === "up" ? "Mistral (local) — Running. Agents are available." :
+              ollamaStatus === "down" ? "Ollama offline — Agents will fail. Start Ollama in WSL2." :
+              "Checking Ollama status…"
+            }
+          >
+            <span
+              className={cn(
+                "size-1.5 rounded-full",
+                ollamaStatus === "up" ? "bg-green-400" :
+                ollamaStatus === "down" ? "animate-pulse bg-red-400" :
+                "animate-pulse bg-[var(--foreground-30)]"
+              )}
+            />
+            Mistral
+          </div>
+
           {/* Canvas controls — bottom-left */}
           <CanvasControls
             departments={data.departments}
@@ -242,21 +272,8 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
           />
         </section>
 
-        {!panelFloating ? (
-          <div className={cn(
-            "flex-none transition-all duration-300 lg:h-full lg:w-[390px] xl:w-[430px]",
-            selectedDepartment ? "flex-1 lg:flex-none" : "h-0 overflow-hidden lg:h-full lg:overflow-visible"
-          )}>
-            <div className="flex items-center justify-end border-b border-[var(--border-10)] bg-[var(--background-sidepanel)] px-2 py-1">
-              <button
-                type="button"
-                title="Float panel"
-                onClick={() => { setPanelFloating(true); localStorage.setItem("canvasPanelFloating", "true"); }}
-                className="grid size-6 place-items-center rounded-[6px] text-[var(--foreground-40)] hover:bg-[var(--foreground-8)] hover:text-[var(--foreground-70)]"
-              >
-                <GripVertical aria-hidden="true" className="size-3.5" />
-              </button>
-            </div>
+        <div className="flex-none lg:h-full lg:w-[390px] xl:w-[430px]">
+          <div className="flex h-full flex-col overflow-hidden rounded-[12px] border border-[var(--border-10)] bg-[var(--background-sidepanel)] shadow-[var(--tt-shadow-elevated-md)]">
             <CanvasSidePanel
               data={data}
               selectedDepartment={selectedDepartment}
@@ -271,57 +288,7 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
               onLaunchTaskSession={launchSession}
             />
           </div>
-        ) : (
-          <Rnd
-            position={{ x: panelBounds.x, y: panelBounds.y }}
-            size={{ width: panelBounds.width, height: panelBounds.height || "calc(100dvh - 68px)" }}
-            onDragStop={(_e, d) => {
-              const next = { ...panelBounds, x: d.x, y: d.y };
-              setPanelBounds(next);
-              localStorage.setItem("canvasPanelBounds", JSON.stringify(next));
-            }}
-            onResizeStop={(_e, _dir, ref, _delta, pos) => {
-              const next = { x: pos.x, y: pos.y, width: ref.offsetWidth, height: ref.offsetHeight };
-              setPanelBounds(next);
-              localStorage.setItem("canvasPanelBounds", JSON.stringify(next));
-            }}
-            minWidth={300}
-            minHeight={300}
-            maxWidth="90vw"
-            bounds="window"
-            dragHandleClassName="panel-drag-handle"
-            style={{ zIndex: 2000 }}
-          >
-            <div className="flex h-full flex-col overflow-hidden rounded-[12px] border border-[var(--border-10)] bg-[var(--background-sidepanel)] shadow-[var(--tt-shadow-elevated-md)]">
-              <div className="panel-drag-handle flex cursor-move items-center justify-between border-b border-[var(--border-10)] px-2 py-1 hover:bg-[var(--foreground-5)]">
-                <GripVertical aria-hidden="true" className="size-3.5 text-[var(--foreground-30)]" />
-                <button
-                  type="button"
-                  title="Dock panel"
-                  onClick={(e) => { e.stopPropagation(); setPanelFloating(false); localStorage.setItem("canvasPanelFloating", "false"); }}
-                  className="grid size-6 place-items-center rounded-[6px] text-[var(--foreground-40)] hover:bg-[var(--foreground-8)] hover:text-[var(--foreground-70)]"
-                >
-                  <Maximize2 aria-hidden="true" className="size-3" />
-                </button>
-              </div>
-              <div className="min-h-0 flex-1 overflow-hidden">
-                <CanvasSidePanel
-                  data={data}
-                  selectedDepartment={selectedDepartment}
-                  activeTab={activeTab}
-                  onActiveTabChange={setActiveTab}
-                  onOpenRoadmap={() => setRoadmapVisible(true)}
-                  onClearDepartment={() => setSelectedNodeId(null)}
-                  onOpenDepartmentBoard={setBoardDepartment}
-                  onLaunchDepartmentAgent={launchDepartmentAgent}
-                  selectedTaskId={initialTaskId}
-                  selectedAgentId={initialAgentId}
-                  onLaunchTaskSession={launchSession}
-                />
-              </div>
-            </div>
-          </Rnd>
-        )}
+        </div>
       </main>
       <QueryShells
         data={data}

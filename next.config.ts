@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   typedRoutes: false,
   reactStrictMode: true,
   turbopack: {
-    root: process.cwd()
+    root: __dirname
   }
 };
 

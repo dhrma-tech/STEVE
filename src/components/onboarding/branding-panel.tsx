@@ -109,6 +109,23 @@ export function BrandingPanel({ orgId, orgName }: { orgId: string; orgName: stri
   const [generatingColors, setGeneratingColors] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [ideaDescription, setIdeaDescription] = React.useState(orgName);
+  const [businessPlan, setBusinessPlan] = React.useState("");
+
+  // Custom colors
+  const [customPaletteOpen, setCustomPaletteOpen] = React.useState(false);
+  const [customPrimary, setCustomPrimary] = React.useState("#6366f1");
+  const [customSecondary, setCustomSecondary] = React.useState("#a5b4fc");
+  const [customAccent, setCustomAccent] = React.useState("#f59e0b");
+  const [customPaletteName, setCustomPaletteName] = React.useState("My Palette");
+
+  // Custom fonts
+  const [customFontOpen, setCustomFontOpen] = React.useState(false);
+  const [customFontHeading, setCustomFontHeading] = React.useState("");
+  const [customFontBody, setCustomFontBody] = React.useState("");
+
+  // Custom style
+  const [customStyleOpen, setCustomStyleOpen] = React.useState(false);
+  const [customStyleText, setCustomStyleText] = React.useState("");
 
   // Load Google Fonts for typography preview
   React.useEffect(() => {
@@ -120,10 +137,12 @@ export function BrandingPanel({ orgId, orgName }: { orgId: string; orgName: stri
     return () => { document.head.removeChild(link); };
   }, []);
 
-  // Read idea description saved by idea panel
+  // Read idea + business plan saved by idea panel
   React.useEffect(() => {
     const stored = sessionStorage.getItem("ideaDescription");
     if (stored) setIdeaDescription(stored);
+    const plan = sessionStorage.getItem("businessPlan");
+    if (plan) setBusinessPlan(plan);
   }, []);
 
   // Auto-generate names on mount
@@ -138,7 +157,7 @@ export function BrandingPanel({ orgId, orgName }: { orgId: string; orgName: stri
     const res = await fetch(`/api/orgs/${orgId}/branding`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ phase, orgName, idea: ideaDescription, ...extra })
+      body: JSON.stringify({ phase, orgName, idea: ideaDescription, businessPlan, ...extra })
     });
     return (await res.json()) as { data?: Record<string, unknown>; error?: string };
   }
@@ -165,7 +184,14 @@ export function BrandingPanel({ orgId, orgName }: { orgId: string; orgName: stri
 
   async function saveBrandKit() {
     setSaving(true);
-    const brandKit = { companyName, theme, colorPalette: palette, typography: fontPair, brandStyle, generatedAt: new Date().toISOString() };
+    const effectivePalette = customPaletteOpen
+      ? { name: customPaletteName || "Custom", description: "Custom palette", primary: customPrimary, secondary: customSecondary, accent: customAccent }
+      : palette;
+    const effectiveFontPair = customFontOpen
+      ? { id: "custom", heading: customFontHeading, body: customFontBody, tag: "Custom", desc: "Custom typography" }
+      : fontPair;
+    const effectiveBrandStyle = customStyleOpen ? customStyleText : brandStyle;
+    const brandKit = { companyName, theme, colorPalette: effectivePalette, typography: effectiveFontPair, brandStyle: effectiveBrandStyle, generatedAt: new Date().toISOString() };
     const content = JSON.stringify(brandKit, null, 2);
     try {
       await fetch(`/api/orgs/${orgId}/files`, {
@@ -188,9 +214,9 @@ export function BrandingPanel({ orgId, orgName }: { orgId: string; orgName: stri
   const canProceed =
     step === 0 ? companyName.trim().length > 0 :
     step === 1 ? theme !== null :
-    step === 2 ? palette !== null :
-    step === 3 ? fontPair !== null :
-    step === 4 ? brandStyle !== null : true;
+    step === 2 ? palette !== null || customPaletteOpen :
+    step === 3 ? fontPair !== null || (customFontOpen && customFontHeading.trim().length > 0 && customFontBody.trim().length > 0) :
+    step === 4 ? brandStyle !== null || (customStyleOpen && customStyleText.trim().length > 0) : true;
 
   const [head, sub] = STEP_HEADS[step] ?? ["", ""];
 
@@ -301,7 +327,7 @@ export function BrandingPanel({ orgId, orgName }: { orgId: string; orgName: stri
               </div>
             ) : (
               paletteSuggestions.map((p, i) => (
-                <OptionCard key={i} selected={palette?.name === p.name} onClick={() => setPalette(p)}>
+                <OptionCard key={i} selected={!customPaletteOpen && palette?.name === p.name} onClick={() => { setPalette(p); setCustomPaletteOpen(false); }}>
                   <div className="flex-1 grid gap-1.5">
                     <div className="flex items-center gap-2">
                       <Swatch color={p.primary} size="md" />
@@ -314,6 +340,45 @@ export function BrandingPanel({ orgId, orgName }: { orgId: string; orgName: stri
                 </OptionCard>
               ))
             )}
+
+            {/* Custom palette toggle */}
+            <button
+              type="button"
+              onClick={() => { setCustomPaletteOpen((v) => !v); setPalette(null); }}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-[10px] border px-3.5 py-2.5 text-left text-sm transition-all duration-150",
+                customPaletteOpen
+                  ? "border-[var(--tt-brand-color-500)] bg-[rgba(98,41,255,0.07)] text-[var(--foreground)]"
+                  : "border-dashed border-[var(--border-10)] text-[var(--foreground-40)] hover:border-[var(--foreground-20)] hover:text-[var(--foreground-70)]"
+              )}
+            >
+              <span className="text-base leading-none">{customPaletteOpen ? "−" : "+"}</span>
+              <span>Use my own colors</span>
+            </button>
+
+            {customPaletteOpen && (
+              <div className="grid gap-3 rounded-[12px] border border-[var(--tt-brand-color-500)] bg-[rgba(98,41,255,0.04)] p-3.5">
+                <input
+                  type="text"
+                  value={customPaletteName}
+                  onChange={(e) => setCustomPaletteName(e.target.value)}
+                  placeholder="Palette name…"
+                  className="w-full rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-5)] px-3 py-2 text-sm text-[var(--foreground-80)] outline-none placeholder:text-[var(--foreground-30)] focus:border-[var(--focused)]"
+                />
+                {(["Primary", "Secondary", "Accent"] as const).map((label, idx) => {
+                  const val = idx === 0 ? customPrimary : idx === 1 ? customSecondary : customAccent;
+                  const set = idx === 0 ? setCustomPrimary : idx === 1 ? setCustomSecondary : setCustomAccent;
+                  return (
+                    <div key={label} className="flex items-center gap-3">
+                      <input type="color" value={val} onChange={(e) => set(e.target.value)}
+                        className="h-8 w-8 cursor-pointer rounded-[6px] border border-[var(--border-10)] bg-transparent p-0.5" />
+                      <span className="text-xs text-[var(--foreground-60)]">{label}</span>
+                      <span className="font-mono text-[11px] text-[var(--foreground-40)]">{val}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -321,54 +386,116 @@ export function BrandingPanel({ orgId, orgName }: { orgId: string; orgName: stri
         {step === 3 && (
           <div className="grid gap-3">
             {FONT_PAIRS.map((fp) => (
-              <OptionCard key={fp.id} selected={fontPair?.id === fp.id} onClick={() => setFontPair(fp)}>
+              <OptionCard key={fp.id} selected={!customFontOpen && fontPair?.id === fp.id} onClick={() => { setFontPair(fp); setCustomFontOpen(false); }}>
                 <div className="flex-1 grid gap-1">
                   <div className="flex items-center gap-2">
                     <span className="rounded-full border border-[var(--border-10)] px-2 py-0.5 font-mono text-[9px] uppercase tracking-wide text-[var(--foreground-40)]">
                       {fp.tag}
                     </span>
                   </div>
-                  <p
-                    className="text-base font-semibold text-[var(--foreground-80)] leading-tight"
-                    style={{ fontFamily: `'${fp.heading}', sans-serif` }}
-                  >
+                  <p className="text-base font-semibold text-[var(--foreground-80)] leading-tight" style={{ fontFamily: `'${fp.heading}', sans-serif` }}>
                     {fp.heading}
                   </p>
-                  <p
-                    className="text-xs text-[var(--foreground-50)] leading-relaxed"
-                    style={{ fontFamily: `'${fp.body}', sans-serif` }}
-                  >
+                  <p className="text-xs text-[var(--foreground-50)] leading-relaxed" style={{ fontFamily: `'${fp.body}', sans-serif` }}>
                     {fp.body} — The quick brown fox jumps.
                   </p>
                   <p className="text-[10px] text-[var(--foreground-30)]">{fp.desc}</p>
                 </div>
               </OptionCard>
             ))}
+
+            {/* Custom fonts toggle */}
+            <button
+              type="button"
+              onClick={() => { setCustomFontOpen((v) => !v); setFontPair(null); }}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-[10px] border px-3.5 py-2.5 text-left text-sm transition-all duration-150",
+                customFontOpen
+                  ? "border-[var(--tt-brand-color-500)] bg-[rgba(98,41,255,0.07)] text-[var(--foreground)]"
+                  : "border-dashed border-[var(--border-10)] text-[var(--foreground-40)] hover:border-[var(--foreground-20)] hover:text-[var(--foreground-70)]"
+              )}
+            >
+              <span className="text-base leading-none">{customFontOpen ? "−" : "+"}</span>
+              <span>Use my own fonts</span>
+            </button>
+
+            {customFontOpen && (
+              <div className="grid gap-2.5 rounded-[12px] border border-[var(--tt-brand-color-500)] bg-[rgba(98,41,255,0.04)] p-3.5">
+                {[
+                  { label: "Heading font", val: customFontHeading, set: setCustomFontHeading, ph: "e.g. Roboto, Georgia…" },
+                  { label: "Body font",    val: customFontBody,    set: setCustomFontBody,    ph: "e.g. Open Sans, Merriweather…" }
+                ].map(({ label, val, set, ph }) => (
+                  <label key={label} className="grid gap-1 text-[11px] text-[var(--foreground-50)]">
+                    {label}
+                    <input
+                      type="text"
+                      value={val}
+                      onChange={(e) => set(e.target.value)}
+                      placeholder={ph}
+                      className="w-full rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-5)] px-3 py-2 text-sm text-[var(--foreground-80)] outline-none placeholder:text-[var(--foreground-30)] focus:border-[var(--focused)]"
+                    />
+                    {val.trim() && (
+                      <span className="text-xs text-[var(--foreground-60)]" style={{ fontFamily: `'${val}', sans-serif` }}>
+                        {val} — Preview text
+                      </span>
+                    )}
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {/* ── Step 4: Brand Style ── */}
         {step === 4 && (
-          <div className="grid grid-cols-2 gap-2.5">
-            {BRAND_STYLES.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setBrandStyle(s.id)}
-                className={cn(
-                  "flex flex-col gap-1.5 rounded-[12px] border p-3.5 text-left transition-all duration-150 active:scale-[0.98]",
-                  brandStyle === s.id
-                    ? "border-[var(--tt-brand-color-500)] bg-[rgba(98,41,255,0.07)]"
-                    : "border-[var(--border-10)] bg-[var(--background-l0)] hover:border-[var(--foreground-20)]"
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-[var(--foreground-80)]">{s.label}</span>
-                  {brandStyle === s.id ? <Check className="size-3.5 text-[var(--tt-brand-color-500)]" /> : null}
-                </div>
-                <p className="text-[10px] leading-4 text-[var(--foreground-50)]">{s.desc}</p>
-              </button>
-            ))}
+          <div className="grid gap-2.5">
+            <div className="grid grid-cols-2 gap-2.5">
+              {BRAND_STYLES.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => { setBrandStyle(s.id); setCustomStyleOpen(false); }}
+                  className={cn(
+                    "flex flex-col gap-1.5 rounded-[12px] border p-3.5 text-left transition-all duration-150 active:scale-[0.98]",
+                    !customStyleOpen && brandStyle === s.id
+                      ? "border-[var(--tt-brand-color-500)] bg-[rgba(98,41,255,0.07)]"
+                      : "border-[var(--border-10)] bg-[var(--background-l0)] hover:border-[var(--foreground-20)]"
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-[var(--foreground-80)]">{s.label}</span>
+                    {!customStyleOpen && brandStyle === s.id ? <Check className="size-3.5 text-[var(--tt-brand-color-500)]" /> : null}
+                  </div>
+                  <p className="text-[10px] leading-4 text-[var(--foreground-50)]">{s.desc}</p>
+                </button>
+              ))}
+            </div>
+
+            {/* Custom style toggle */}
+            <button
+              type="button"
+              onClick={() => { setCustomStyleOpen((v) => !v); setBrandStyle(null); }}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-[10px] border px-3.5 py-2.5 text-left text-sm transition-all duration-150",
+                customStyleOpen
+                  ? "border-[var(--tt-brand-color-500)] bg-[rgba(98,41,255,0.07)] text-[var(--foreground)]"
+                  : "border-dashed border-[var(--border-10)] text-[var(--foreground-40)] hover:border-[var(--foreground-20)] hover:text-[var(--foreground-70)]"
+              )}
+            >
+              <span className="text-base leading-none">{customStyleOpen ? "−" : "+"}</span>
+              <span>Describe my own style</span>
+            </button>
+
+            {customStyleOpen && (
+              <textarea
+                autoFocus
+                value={customStyleText}
+                onChange={(e) => setCustomStyleText(e.target.value)}
+                placeholder="e.g. Warm and trustworthy, like a local advisor — approachable but professional…"
+                rows={3}
+                className="w-full resize-none rounded-[10px] border border-[var(--tt-brand-color-500)] bg-[rgba(98,41,255,0.04)] p-3 text-sm text-[var(--foreground-80)] outline-none placeholder:text-[var(--foreground-30)]"
+              />
+            )}
           </div>
         )}
 
