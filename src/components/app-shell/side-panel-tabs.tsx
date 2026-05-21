@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Building2, CheckCircle2, Cpu, Files, ListTodo } from "lucide-react";
+import { BookOpen, Building2, CheckCircle2, Cpu, ListTodo } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,7 +19,7 @@ export function SidePanelTabs({ shell }: { shell: OrgShellData }) {
             <TabsTrigger value="cofounder" className="px-2 text-xs">AI</TabsTrigger>
             <TabsTrigger value="company" className="px-2 text-xs">Co</TabsTrigger>
             <TabsTrigger value="tasks" className="px-2 text-xs">Tasks</TabsTrigger>
-            <TabsTrigger value="library" className="px-2 text-xs">Files</TabsTrigger>
+            <TabsTrigger value="library" className="px-2 text-xs">Library</TabsTrigger>
           </TabsList>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -64,7 +64,7 @@ export function SidePanelTabs({ shell }: { shell: OrgShellData }) {
             <StatusRows rows={[["Active", String(shell.counts.activeTasks)], ["Inbox", String(shell.unreadInboxCount)], ["Roadmap ready", String(Math.max(shell.counts.roadmapTotal - shell.counts.roadmapComplete, 0))]]} />
           </TabsContent>
           <TabsContent value="library" className="mt-0 grid gap-4">
-            <PanelHeader icon={<Files aria-hidden="true" className="size-4" />} title="Library" label="Files" />
+            <PanelHeader icon={<BookOpen aria-hidden="true" className="size-4" />} title="Library" label="Library" />
             <StatusRows rows={[["Files", String(shell.counts.files)], ["Business plan", shell.counts.files > 0 ? "saved" : "pending"], ["Visibility", "workspace"]]} />
           </TabsContent>
         </div>

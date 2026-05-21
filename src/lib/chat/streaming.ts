@@ -90,7 +90,8 @@ export function buildChatMessageStream(input: StreamChatInput): ReadableStream<U
           organizationName: preparation.organizationName,
           threadKind: preparation.thread.kind,
           mentions: preparation.mentions,
-          attachmentNames: preparation.attachments.map((file) => file.name)
+          attachmentNames: preparation.attachments.map((file) => file.name),
+          agents: preparation.agents
         });
 
         for (const chunk of splitForStreaming(response.body)) {

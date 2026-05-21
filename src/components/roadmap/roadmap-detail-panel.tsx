@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowRight, CheckCircle2, GitBranch, LockKeyhole, Play, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, CheckCircle2, GitBranch, LockKeyhole, PanelRightClose, Play, ShieldCheck, UserRound } from "lucide-react";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -21,13 +21,15 @@ export function RoadmapDetailPanel({
   launchState,
   completing,
   onLaunch,
-  onComplete
+  onComplete,
+  onClose
 }: {
   item: RoadmapItem | null;
   launchState: LaunchState;
   completing: boolean;
   onLaunch: (item: RoadmapItem, input: string | null) => void;
   onComplete: (item: RoadmapItem) => void;
+  onClose?: () => void;
 }) {
   const [input, setInput] = React.useState("");
   const needsInput = item?.workType === "user";
@@ -48,7 +50,19 @@ export function RoadmapDetailPanel({
             <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--foreground-50)]">{item.stage?.name ?? "Roadmap"}</p>
             <h2 className="mt-1 text-2xl font-medium leading-tight tracking-[0px]">{item.title}</h2>
           </div>
-          <StatusBadge status={item.status} label={item.statusLabel} />
+          <div className="flex shrink-0 items-center gap-2">
+            <StatusBadge status={item.status} label={item.statusLabel} />
+            {onClose ? (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Minimize panel"
+                className="grid size-7 place-items-center rounded-[6px] border border-[var(--border-10)] text-[var(--foreground-50)] transition-colors hover:border-[var(--border-20)] hover:bg-[var(--foreground-8)] hover:text-[var(--foreground-80)]"
+              >
+                <PanelRightClose aria-hidden="true" className="size-4" />
+              </button>
+            ) : null}
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Badge variant={workTypeVariant(item.workType)}>{item.workTypeLabel}</Badge>

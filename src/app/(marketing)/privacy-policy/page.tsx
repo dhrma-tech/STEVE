@@ -1,3 +1,4 @@
+import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import type { Metadata } from "next";
 import { legalShellSections } from "@/data/marketing-content";
 import { Card } from "@/components/ui/card";
@@ -25,6 +26,7 @@ const SECTION_COPY: Record<string, string> = {
 
 export default function PrivacyPolicyPage() {
   return (
+    <>
     <main className="bg-[var(--background)] pb-24 pt-[130px] text-[var(--foreground)]">
       <MarketingContainer className="max-w-[820px]">
         <Card className="grid gap-5 p-6">
@@ -50,6 +52,8 @@ export default function PrivacyPolicyPage() {
         </Card>
       </MarketingContainer>
     </main>
+      <MarketingFooter />
+    </>
   );
 }
 

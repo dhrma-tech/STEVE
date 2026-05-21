@@ -1,3 +1,4 @@
+import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import type { Metadata } from "next";
 import { ResourcesGrid } from "@/components/marketing/resources-grid";
 import { MarketingContainer } from "@/components/ui/container";
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 
 export default function ResourcesPage() {
   return (
+    <>
     <main className="bg-[var(--background)] pb-24 pt-[130px] text-[var(--foreground)]">
       <MarketingContainer className="grid gap-10">
         <header className="grid max-w-[720px] gap-4">
@@ -21,6 +23,8 @@ export default function ResourcesPage() {
         <ResourcesGrid />
       </MarketingContainer>
     </main>
+      <MarketingFooter />
+    </>
   );
 }
 

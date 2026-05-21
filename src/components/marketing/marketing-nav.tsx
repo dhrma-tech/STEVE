@@ -3,33 +3,18 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { marketingNav } from "@/data/marketing-content";
 import { buttonClassName } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
 import { IconButton } from "@/components/ui/icon-button";
 import { MarketingNavContainer } from "@/components/ui/container";
 import { cn } from "@/lib/utils/cn";
 
-type MarketingNavProps = {
-  signedIn?: boolean;
-  workspaceHref?: string;
-};
-
-export function MarketingNav({ signedIn = false, workspaceHref = "/login" }: MarketingNavProps) {
+export function MarketingNav() {
   const pathname = usePathname();
-  const primaryCtaHref = signedIn ? workspaceHref : "/login";
-  const primaryCtaLabel = signedIn ? "Go to workspace" : "Run a company";
-  const loginLabel = signedIn ? "Open workspace" : "Log in";
   const [scrolled, setScrolled] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  const [howToOpen, setHowToOpen] = React.useState(false);
 
   React.useEffect(() => {
     const update = () => setScrolled(window.scrollY > 12);
@@ -44,7 +29,7 @@ export function MarketingNav({ signedIn = false, workspaceHref = "/login" }: Mar
     <header
       className={cn(
         "fixed inset-x-0 top-0 z-[201] h-[90.8px] w-full overflow-hidden transition-all duration-300",
-        scrolled ? "border-b border-[var(--border-10)] bg-[var(--background)]/95 backdrop-blur-md" : "bg-transparent"
+        scrolled ? "border-b border-[var(--border-10)] bg-[var(--background)]/20 backdrop-blur-md" : "bg-transparent"
       )}
     >
       <MarketingNavContainer className="h-full max-w-full justify-between">
@@ -67,27 +52,9 @@ export function MarketingNav({ signedIn = false, workspaceHref = "/login" }: Mar
             ? "border border-[var(--border-10)] bg-[var(--foreground-5)] backdrop-blur-none"
             : "border border-white/10 bg-white/15 backdrop-blur-md"
         )}>
-          <DropdownMenu open={howToOpen} onOpenChange={setHowToOpen}>
-            <DropdownMenuTrigger
-              onPointerEnter={() => setHowToOpen(true)}
-              className={cn(
-                "inline-flex h-9 items-center gap-1 rounded-full px-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
-                pathname.startsWith("/how-to")
-                  ? scrolled ? "bg-[var(--foreground-10)] text-[var(--foreground)] shadow-sm" : "bg-white text-[var(--foreground)] shadow-sm"
-                  : scrolled ? "text-[var(--foreground-70)] hover:bg-[var(--foreground-8)]" : "text-white hover:bg-white/20"
-              )}
-            >
-              How To
-              <ChevronDown aria-hidden="true" className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent onPointerLeave={() => setHowToOpen(false)} align="center">
-              {marketingNav.howTo.map((item) => (
-                <DropdownMenuItem key={item.href} asChild>
-                  <Link href={item.href}>{item.label}</Link>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <span className="inline-flex h-9 items-center rounded-full px-3 text-black">
+            How To
+          </span>
 
           {marketingNav.howTo.map((item) => (
             <React.Fragment key={item.href}>
@@ -124,27 +91,6 @@ export function MarketingNav({ signedIn = false, workspaceHref = "/login" }: Mar
           ))}
         </nav>
 
-        {/* Right CTA — white on dark, dark on light */}
-        <div className="hidden items-center gap-2 lg:flex">
-          <Link
-            href={primaryCtaHref}
-            className={cn(
-              "rounded-[8px] px-3 py-2 text-[15px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
-              scrolled
-                ? "text-[var(--foreground-70)] hover:bg-[var(--foreground-8)]"
-                : "text-white hover:bg-white/20"
-            )}
-          >
-            {loginLabel}
-          </Link>
-          <Link
-            href={primaryCtaHref}
-            aria-label={primaryCtaLabel}
-            className={buttonClassName({ variant: scrolled ? "dark" : "light" })}
-          >
-            {primaryCtaLabel}
-          </Link>
-        </div>
 
         <Dialog open={mobileOpen} onOpenChange={setMobileOpen}>
           <DialogTrigger asChild>
@@ -166,9 +112,6 @@ export function MarketingNav({ signedIn = false, workspaceHref = "/login" }: Mar
               ))}
             </nav>
             <div className="mt-auto grid gap-3 animate-[mm-footer-in_260ms_ease-out]">
-              <Link href={primaryCtaHref} className={buttonClassName({ variant: "dark", fullWidth: true })} onClick={() => setMobileOpen(false)}>
-                {primaryCtaLabel}
-              </Link>
               <Link href="/resources/introducing-cofounder-2" className="text-center text-sm text-[var(--foreground-60)]" onClick={() => setMobileOpen(false)}>
                 Check out the launch
               </Link>

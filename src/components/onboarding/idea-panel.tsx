@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { CheckCircle, Download, Loader2, Maximize2, RotateCcw, Send, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { CheckCircle, Download, Loader2, Maximize2, Minus, RotateCcw, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
 
@@ -77,6 +78,7 @@ export function IdeaPanel({ orgId, userName }: { orgId: string; userName?: strin
   const [revisionText, setRevisionText] = React.useState("");
   const [revising, setRevising] = React.useState(false);
   const [showFullPlan, setShowFullPlan] = React.useState(false);
+  const [planMinimized, setPlanMinimized] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const bottomRef = React.useRef<HTMLDivElement>(null);
   const retryRef = React.useRef<(() => Promise<void>) | null>(null);
@@ -146,8 +148,8 @@ export function IdeaPanel({ orgId, userName }: { orgId: string; userName?: strin
     }
   }
 
-  async function submitAnswer() {
-    const answer = showOtherInput && otherText.trim() ? otherText.trim() : selectedOption;
+  async function submitAnswer(overrideAnswer?: string) {
+    const answer = overrideAnswer ?? (showOtherInput && otherText.trim() ? otherText.trim() : selectedOption);
     if (!answer || loading) return;
 
     const lastAI = [...messages].reverse().find((m) => m.role === "ai" && m.options);
@@ -281,25 +283,61 @@ export function IdeaPanel({ orgId, userName }: { orgId: string; userName?: strin
 
   return (
     <>
-      {/* Full-screen plan modal */}
-      {showFullPlan ? (
-        <div className="fixed inset-0 z-[200] overflow-y-auto bg-[var(--background)] px-6 py-8">
-          <div className="mx-auto max-w-3xl">
-            <div className="mb-6 flex items-center justify-between">
+      {/* Full-screen plan modal — rendered via portal to escape overflow:hidden parent */}
+      {showFullPlan ? createPortal(
+        <div
+          className={`animate-fullplan-backdrop fixed inset-0 z-[500] flex ${planMinimized ? "items-end justify-start p-6" : "items-center justify-center p-6"}`}
+          style={{ background: planMinimized ? "transparent" : "rgba(0,0,0,0.65)", backdropFilter: planMinimized ? "none" : "blur(2px)" }}
+          onClick={planMinimized ? undefined : () => setShowFullPlan(false)}
+        >
+          {/* Floating panel */}
+          <div
+            className={`animate-fullplan-in relative flex overflow-hidden rounded-[22px] bg-[var(--background)] shadow-[0_32px_100px_rgba(0,0,0,0.4)] transition-all duration-300 ${planMinimized ? "h-[52px] w-[300px]" : "h-[85vh] w-full max-w-3xl flex-col"}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex shrink-0 items-center justify-between border-b border-[var(--border-10)] px-5 py-3.5">
               <span className="text-sm font-semibold text-[var(--foreground-80)]">Business Plan</span>
-              <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={downloadPlan}>
-                  <Download aria-hidden="true" className="size-3.5" />
-                  Download .md
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setShowFullPlan(false)}>
-                  <X aria-hidden="true" className="size-3.5" />
-                </Button>
+              <div className="flex items-center gap-1">
+                {!planMinimized ? (
+                  <Button variant="ghost" size="sm" onClick={downloadPlan} className="text-[var(--foreground-60)] hover:bg-[var(--foreground-5)]">
+                    <Download aria-hidden="true" className="size-3.5" />
+                    Download .md
+                  </Button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setPlanMinimized((v) => !v)}
+                  aria-label={planMinimized ? "Restore" : "Minimize"}
+                  className="grid size-7 place-items-center rounded-[7px] border border-[var(--border-10)] text-[var(--foreground-50)] transition-colors hover:bg-[var(--foreground-5)] hover:text-[var(--foreground-80)]"
+                >
+                  {planMinimized ? (
+                    <Maximize2 aria-hidden="true" className="size-3.5" />
+                  ) : (
+                    <Minus aria-hidden="true" className="size-3.5" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowFullPlan(false); setPlanMinimized(false); }}
+                  aria-label="Close"
+                  className="grid size-7 place-items-center rounded-[7px] border border-[var(--border-10)] text-[var(--foreground-50)] transition-colors hover:bg-[var(--foreground-5)] hover:text-[var(--foreground-80)]"
+                >
+                  <X aria-hidden="true" className="size-4" />
+                </button>
               </div>
             </div>
-            <PlanContent text={planContent} />
+            {/* Scrollable content */}
+            {!planMinimized ? (
+              <div className="min-h-0 flex-1 overflow-y-auto px-8 py-7">
+                <div className="mx-auto max-w-2xl">
+                  <PlanContent text={planContent} />
+                </div>
+              </div>
+            ) : null}
           </div>
-        </div>
+        </div>,
+        document.body
       ) : null}
 
       <aside className="flex h-full flex-col border-l border-[var(--border-10)] bg-[var(--background-sidepanel)]">
@@ -417,15 +455,29 @@ export function IdeaPanel({ orgId, userName }: { orgId: string; userName?: strin
                           />
                         ) : null}
 
-                        <Button
-                          variant="app"
-                          size="sm"
-                          disabled={!canAnswer}
-                          onClick={() => void submitAnswer()}
-                          className="mt-1 w-fit"
-                        >
-                          Submit answer
-                        </Button>
+                        <div className="mt-1 flex items-center gap-2">
+                          <Button
+                            variant="app"
+                            size="sm"
+                            disabled={!canAnswer}
+                            onClick={() => void submitAnswer()}
+                            className="w-fit"
+                          >
+                            Submit answer
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={loading}
+                            onClick={() => {
+                              const allOpts = activeOptions.filter((o) => o !== "Other");
+                              void submitAnswer(allOpts.join(", "));
+                            }}
+                            className="w-fit border border-[var(--border-10)] text-[var(--foreground-70)] hover:bg-[var(--foreground-5)]"
+                          >
+                            Select All
+                          </Button>
+                        </div>
                       </div>
                     ) : null}
                   </div>

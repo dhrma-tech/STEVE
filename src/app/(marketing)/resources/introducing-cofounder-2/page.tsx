@@ -1,3 +1,4 @@
+import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { launchArticleSections, resourcesPosts } from "@/data/marketing-content";
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
 
 export default function LaunchPostPage() {
   return (
+    <>
     <main className="bg-[var(--background)] pb-24 pt-[130px] text-[var(--foreground)]">
       <MarketingContainer className="grid gap-10">
         <article className="mx-auto grid max-w-[820px] gap-8">
@@ -50,5 +52,7 @@ export default function LaunchPostPage() {
         </article>
       </MarketingContainer>
     </main>
+      <MarketingFooter />
+    </>
   );
 }

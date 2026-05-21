@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { footerLinks } from "@/data/marketing-content";
 import { companyStats, demos, industryTerms, toolSystems, valueProps } from "@/data/marketing-content";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
@@ -16,17 +17,61 @@ export function MissionSection() {
           className="mx-auto max-w-3xl text-2xl font-bold leading-[1.2] tracking-[-0.5px] text-[var(--foreground)] sm:text-3xl md:text-4xl"
           style={{ fontFamily: "'Instrument Serif', serif" }}
         >
-          Our Mission is to build unified general intelligence that can generate, understand, and operate in the physical world.
+          Founders drown in execution across 8 departments while their vision waits.<br />We believe there&apos;s a better way: AI agents that execute, so founders can lead.
         </p>
       </section>
 
-      {/* Full-width cinematic image */}
+      {/* Full-width cinematic image with text overlays */}
       <div className="relative w-full overflow-hidden" style={{ aspectRatio: "21/9" }}>
-        {/* Replace src with your image: <img src="/your-cinematic.jpg" alt="Mission visual" className="h-full w-full object-cover" /> */}
-        <div className="absolute inset-0 flex items-center justify-center bg-[#0d1a2e]">
-          <p className="font-mono text-xs uppercase tracking-[0.1em] text-white/30">
-            Drop your cinematic image here · 21 : 9
-          </p>
+        {/* Image */}
+        <img src="/second.jpg" alt="Mission visual" className="absolute inset-0 h-full w-full object-cover" />
+
+        {/* Left text — over bright sky — dark navy palette */}
+        <div className="absolute inset-y-0 left-[13%] flex w-[38%] flex-col justify-center gap-4 px-6 py-6">
+          {[
+            { head: "See everything", body: "Session replay shows exactly what agents did" },
+            { head: "Own everything", body: "Data stays on your hardware, never shared" },
+            { head: "Control everything", body: "Approve before agents execute" },
+            { head: "Connect everything", body: "Departments hand off seamlessly" },
+            { head: "Founder to $5K MRR", body: "In 6 months instead of 12–18 months" }
+          ].map(({ head, body }) => (
+            <div key={head} className="flex items-start gap-3">
+              <span className="mt-[7px] size-1.5 shrink-0 rounded-full" style={{ background: "#1a3a6e" }} />
+              <p className="leading-6" style={{ textShadow: "0 1px 3px rgba(255,255,255,0.4)" }}>
+                <span
+                  className="block text-[15px] font-semibold tracking-[-0.2px]"
+                  style={{ fontFamily: "'Instrument Serif', serif", color: "#0f1f3d", fontSize: "17px" }}
+                >
+                  {head}
+                </span>
+                <span className="text-[13px] leading-5" style={{ color: "#1e3560cc" }}>{body}</span>
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Right text — over dark starfield — warm gold palette */}
+        <div className="absolute inset-y-0 right-0 flex w-[38%] flex-col justify-center gap-4 px-10 py-6">
+          {[
+            { head: "32-task roadmap", body: "Guiding founders from Idea to Scale" },
+            { head: "8 specialized agents", body: "One per department with approval gates" },
+            { head: "Design once, inject everywhere", body: "Brand Kit flows through all departments" },
+            { head: "Unified workspace", body: "Replacing chaos with clarity" },
+            { head: "Structured execution", body: "Founder-controlled decisions" }
+          ].map(({ head, body }) => (
+            <div key={head} className="flex items-start gap-3">
+              <span className="mt-[7px] size-1.5 shrink-0 rounded-full" style={{ background: "#c9a96e" }} />
+              <p className="leading-6" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.7)" }}>
+                <span
+                  className="block font-semibold tracking-[-0.2px]"
+                  style={{ fontFamily: "'Instrument Serif', serif", color: "#f2deb0", fontSize: "17px" }}
+                >
+                  {head}
+                </span>
+                <span className="text-[13px] leading-5" style={{ color: "#d4bc8acc" }}>{body}</span>
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </>
@@ -38,17 +83,17 @@ export function ProductPreviewSection() {
     <section className="bg-[var(--background)] py-24">
       <MarketingContainer className="grid gap-10">
         <SectionHeader label="Platform preview" title="A company map that can actually do the work." description="Departments orbit a central Cofounder. Chat lives on the side. Tasks show their real progress. Everything you need to run the business sits in one workspace." />
-        {/* ── Product screenshot — replace src with your image (ratio 16:9) ── */}
-        <div className="relative w-full overflow-hidden rounded-2xl border border-[var(--border-10)] bg-[var(--foreground-5)] shadow-[0_8px_40px_rgba(0,0,0,0.08)]" style={{ aspectRatio: '16/9' }}>
-          {/* Replace the block below with: <img src="/your-screenshot.png" alt="Product preview" className="w-full h-full object-cover" /> */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-[var(--foreground-30)]">
-            <svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="1.5" />
-              <circle cx="8.5" cy="8.5" r="1.5" strokeWidth="1.5" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 15l-5-5L5 21" />
-            </svg>
-            <p className="font-mono text-xs tracking-[0.08em] uppercase">Add your screenshot here · 16 : 9</p>
-          </div>
+        <div className="relative w-full overflow-hidden rounded-2xl border border-[var(--border-10)] shadow-[0_8px_40px_rgba(0,0,0,0.08)]" style={{ aspectRatio: '16/9' }}>
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            className="absolute inset-0 h-full w-full object-cover"
+          >
+            <source src="/vdo1.mp4" type="video/mp4" />
+          </video>
         </div>
       </MarketingContainer>
     </section>
@@ -90,17 +135,17 @@ export function RoadmapPreviewSection() {
     <section className="bg-[var(--background)] py-24">
       <MarketingContainer className="grid gap-10">
         <SectionHeader label="Roadmap" title="A tech tree for the company." description="Every milestone has dependencies, approval gates, and clear owners. Tasks unlock as the previous stage completes — so you always know what's next." />
-        {/* ── Roadmap screenshot — replace src with your image (ratio 16:9) ── */}
-        <div className="relative w-full overflow-hidden rounded-2xl border border-[var(--border-10)] bg-[var(--foreground-5)] shadow-[0_8px_40px_rgba(0,0,0,0.08)]" style={{ aspectRatio: '16/9' }}>
-          {/* Replace the block below with: <img src="/your-roadmap-screenshot.png" alt="Roadmap preview" className="w-full h-full object-cover" /> */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-[var(--foreground-30)]">
-            <svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="1.5" />
-              <circle cx="8.5" cy="8.5" r="1.5" strokeWidth="1.5" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 15l-5-5L5 21" />
-            </svg>
-            <p className="font-mono text-xs tracking-[0.08em] uppercase">Add your screenshot here · 16 : 9</p>
-          </div>
+        <div className="relative w-full overflow-hidden rounded-2xl border border-[var(--border-10)] shadow-[0_8px_40px_rgba(0,0,0,0.08)]" style={{ aspectRatio: '16/9' }}>
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            className="absolute inset-0 h-full w-full object-cover"
+          >
+            <source src="/vdo2.mp4" type="video/mp4" />
+          </video>
         </div>
       </MarketingContainer>
     </section>
@@ -142,17 +187,41 @@ export function DemoSections() {
 
 export function ToolCarouselSection() {
   return (
-    <section className="overflow-hidden bg-white py-20">
-      <MarketingContainer className="grid gap-8">
-        <SectionHeader label="Tools and systems" title="Every system, one workspace." description="GitHub, Vercel, Supabase, Stripe, Postiz, email, analytics — every tool your company needs lives behind a single status row so you always know what's connected, what's pending, and what needs attention." />
-        <div className="flex w-max animate-[build-carousel-slide_24s_linear_infinite] gap-4 [animation-play-state:running] motion-reduce:animate-none">
+    <section className="relative overflow-hidden py-24">
+      {/* Video background */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        className="absolute inset-0 h-full w-full object-cover"
+      >
+        <source src="/middle.mp4" type="video/mp4" />
+      </video>
+
+      {/* Dark overlay for readability */}
+      <div className="absolute inset-0 bg-black/60" />
+
+      <MarketingContainer className="relative z-10 grid gap-10">
+        <SectionHeader
+          label="Tools and systems"
+          title="Every system, one workspace."
+          description="GitHub, Vercel, Supabase, Stripe, Postiz, email, analytics — every tool your company needs lives behind a single status row so you always know what's connected, what's pending, and what needs attention."
+          invert
+        />
+        <div className="flex w-max animate-[build-carousel-slide_24s_linear_infinite] gap-5 [animation-play-state:running] motion-reduce:animate-none">
           {[...toolSystems, ...toolSystems].map((tool, index) => {
             const Icon = tool.icon;
             return (
-              <div key={`${tool.label}-${index}`} className="grid w-[240px] gap-3 rounded-[14px] border border-[var(--border-10)] bg-[var(--background)] p-4">
-                <Icon aria-hidden="true" className="size-5 text-[var(--foreground-80)]" />
-                <h3 className="font-medium text-[var(--foreground-80)]">{tool.label}</h3>
-                <p className="text-sm leading-6 text-[var(--foreground-50)]">{tool.detail}</p>
+              <div
+                key={`${tool.label}-${index}`}
+                className="grid w-[260px] gap-3 rounded-[16px] border border-white/10 bg-white/8 p-5 backdrop-blur-sm"
+                style={{ background: "rgba(255,255,255,0.07)" }}
+              >
+                <Icon aria-hidden="true" className="size-5 text-white/80" />
+                <h3 className="font-medium text-white">{tool.label}</h3>
+                <p className="text-sm leading-6 text-white/50">{tool.detail}</p>
                 <Badge variant={tool.status === "Ready" ? "success" : tool.status === "Setup" ? "warning" : "neutral"}>{tool.status}</Badge>
               </div>
             );
@@ -205,24 +274,67 @@ export function StatsSection() {
 
 export function FooterCtaSection() {
   return (
-    <section className="bg-[var(--background)] py-24">
-      <MarketingContainer>
-        <div className="grid gap-5 rounded-[16px] border border-[var(--border-10)] bg-[var(--background-l0)] p-8 text-center">
-          <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--foreground-50)]">Ready to start</p>
-          <h2 className="mx-auto max-w-[16ch] text-[40px] font-normal leading-[1.12] tracking-[0px]">Run your first company loop today.</h2>
-          <p className="mx-auto max-w-[56ch] text-[15px] leading-6 text-[var(--foreground-60)]">
+    <section className="relative overflow-hidden py-32">
+      {/* Video background */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        className="absolute inset-0 h-full w-full object-cover"
+      >
+        <source src="/footer.mp4" type="video/mp4" />
+      </video>
+
+      {/* Dark overlay so text remains readable */}
+      <div className="absolute inset-0 bg-black/55" />
+
+      {/* Content */}
+      <MarketingContainer className="relative z-10">
+        <div className="grid gap-6 text-center">
+          <p className="font-mono text-xs uppercase tracking-[0.12em] text-white/50">Ready to start</p>
+          <h2
+            className="mx-auto max-w-[16ch] text-[44px] font-normal leading-[1.1] tracking-[-0.5px] text-white sm:text-5xl"
+            style={{ fontFamily: "'Instrument Serif', serif" }}
+          >
+            Run your first company loop today.
+          </h2>
+          <p className="mx-auto max-w-[52ch] text-[15px] leading-7 text-white/60">
             Sign up, describe your idea, accept the business plan, and watch your eight departments activate. You&apos;ll be assigning your first agent task in under five minutes.
           </p>
-          <div className="flex justify-center gap-3">
+          <div className="flex flex-wrap justify-center gap-3">
             <Link
               href="/login"
-              className="inline-flex items-center justify-center rounded-full bg-[#fdf8f0] px-5 py-2 text-sm font-semibold text-[#1a1917] transition-all duration-300 hover:scale-[1.03] hover:bg-white"
+              className="inline-flex items-center justify-center rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-[#1a1917] transition-all duration-300 hover:scale-[1.03] hover:bg-white/90"
             >
               Run a company
             </Link>
-            <Link href="/resources/introducing-cofounder-2" className="inline-flex items-center gap-1 text-sm text-[var(--foreground-60)]">
-              Read the launch post <ArrowRight aria-hidden="true" className="size-4" />
+            <Link
+              href="https://discord.gg/yvjur4qj"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/30 px-6 py-2.5 text-sm transition-all hover:border-white/60"
+              style={{ color: "white" }}
+            >
+              Join Community <ArrowRight aria-hidden="true" className="size-4" />
             </Link>
+          </div>
+        </div>
+
+        {/* Footer bar — inside the video section */}
+        <div className="mt-20 flex flex-col gap-4 border-t border-white/10 pt-6 text-sm text-white/40 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-wrap gap-4">
+            {footerLinks.map((link) => (
+              <Link key={link.href} href={link.href} className="transition-colors hover:text-white/70">
+                {link.label}
+              </Link>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-4">
+            <span>SOC 2 compliant security</span>
+            <span>Original design system</span>
+            <span>© 2026 Cofounder</span>
           </div>
         </div>
       </MarketingContainer>

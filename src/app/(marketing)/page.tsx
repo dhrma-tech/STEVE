@@ -24,12 +24,14 @@ export default function HomePage() {
       {/* ── Cinematic video hero ── */}
       <section className="relative min-h-screen overflow-hidden bg-[var(--background)]">
         {/* Video background */}
+        {/* Hero video — poster="/hero-poster.jpg" shown while video loads (recommended: 1920×1080 JPG) */}
         <video
           autoPlay
           loop
           muted
           playsInline
           preload="auto"
+          poster="/hero-poster.jpg"
           className="absolute inset-0 h-full w-full object-cover"
         >
           <source

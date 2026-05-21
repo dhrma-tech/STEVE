@@ -189,42 +189,14 @@ export function TaskCreateDialog({
             </div>
           ) : null}
 
-          <Input surface="dark" label="Title" value={title} onChange={(event) => setTitle(event.target.value)} autoFocus />
-          <Textarea
-            surface="dark"
-            label="Task prompt"
-            className="min-h-40"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="Describe the work, constraints, context, and expected output."
-          />
+          <Input surface="dark" label="Title" value={title} onChange={(event) => setTitle(event.target.value)} autoFocus placeholder="What should the agent do?" />
 
-          <div className="grid gap-3 md:grid-cols-3">
-            <SelectField surface="dark" label="Execute" value={executeMode} onValueChange={(value) => setExecuteMode(value as TaskCreateDefaults["executeMode"])} options={executeModeOptions} />
-            <SelectField surface="dark" label="Auto-assign" value={autoAssign} onValueChange={setAutoAssign} options={autoAssignOptions} />
-            <SelectField surface="dark" label="App" value={appTarget} onValueChange={setAppTarget} options={appTargetOptions} />
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <SelectField surface="dark" label="Type" value={type} onValueChange={(value) => setType(value as TaskCreateDefaults["type"])} options={taskTypeOptions} />
-            <SelectField surface="dark" label="Priority" value={priority} onValueChange={setPriority} options={priorityOptions} />
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-3">
-            <SelectField surface="dark" label="Department" value={departmentId} onValueChange={setDepartmentId} options={departmentOptions} disabled={loadingCatalog} />
             <SelectField surface="dark" label="Agent" value={agentId} onValueChange={setAgentId} options={agentOptions} disabled={loadingCatalog || type === "user_task"} />
-            <SelectField surface="dark" label="Member" value={assignedUserId} onValueChange={setAssignedUserId} options={memberOptions} disabled={loadingCatalog} />
           </div>
 
           <Input surface="dark" label="Due date" type="date" value={dueAt} onChange={(event) => setDueAt(event.target.value)} />
-
-          <FileUpload
-            label="Add files"
-            description={attachmentNames.length ? attachmentNames.join(", ") : "Attach context to this task."}
-            maxFiles={6}
-            multiple
-            onFilesSelected={(files) => setAttachmentNames(files.map((file) => file.name))}
-          />
         </div>
 
         <DialogFooter>

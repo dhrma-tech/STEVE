@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { errorResponse } from "@/lib/api/responses";
 import { requireOrgMember } from "@/lib/auth/session";
-import { generateChatResponse } from "@/lib/ai/sandbox-chat";
+import { generateChatResponse, type ChatAgentSummary } from "@/lib/ai/sandbox-chat";
 import { prisma } from "@/lib/db/client";
 
 const json = (value: unknown) => JSON.stringify(value);
@@ -212,6 +212,7 @@ export type ChatMessagePreparation = {
   attachments: Awaited<ReturnType<typeof persistChatAttachments>>;
   trimmedBody: string;
   responseAgentId: string | null;
+  agents: ChatAgentSummary[];
 };
 
 /**
@@ -232,15 +233,26 @@ export async function prepareChatMessage({
   if (!thread) return null;
 
   const trimmedBody = body.trim();
-  const resolvedMentions = await resolveMentions({ orgId, body, mentions });
-  const attachments = await persistChatAttachments({
-    orgId,
-    threadId,
-    taskId: thread.taskId,
-    userId: user.id,
-    fileIds,
-    attachmentNames
-  });
+  const [resolvedMentions, attachments, rawAgents] = await Promise.all([
+    resolveMentions({ orgId, body, mentions }),
+    persistChatAttachments({ orgId, threadId, taskId: thread.taskId, userId: user.id, fileIds, attachmentNames }),
+    prisma.agent.findMany({
+      where: { organizationId: orgId, archivedAt: null },
+      include: { department: true },
+      orderBy: [{ isDefault: "desc" }, { name: "asc" }]
+    })
+  ]);
+
+  const agentSummaries: ChatAgentSummary[] = rawAgents.map((a) => ({
+    name: a.name,
+    description: a.description,
+    status: a.status,
+    department: a.department?.name ?? null,
+    permissionMode: a.permissionsJson
+      ? (JSON.parse(a.permissionsJson as string) as { mode?: string }).mode ?? null
+      : null,
+    skills: a.toolsJson ? (JSON.parse(a.toolsJson as string) as string[]) : []
+  }));
 
   await prisma.chatMessage.create({
     data: {
@@ -265,7 +277,8 @@ export async function prepareChatMessage({
     mentions: resolvedMentions,
     attachments,
     trimmedBody,
-    responseAgentId: thread.agentId ?? thread.task?.agentId ?? null
+    responseAgentId: thread.agentId ?? thread.task?.agentId ?? null,
+    agents: agentSummaries
   };
 }
 
@@ -342,7 +355,8 @@ export async function sendChatMessage(input: ChatMessageInput) {
     organizationName: preparation.organizationName,
     threadKind: preparation.thread.kind,
     mentions: preparation.mentions,
-    attachmentNames: preparation.attachments.map((file) => file.name)
+    attachmentNames: preparation.attachments.map((file) => file.name),
+    agents: preparation.agents
   });
 
   return finalizeChatMessage({

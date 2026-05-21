@@ -53,55 +53,68 @@ export function RoadmapModal({
 
   async function launchItem(item: RoadmapItem, input: string | null) {
     setLaunchState({ itemId: item.id, busy: true, message: null, error: null });
-    const response = await fetch(`/api/orgs/${orgId}/roadmap/items/${item.id}/launch`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ input })
-    });
-    const payload = (await response.json().catch(() => null)) as { data?: RoadmapLaunchResponse; error?: { message?: string; details?: { kind?: string } } } | null;
+    try {
+      const response = await fetch(`/api/orgs/${orgId}/roadmap/items/${item.id}/launch`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ input })
+      });
+      const payload = (await response.json().catch(() => null)) as { data?: RoadmapLaunchResponse; error?: { message?: string; details?: { kind?: string } } } | null;
 
-    if (!response.ok) {
-      const details = payload?.error?.details;
-      const error = details?.kind === "input_required"
-        ? "Add the founder input this item needs, then launch again."
-        : payload?.error?.message ?? "Unable to launch roadmap item.";
-      setLaunchState({ itemId: item.id, busy: false, message: null, error });
-      return;
-    }
+      if (!response.ok) {
+        const details = payload?.error?.details;
+        const error = details?.kind === "input_required"
+          ? "Add the founder input this item needs, then launch again."
+          : payload?.error?.message ?? "Unable to launch roadmap item.";
+        setLaunchState({ itemId: item.id, busy: false, message: null, error });
+        return;
+      }
 
-    const result = payload?.data;
-    const message = result?.kind === "approval_requested"
-      ? "Approval task created and waiting for review."
-      : result?.kind === "existing_task"
-        ? "An active task already exists for this roadmap item."
-        : result?.kind === "already_complete"
-          ? "This roadmap item is already complete."
-          : "Roadmap task created.";
-    setLaunchState({ itemId: item.id, busy: false, message, error: null });
-    roadmapState.reload();
+      const result = payload?.data;
+      const message = result?.kind === "approval_requested"
+        ? "Approval task created and waiting for review."
+        : result?.kind === "existing_task"
+          ? "An active task already exists for this roadmap item."
+          : result?.kind === "already_complete"
+            ? "This roadmap item is already complete."
+            : "Roadmap task created.";
+      setLaunchState({ itemId: item.id, busy: false, message, error: null });
+      roadmapState.reload();
 
-    // Use sessionId returned by the API (not task.id which is wrong)
-    if (result && "sessionId" in result && result.sessionId) {
-      onOpenChange(false);
-      onLaunchSession(result.sessionId);
+      if (result && "sessionId" in result && result.sessionId) {
+        onOpenChange(false);
+        onLaunchSession(result.sessionId);
+      }
+    } catch (caught) {
+      setLaunchState({
+        itemId: item.id,
+        busy: false,
+        message: null,
+        error: caught instanceof Error ? caught.message : "Unable to launch roadmap item."
+      });
     }
   }
 
   async function completeItem(item: RoadmapItem) {
     setCompletingItemId(item.id);
     setLaunchState({ itemId: item.id, busy: false, message: null, error: null });
-    const response = await fetch(`/api/orgs/${orgId}/roadmap/items/${item.id}/complete`, { method: "POST" });
-    const payload = (await response.json().catch(() => null)) as { error?: { message?: string }; data?: { progress?: { percent: number } } } | null;
+    try {
+      const response = await fetch(`/api/orgs/${orgId}/roadmap/items/${item.id}/complete`, { method: "POST" });
+      const payload = (await response.json().catch(() => null)) as { error?: { message?: string }; data?: { progress?: { percent: number } } } | null;
 
-    if (!response.ok) {
-      setLaunchState({ itemId: item.id, busy: false, message: null, error: payload?.error?.message ?? "Unable to complete roadmap item." });
+      if (!response.ok) {
+        setLaunchState({ itemId: item.id, busy: false, message: null, error: payload?.error?.message ?? "Unable to complete roadmap item." });
+        setCompletingItemId(null);
+        return;
+      }
+
+      setLaunchState({ itemId: item.id, busy: false, message: `Completed. Roadmap progress is now ${payload?.data?.progress?.percent ?? 0}%.`, error: null });
       setCompletingItemId(null);
-      return;
+      roadmapState.reload();
+    } catch (caught) {
+      setLaunchState({ itemId: item.id, busy: false, message: null, error: caught instanceof Error ? caught.message : "Unable to complete roadmap item." });
+      setCompletingItemId(null);
     }
-
-    setLaunchState({ itemId: item.id, busy: false, message: `Completed. Roadmap progress is now ${payload?.data?.progress?.percent ?? 0}%.`, error: null });
-    setCompletingItemId(null);
-    roadmapState.reload();
   }
 
   return (
@@ -169,6 +182,7 @@ export function RoadmapModal({
                   completing={completingItemId === selectedItem.id}
                   onLaunch={launchItem}
                   onComplete={completeItem}
+                  onClose={() => setSelectedItemId(null)}
                 />
               ) : null}
             </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Filter, ListTodo, Plus, RefreshCw, Search, Sparkles } from "lucide-react";
+import { Archive, Filter, ListTodo, Plus, RefreshCw, RotateCcw, Search, Sparkles } from "lucide-react";
 import { TaskBoard, TaskCalendar, TaskList } from "@/components/tasks/task-cards";
 import { TaskCreateDialog, type TaskCreateDefaults } from "@/components/tasks/task-create-dialog";
 import { TaskDetailPanel } from "@/components/tasks/task-detail-panel";
@@ -171,6 +171,134 @@ export function TaskWorkspace({
     []
   );
 
+  // ── Compact mode (canvas side panel) ─────────────────────────────────────
+  if (compact) {
+    const ACTIVE = new Set(["running", "pending", "in_progress", "ready_to_review", "blocked", "queued", "waiting"]);
+    const activeTasks = data?.tasks.filter((t) => ACTIVE.has(t.status)) ?? [];
+
+    return (
+      <div className="flex min-h-0 flex-col gap-0">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-2 pb-3">
+          <div className="flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="text-[var(--foreground-40)]">
+              <circle cx="3" cy="3" r="1.5" fill="currentColor" />
+              <circle cx="8" cy="3" r="1.5" fill="currentColor" />
+              <circle cx="13" cy="3" r="1.5" fill="currentColor" />
+              <circle cx="3" cy="8" r="1.5" fill="currentColor" />
+              <circle cx="8" cy="8" r="1.5" fill="currentColor" />
+              <circle cx="13" cy="8" r="1.5" fill="currentColor" />
+              <circle cx="3" cy="13" r="1.5" fill="currentColor" />
+              <circle cx="8" cy="13" r="1.5" fill="currentColor" />
+              <circle cx="13" cy="13" r="1.5" fill="currentColor" />
+            </svg>
+            <h2 className="text-base font-semibold tracking-[-0.2px] text-[var(--foreground)]">Tasks</h2>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button type="button" aria-label="Archive" className="grid size-7 place-items-center rounded-[7px] border border-[var(--border-10)] text-[var(--foreground-50)] transition-colors hover:bg-[var(--foreground-5)]">
+              <Archive aria-hidden="true" className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => { setCreateDefaults(null); setCreateOpen(true); }}
+              className="flex items-center gap-1 rounded-[8px] bg-[var(--foreground)] px-3 py-1.5 text-xs font-semibold text-[var(--background)] transition-colors hover:opacity-90"
+            >
+              <Plus aria-hidden="true" className="size-3.5" />
+              New task
+            </button>
+          </div>
+        </div>
+
+        {/* Select all */}
+        <div className="flex items-center gap-2.5 border-b border-[var(--border-10)] py-2">
+          <input type="checkbox" aria-label="Select all" className="size-3.5 shrink-0 cursor-pointer rounded accent-[var(--foreground)]" />
+          <span className="text-sm text-[var(--foreground-50)]">Select all</span>
+        </div>
+
+        {error ? <ErrorState title="Tasks did not load" description={error} retry={{ onClick: refresh }} /> : null}
+        {loading ? <LoadingState rows={4} label="Loading tasks" /> : null}
+
+        {!loading && data ? (
+          <>
+            {/* Active tasks */}
+            {activeTasks.length > 0 ? (
+              <section>
+                <p className="py-3 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--foreground-40)]">
+                  Active tasks
+                </p>
+                <div>
+                  {activeTasks.map((task) => (
+                    <button
+                      key={task.id}
+                      type="button"
+                      onClick={() => setSelectedTaskId(task.id === selectedTaskId ? null : task.id)}
+                      className="flex w-full items-center gap-3 border-b border-[var(--border-10)] py-2.5 text-left transition-colors hover:bg-[var(--foreground-3)]"
+                    >
+                      <input type="checkbox" className="size-3.5 shrink-0 cursor-pointer rounded accent-[var(--foreground)]" onClick={(e) => e.stopPropagation()} readOnly />
+                      <span className={`size-2 shrink-0 rounded-full ${taskDotColor(task.status)}`} />
+                      {task.type === "agent_task" ? (
+                        <Sparkles aria-hidden="true" className="size-3.5 shrink-0 text-[var(--foreground-40)]" />
+                      ) : (
+                        <ListTodo aria-hidden="true" className="size-3.5 shrink-0 text-[var(--foreground-40)]" />
+                      )}
+                      <span className="flex-1 truncate text-sm text-[var(--foreground-80)]">{task.title}</span>
+                      <span className="shrink-0 font-mono text-[11px] text-[var(--foreground-40)]">{timeAgo(task.updatedAt)}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {/* Suggested next */}
+            {data.suggestedTasks.length > 0 ? (
+              <section>
+                <div className="flex items-center justify-between py-3">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--foreground-40)]">Suggested next</p>
+                  <button type="button" onClick={refresh} aria-label="Refresh suggestions" className="text-[var(--foreground-40)] transition-colors hover:text-[var(--foreground-80)]">
+                    <RefreshCw aria-hidden="true" className="size-3.5" />
+                  </button>
+                </div>
+                <div>
+                  {data.suggestedTasks.slice(0, 6).map((item) => (
+                    <div
+                      key={item.id}
+                      className="group flex items-center gap-3 border-b border-[var(--border-10)] py-2.5 transition-colors hover:bg-[var(--foreground-3)]"
+                    >
+                      <RotateCcw aria-hidden="true" className="size-3.5 shrink-0 text-[var(--foreground-30)]" />
+                      <span className="flex-1 truncate text-sm text-[var(--foreground-70)]">{item.title}</span>
+                      <button
+                        type="button"
+                        onClick={() => launchSuggested(item)}
+                        disabled={item.status === "locked"}
+                        className="hidden shrink-0 rounded-full border border-[var(--border-10)] px-2 py-0.5 text-[11px] text-[var(--foreground-50)] transition-colors hover:bg-[var(--foreground-5)] group-hover:inline-block disabled:opacity-40"
+                      >
+                        Mark complete
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {activeTasks.length === 0 && data.suggestedTasks.length === 0 ? (
+              <EmptyState surface="dark" title="No tasks yet" description="Create a task or let the roadmap suggest one." />
+            ) : null}
+          </>
+        ) : null}
+
+        <TaskCreateDialog
+          orgId={orgId}
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          defaults={createDefaults}
+          catalog={data?.catalog ?? null}
+          onCreated={(task) => { setSelectedTaskId(task.id); setSelectedTask(task); refresh(); }}
+        />
+      </div>
+    );
+  }
+
+  // ── Full mode ──────────────────────────────────────────────────────────────
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -278,6 +406,25 @@ export function TaskWorkspace({
       />
     </div>
   );
+}
+
+function taskDotColor(status: string): string {
+  if (status === "running") return "bg-blue-400";
+  if (status === "completed") return "bg-green-400";
+  if (status === "ready_to_review") return "bg-yellow-400";
+  if (status === "blocked") return "bg-red-400";
+  return "bg-[var(--foreground-30)]";
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
 }
 
 function summaryFromDetail(task: TaskDetail): TaskWorkspacePayload["tasks"][number] {

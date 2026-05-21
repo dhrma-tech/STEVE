@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Files, FolderPlus, RefreshCw, Search, UploadCloud } from "lucide-react";
+import { Check, Files, FolderPlus, RefreshCw, Search, UploadCloud, X } from "lucide-react";
 import { FileList } from "@/components/files/file-cards";
 import { FilePreviewPanel } from "@/components/files/file-preview-panel";
-import { FolderTree } from "@/components/files/folder-tree";
+import { FolderTree, InlineFolderTree } from "@/components/files/folder-tree";
 import { FileUploadDialog } from "@/components/files/upload-dialog";
 import type { ApiPayload, FileLibraryPayload, LibraryFile } from "@/components/files/types";
 import { Badge } from "@/components/ui/badge";
@@ -18,17 +18,22 @@ import { cn } from "@/lib/utils/cn";
 export function FileLibrary({
   orgId,
   compact = false,
-  className
+  className,
+  initialFileId,
+  onFileOpen
 }: {
   orgId: string;
   compact?: boolean;
   className?: string;
+  initialFileId?: string | null;
+  onFileOpen?: (fileId: string) => void;
 }) {
   const [data, setData] = React.useState<FileLibraryPayload | null>(null);
   const [query, setQuery] = React.useState("");
   const [folderId, setFolderId] = React.useState("all");
   const [departmentId, setDepartmentId] = React.useState("all");
   const [selectedFileId, setSelectedFileId] = React.useState<string | null>(() => {
+    if (initialFileId) return initialFileId;
     if (typeof window === "undefined") return null;
     return new URLSearchParams(window.location.search).get("file");
   });
@@ -36,6 +41,10 @@ export function FileLibrary({
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [refreshIndex, setRefreshIndex] = React.useState(0);
+  const [folderInputOpen, setFolderInputOpen] = React.useState(false);
+  const [folderName, setFolderName] = React.useState("");
+  const [folderBusy, setFolderBusy] = React.useState(false);
+  const folderInputRef = React.useRef<HTMLInputElement>(null);
 
   const refresh = React.useCallback(() => setRefreshIndex((index) => index + 1), []);
 
@@ -69,11 +78,21 @@ export function FileLibrary({
     return () => controller.abort();
   }, [departmentId, folderId, orgId, query, refreshIndex]);
 
-  async function createFolder() {
-    if (!data) return;
-    const name = window.prompt("Folder name");
-    if (!name?.trim()) return;
+  function openFolderInput() {
+    setFolderInputOpen(true);
+    setFolderName("");
+    setTimeout(() => folderInputRef.current?.focus(), 50);
+  }
 
+  function cancelFolderInput() {
+    setFolderInputOpen(false);
+    setFolderName("");
+  }
+
+  async function confirmFolderCreate() {
+    const name = folderName.trim();
+    if (!name || folderBusy || !data) return;
+    setFolderBusy(true);
     try {
       const response = await fetch(`/api/orgs/${orgId}/folders`, {
         method: "POST",
@@ -88,9 +107,18 @@ export function FileLibrary({
       if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? "Folder could not be created.");
       setFolderId(payload.data.id);
       refresh();
+      setFolderInputOpen(false);
+      setFolderName("");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Folder could not be created.");
+    } finally {
+      setFolderBusy(false);
     }
+  }
+
+  async function createFolder() {
+    if (!data) return;
+    openFolderInput();
   }
 
   function upsertFile(file: LibraryFile) {
@@ -111,6 +139,113 @@ export function FileLibrary({
     [data]
   );
   const defaultFolderId = folderId === "all" ? data?.generalFolderId ?? "all" : folderId;
+
+  if (compact) {
+    return (
+      <div className={cn("flex min-w-0 flex-col gap-3 overflow-x-hidden", className)}>
+        {/* Header row */}
+        <div className="flex items-start justify-between gap-2">
+          <h2 className="text-base font-semibold tracking-[-0.2px] text-[var(--foreground)]">Library</h2>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={createFolder}
+              disabled={!data}
+              aria-label="New folder"
+              className="grid size-8 place-items-center rounded-[8px] border border-[var(--border-10)] text-[var(--foreground-50)] transition-colors hover:bg-[var(--foreground-5)] hover:text-[var(--foreground-80)] disabled:pointer-events-none disabled:opacity-40"
+            >
+              <FolderPlus aria-hidden="true" className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setUploadOpen(true)}
+              disabled={!data}
+              className="flex items-center gap-1.5 rounded-[8px] border border-[var(--border-10)] px-3 py-1.5 text-xs font-medium text-[var(--foreground-80)] transition-colors hover:bg-[var(--foreground-5)] disabled:pointer-events-none disabled:opacity-40"
+            >
+              <UploadCloud aria-hidden="true" className="size-3.5" />
+              Upload file
+            </button>
+          </div>
+        </div>
+
+        {/* Inline folder creation input */}
+        {folderInputOpen ? (
+          <div className="flex items-center gap-1.5">
+            <input
+              ref={folderInputRef}
+              type="text"
+              placeholder="Folder name"
+              value={folderName}
+              disabled={folderBusy}
+              onChange={(e) => setFolderName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") confirmFolderCreate();
+                if (e.key === "Escape") cancelFolderInput();
+              }}
+              className="h-9 flex-1 rounded-[8px] border border-[var(--focused)] bg-[var(--foreground-5)] px-3 text-sm text-[var(--foreground-80)] outline-none placeholder:text-[var(--foreground-30)] focus-visible:ring-2 focus-visible:ring-[var(--focused)] disabled:opacity-50"
+            />
+            <button
+              type="button"
+              onClick={confirmFolderCreate}
+              disabled={folderBusy || !folderName.trim()}
+              aria-label="Confirm"
+              className="grid size-9 shrink-0 place-items-center rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-80)] transition-colors hover:bg-[var(--foreground-10)] disabled:pointer-events-none disabled:opacity-40"
+            >
+              <Check aria-hidden="true" className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={cancelFolderInput}
+              aria-label="Cancel"
+              className="grid size-9 shrink-0 place-items-center rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-5)] text-[var(--foreground-50)] transition-colors hover:bg-[var(--foreground-10)]"
+            >
+              <X aria-hidden="true" className="size-4" />
+            </button>
+          </div>
+        ) : null}
+
+        {/* Description */}
+        <p className="text-xs leading-5 text-[var(--foreground-50)]">
+          Your agents save their work here and are automatically referenced in future tasks unless archived.
+        </p>
+
+        {/* Search bar — custom to avoid label/grid nesting issues */}
+        <div className="relative">
+          <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--foreground-50)]" />
+          <input
+            type="search"
+            placeholder="Search files"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="h-9 w-full rounded-[8px] border border-[var(--border-10)] bg-[var(--foreground-5)] pl-9 pr-3 text-sm text-[var(--foreground-80)] outline-none placeholder:text-[var(--foreground-30)] focus-visible:ring-2 focus-visible:ring-[var(--focused)]"
+          />
+        </div>
+
+        {error ? <ErrorState title="Files did not load" description={error} retry={{ onClick: refresh }} /> : null}
+        {loading ? <LoadingState rows={4} label="Loading library" /> : null}
+
+        {data && !loading ? (
+          <InlineFolderTree
+            folders={data.folders}
+            files={data.files}
+            selectedFileId={selectedFileId}
+            onSelectFile={onFileOpen ?? setSelectedFileId}
+          />
+        ) : null}
+
+        {data ? (
+          <FileUploadDialog
+            orgId={orgId}
+            open={uploadOpen}
+            onOpenChange={setUploadOpen}
+            data={data}
+            defaultFolderId={defaultFolderId}
+            onUploaded={upsertFile}
+          />
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className={cn("grid min-w-0 gap-4 overflow-x-hidden", className)}>

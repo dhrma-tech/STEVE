@@ -35,3 +35,6 @@ pnpm-debug.log*
 # IDEs and AI tools
 .claude/
 
+# Large media files (>100MB — too big for GitHub)
+public/rgfxfgnh.mkv
+

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Plus } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 export type SelectOption = {
@@ -90,13 +90,25 @@ export interface SelectFieldProps extends React.ComponentPropsWithoutRef<typeof 
   options: readonly SelectOption[];
   surface?: "light" | "dark";
   className?: string;
+  onCreate?: () => void;
+  createLabel?: string;
 }
 
-export function SelectField({ label, placeholder = "Select", options, surface = "light", className, ...props }: SelectFieldProps) {
+const CREATE_SENTINEL = "__create_new__";
+
+export function SelectField({ label, placeholder = "Select", options, surface = "light", className, onCreate, createLabel = "Create new", onValueChange, value, ...props }: SelectFieldProps) {
+  function handleChange(val: string) {
+    if (val === CREATE_SENTINEL) {
+      onCreate?.();
+      return;
+    }
+    onValueChange?.(val);
+  }
+
   return (
     <label className={cn("grid gap-2 text-sm", surface === "dark" ? "text-[var(--foreground-80)]" : "text-[var(--color-ink-strong)]", className)}>
       {label ? <span className="font-medium">{label}</span> : null}
-      <SelectPrimitive.Root {...props}>
+      <SelectPrimitive.Root value={value} onValueChange={handleChange} {...props}>
         <SelectTrigger surface={surface}>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
@@ -106,6 +118,18 @@ export function SelectField({ label, placeholder = "Select", options, surface = 
               {option.label}
             </SelectItem>
           ))}
+          {onCreate ? (
+            <>
+              <div className="mx-1 my-1 border-t border-[var(--border-10)]" />
+              <SelectPrimitive.Item
+                value={CREATE_SENTINEL}
+                className="relative flex min-h-9 cursor-default select-none items-center gap-2 rounded-[6px] py-2 pl-3 pr-3 text-sm font-medium text-[var(--tt-color-text-blue)] outline-none data-[highlighted]:bg-[var(--foreground-8)] data-[highlighted]:text-[var(--tt-color-text-blue)]"
+              >
+                <Plus aria-hidden="true" className="size-3.5 shrink-0" />
+                <SelectPrimitive.ItemText>{createLabel}</SelectPrimitive.ItemText>
+              </SelectPrimitive.Item>
+            </>
+          ) : null}
         </SelectContent>
       </SelectPrimitive.Root>
     </label>

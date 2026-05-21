@@ -133,21 +133,34 @@ export function PersonalOnboardingWizard({ initialProfile: _ }: { initialProfile
   }
 
   return (
-    <div className="relative flex h-dvh flex-col items-center justify-center overflow-hidden bg-[var(--background)] px-5">
+    <div className="relative flex h-dvh flex-col items-center justify-center overflow-hidden px-5">
+      {/* Persistent background video — mounted once, never restarts between steps */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        className="absolute inset-0 h-full w-full object-cover"
+      >
+        <source src="/questions.mp4" type="video/mp4" />
+      </video>
+      {/* Overlay for readability */}
+
       {/* Logout — top left */}
       <button
         type="button"
         onClick={() => void logout()}
-        className="absolute left-6 top-6 text-sm text-[var(--foreground-40)] transition-colors hover:text-[var(--foreground-80)]"
+        className="absolute left-6 top-6 z-10 text-sm text-white/50 transition-colors hover:text-white/80"
       >
         Log out
       </button>
 
-      {/* Animated step wrapper */}
+      {/* Animated step wrapper — relative z-10 keeps it above video */}
       <div
         key={`${step}-${direction}`}
         className={cn(
-          "grid w-full max-w-[400px] gap-8",
+          "relative z-10 grid w-full max-w-[400px] gap-8",
           direction === "fwd" ? "animate-step-enter-fwd" : "animate-step-enter-bck"
         )}
       >

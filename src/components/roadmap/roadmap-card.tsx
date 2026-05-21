@@ -10,22 +10,52 @@ type RoadmapItem = RoadmapData["stages"][number]["items"][number];
 export function RoadmapCard({
   item,
   selected,
-  onSelect
+  highlighted = false,
+  highlightColor,
+  dimmed = false,
+  onSelect,
+  onMouseEnter,
+  onMouseLeave
 }: {
   item: RoadmapItem;
   selected: boolean;
+  highlighted?: boolean;
+  highlightColor?: string;
+  dimmed?: boolean;
   onSelect: () => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }) {
+  // Build inline style for the department-colored highlight border + glow
+  const highlightStyle = highlighted && highlightColor
+    ? {
+        borderColor: highlightColor,
+        boxShadow: `0 0 0 1px ${highlightColor}30, 0 0 12px ${highlightColor}18`
+      }
+    : undefined;
+
   return (
     <button
       type="button"
       data-roadmap-item-key={item.key}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      style={highlightStyle}
       className={cn(
-        "animate-sd-slide-up group relative grid min-h-[116px] w-full gap-3 rounded-[8px] border-[0.8px] bg-[var(--foreground-5)] p-3 text-left outline-none transition-[background,border-color,box-shadow,transform] hover:-translate-y-0.5 hover:bg-[var(--foreground-8)] focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
-        item.status === "complete" && "border-[var(--tt-color-text-green-contrast)]",
-        item.status === "available" && "border-[var(--primary)] shadow-[0_0_0_1px_var(--foreground-10)]",
-        item.status === "locked" && "border-[var(--border-10)] opacity-60",
-        selected && "border-[var(--primary)] bg-[var(--foreground-10)] shadow-[rgba(255,255,255,0.12)_0_0_0_1px]"
+        // base
+        "animate-sd-slide-up group relative grid min-h-[116px] w-full gap-3 rounded-[8px] border-[0.8px] bg-[var(--foreground-5)] p-3 text-left outline-none",
+        "transition-[background,border-color,box-shadow,transform,opacity] duration-200",
+        "hover:-translate-y-0.5 hover:bg-[var(--foreground-8)]",
+        "focus-visible:ring-2 focus-visible:ring-[var(--focused)]",
+
+        // status-based styles (only when NOT highlighted)
+        !highlighted && item.status === "complete" && "border-[var(--tt-color-text-green-contrast)]",
+        !highlighted && item.status === "available" && "border-[var(--primary)] shadow-[0_0_0_1px_var(--foreground-10)]",
+        !highlighted && item.status === "locked"    && "border-[var(--border-10)] opacity-60",
+        !highlighted && selected && "border-[var(--primary)] bg-[var(--foreground-10)] shadow-[rgba(255,255,255,0.12)_0_0_0_1px]",
+
+        // dim non-connected cards
+        dimmed && "opacity-25"
       )}
       onClick={onSelect}
     >
@@ -51,8 +81,8 @@ export function RoadmapCard({
 
 function CardIcon({ status, workType }: { status: string; workType: string }) {
   if (status === "complete") return <CheckCircle2 aria-hidden="true" className="size-4" />;
-  if (status === "locked") return <LockKeyhole aria-hidden="true" className="size-4" />;
-  if (workType === "user") return <UserRound aria-hidden="true" className="size-4" />;
+  if (status === "locked")   return <LockKeyhole  aria-hidden="true" className="size-4" />;
+  if (workType === "user")     return <UserRound   aria-hidden="true" className="size-4" />;
   if (workType === "approval") return <ShieldCheck aria-hidden="true" className="size-4" />;
   return <Wand2 aria-hidden="true" className="size-4" />;
 }

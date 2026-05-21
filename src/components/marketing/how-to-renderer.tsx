@@ -7,7 +7,6 @@ import type { HowToChapter } from "@/data/how-to-content";
 import { Button, buttonClassName } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { FeatureCallout } from "@/components/ui/card";
-import { ChapterArt } from "@/components/marketing/pixel-art";
 
 export function HowToRenderer({ chapter }: { chapter: HowToChapter }) {
   const [active, setActive] = React.useState(chapter.sections[0]?.id ?? "");
@@ -63,7 +62,13 @@ export function HowToRenderer({ chapter }: { chapter: HowToChapter }) {
             <ArrowDownToLine aria-hidden="true" className="size-4" />
             {chapter.downloadLabel}
           </Link>
-          <ChapterArt tone={chapter.slug === "start" ? "green" : chapter.slug === "build" ? "blue" : chapter.slug === "sell" ? "pink" : "gold"} className="h-[280px]" />
+          <div className="relative aspect-[3/2] w-full overflow-hidden rounded-[12px] bg-[var(--foreground-5)]">
+            <img
+              src={`/chapter-${chapter.slug}.jpeg`}
+              alt={chapter.title}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </div>
         </div>
 
         {chapter.sections.map((section) => (

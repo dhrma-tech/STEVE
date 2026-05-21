@@ -104,7 +104,7 @@ export function ChatComposer({
               <span className="w-7 shrink-0 rounded-[4px] border border-[var(--border-10)] px-1 py-px text-center font-mono text-[9px] uppercase tracking-wide text-[var(--foreground-40)]">
                 {item.tag}
               </span>
-              <span className="text-sm font-medium text-[var(--foreground-80)]">@{item.key}</span>
+              <span className="text-sm font-medium text-[var(--foreground-80)]">@{item.key.replace(/-default$/, "-agent")}</span>
               <span className="truncate text-xs text-[var(--foreground-40)]">{item.label}</span>
             </button>
           ))}

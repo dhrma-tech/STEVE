@@ -1,3 +1,4 @@
+import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { pricingFaq, pricingPlans } from "@/data/pricing";
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
 
 export default function PricingPage() {
   return (
+    <>
     <main className="bg-[var(--background)] pb-24 pt-[130px] text-[var(--foreground)]">
       <MarketingContainer className="grid gap-14">
         <header className="mx-auto grid max-w-[720px] gap-4 text-center">
@@ -79,5 +81,7 @@ export default function PricingPage() {
         </section>
       </MarketingContainer>
     </main>
+      <MarketingFooter />
+    </>
   );
 }

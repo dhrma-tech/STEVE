@@ -16,8 +16,10 @@ import {
 } from "@xyflow/react";
 import { Building2, Maximize2, Workflow, X } from "lucide-react";
 import { Z_CANVAS_CHROME } from "@/lib/z-index";
+import { CanvasFileDetail } from "@/components/files/canvas-file-detail";
 import { CofounderNode } from "@/components/canvas/cofounder-node";
-import { DepartmentAgentPopup } from "@/components/canvas/department-agent-popup";
+import { TaskCreateDialog } from "@/components/tasks/task-create-dialog";
+import { Badge } from "@/components/ui/badge";
 import { DepartmentNode } from "@/components/canvas/department-node";
 import { InteractiveBackground } from "@/components/canvas/interactive-background";
 import { QueryShells } from "@/components/canvas/query-shells";
@@ -71,34 +73,10 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
   const [roadmapVisible, setRoadmapVisible] = React.useState(initialRoadmapOpen);
   const [sessionVisible, setSessionVisible] = React.useState(Boolean(initialSessionId));
   const [sessionId, setSessionId] = React.useState(initialSessionId);
-  const [ollamaStatus, setOllamaStatus] = React.useState<"checking" | "up" | "down">("checking");
-  const prevOllamaStatus = React.useRef<"checking" | "up" | "down">("checking");
+  const [libraryFileId, setLibraryFileId] = React.useState<string | null>(null);
+  const [expandedDept, setExpandedDept] = React.useState<CanvasDepartment | null>(null);
+  const [taskCreateDept, setTaskCreateDept] = React.useState<CanvasDepartment | null>(null);
 
-  React.useEffect(() => {
-    async function check() {
-      try {
-        const res = await fetch("/api/health/ollama");
-        setOllamaStatus(res.ok ? "up" : "down");
-      } catch {
-        setOllamaStatus("down");
-      }
-    }
-    void check();
-    const id = setInterval(() => void check(), 30000);
-    return () => clearInterval(id);
-  }, []);
-
-  React.useEffect(() => {
-    prevOllamaStatus.current = ollamaStatus;
-  }, [ollamaStatus]);
-
-  const [agentPopup, setAgentPopup] = React.useState<{
-    departmentId: string;
-    departmentName: string;
-    departmentColor: string;
-    x: number;
-    y: number;
-  } | null>(null);
   const selectedDepartment = React.useMemo(() => departmentForNodeId(data.departments, selectedNodeId), [data.departments, selectedNodeId]);
   const [nodes, setNodes, onNodesChange] = useNodesState<WorkspaceNode>(React.useMemo(() => buildNodes(data, selectedNodeId), [data, selectedNodeId]));
   const [edges, , onEdgesChange] = useEdgesState(React.useMemo(() => buildEdges(data), [data]));
@@ -136,22 +114,11 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
     });
   }, [activeTab, data.organization.id, selectedNodeId, viewport]);
 
-  const onNodeClick = React.useCallback<NodeMouseHandler>((event, node) => {
+  const onNodeClick = React.useCallback<NodeMouseHandler>((_event, node) => {
     if (node.type !== "department") return;
     setSelectedNodeId(node.id);
     const dept = departmentForNodeId(data.departments, node.id);
-    if (dept) {
-      const canvasRect = (event.target as HTMLElement).closest("section")?.getBoundingClientRect();
-      const relX = event.clientX - (canvasRect?.left ?? 0);
-      const relY = event.clientY - (canvasRect?.top ?? 0);
-      setAgentPopup({
-        departmentId: dept.id,
-        departmentName: dept.name,
-        departmentColor: dept.color,
-        x: relX,
-        y: relY
-      });
-    }
+    if (dept) setExpandedDept(dept);
   }, [data.departments]);
 
   const onNodeDoubleClick = React.useCallback<NodeMouseHandler>((_event, node) => {
@@ -227,41 +194,29 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
             <Background color="transparent" gap={28} size={1} />
           </ReactFlow>
 
-          {/* Agent popup — appears near clicked node */}
-          {agentPopup ? (
-            <DepartmentAgentPopup
-              orgId={data.organization.id}
-              departmentId={agentPopup.departmentId}
-              departmentName={agentPopup.departmentName}
-              departmentColor={agentPopup.departmentColor}
-              screenX={agentPopup.x}
-              screenY={agentPopup.y}
-              onClose={() => setAgentPopup(null)}
-              onLaunch={(sid) => { setSessionId(sid); setSessionVisible(true); setAgentPopup(null); }}
-              onCreateAgent={() => { setActiveTab("company"); setAgentPopup(null); }}
+          {/* Department expand panel — centered modal on card click */}
+          {expandedDept ? (
+            <DepartmentExpandPanel
+              department={expandedDept}
+              activeTasks={data.activeTasks.filter((t) => t.department?.id === expandedDept.id)}
+              onClose={() => setExpandedDept(null)}
+              onOpenBoard={() => { setBoardDepartment(expandedDept); setExpandedDept(null); }}
+              onCreateTask={() => {
+                const dept = expandedDept;
+                setExpandedDept(null);
+                setTaskCreateDept(dept);
+              }}
+              onLaunchAgent={() => {
+                const dept = expandedDept;
+                if (!dept) return;
+                const defaultAgent = dept.agents.find((a) => a.isDefault) ?? dept.agents[0] ?? null;
+                setExpandedDept(null);
+                launchDepartmentAgent({ id: dept.id, name: dept.name, defaultAgent });
+              }}
             />
           ) : null}
 
           {/* Ollama status indicator — bottom-right */}
-          <div
-            className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full border border-[var(--border-10)] bg-[var(--background-sidepanel)] px-2.5 py-1 text-[11px] text-[var(--foreground-50)]"
-            style={{ zIndex: Z_CANVAS_CHROME }}
-            title={
-              ollamaStatus === "up" ? "Mistral (local) — Running. Agents are available." :
-              ollamaStatus === "down" ? "Ollama offline — Agents will fail. Start Ollama in WSL2." :
-              "Checking Ollama status…"
-            }
-          >
-            <span
-              className={cn(
-                "size-1.5 rounded-full",
-                ollamaStatus === "up" ? "bg-green-400" :
-                ollamaStatus === "down" ? "animate-pulse bg-red-400" :
-                "animate-pulse bg-[var(--foreground-30)]"
-              )}
-            />
-            Mistral
-          </div>
 
           {/* Canvas controls — bottom-left */}
           <CanvasControls
@@ -270,6 +225,17 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
             onDashboard={() => { setSelectedNodeId(null); setActiveTab("home"); }}
             onSelectDepartment={selectDepartment}
           />
+
+          {/* File detail overlay — covers canvas when a file is opened from the Library panel */}
+          {libraryFileId ? (
+            <div className="absolute inset-0 z-30 overflow-hidden">
+              <CanvasFileDetail
+                orgId={data.organization.id}
+                fileId={libraryFileId}
+                onClose={() => setLibraryFileId(null)}
+              />
+            </div>
+          ) : null}
         </section>
 
         <div className="flex-none lg:h-full lg:w-[390px] xl:w-[430px]">
@@ -286,6 +252,7 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
               selectedTaskId={initialTaskId}
               selectedAgentId={initialAgentId}
               onLaunchTaskSession={launchSession}
+              onFileOpen={setLibraryFileId}
             />
           </div>
         </div>
@@ -304,6 +271,13 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
         department={boardDepartment}
         onOpenChange={(open) => !open && setBoardDepartment(null)}
         onLaunchAgent={launchDepartmentAgent}
+      />
+      <TaskCreateDialog
+        orgId={data.organization.id}
+        open={taskCreateDept !== null}
+        onOpenChange={(open) => { if (!open) setTaskCreateDept(null); }}
+        defaults={taskCreateDept ? { departmentId: taskCreateDept.id, source: "canvas" } : null}
+        onCreated={() => { setTaskCreateDept(null); setActiveTab("tasks"); }}
       />
     </ReactFlowProvider>
   );
@@ -433,7 +407,7 @@ function CanvasControls({
   const { fitView } = useReactFlow();
 
   return (
-    <div className="absolute bottom-0 left-3 z-10 pb-1">
+    <div className="absolute bottom-6 left-3 z-10">
       {/* Departments popover */}
       {showDepts && (
         <>
@@ -503,4 +477,153 @@ function initialTabFromQuery(query: Record<string, string | string[] | undefined
 function firstParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
+}
+
+// ── Department Expand Panel ───────────────────────────────────────────────────
+
+import type { CanvasTask } from "@/lib/canvas/data";
+
+function DepartmentExpandPanel({
+  department,
+  activeTasks,
+  onClose,
+  onOpenBoard,
+  onCreateTask,
+  onLaunchAgent
+}: {
+  department: CanvasDepartment;
+  activeTasks: CanvasTask[];
+  onClose: () => void;
+  onOpenBoard: () => void;
+  onCreateTask: () => void;
+  onLaunchAgent: () => void;
+}) {
+  const isActive = department.availability === "active";
+
+  React.useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="absolute inset-0 z-20 flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.18)", backdropFilter: "blur(2px)" }}
+      onClick={onClose}
+    >
+      <div
+        className="animate-dept-expand-in w-[420px] max-h-[80vh] overflow-y-auto rounded-[20px] border border-[var(--border-10)] bg-[var(--background-l0)] shadow-[0_24px_80px_rgba(0,0,0,0.22)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Color header strip */}
+        <div className="h-[4px] rounded-t-[20px]" style={{ background: department.color }} />
+
+        <div className="p-6">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span
+                className="grid size-12 shrink-0 place-items-center rounded-[12px] text-xl font-bold"
+                style={{ background: `${department.color}18`, color: department.color, boxShadow: `0 0 0 1.5px ${department.color}30` }}
+              >
+                {department.name.slice(0, 1)}
+              </span>
+              <div>
+                <h2 className="text-lg font-semibold tracking-[-0.2px] text-[var(--foreground)]">{department.name}</h2>
+                <Badge variant={isActive ? "success" : "warning"} className="mt-1 text-[10px]">
+                  {department.availability.replace("_", " ")}
+                </Badge>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="grid size-8 shrink-0 place-items-center rounded-[8px] border border-[var(--border-10)] text-[var(--foreground-40)] transition-colors hover:bg-[var(--foreground-5)] hover:text-[var(--foreground-80)]"
+            >
+              <X aria-hidden="true" className="size-4" />
+            </button>
+          </div>
+
+          {/* Description */}
+          <p className="mt-4 text-sm leading-6 text-[var(--foreground-60)]">{department.description}</p>
+
+          {/* Agents */}
+          {department.agents.length > 0 ? (
+            <section className="mt-5">
+              <p className="mb-2.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--foreground-40)]">
+                Agents · {department.agents.length}
+              </p>
+              <div className="grid gap-1.5">
+                {department.agents.map((agent) => (
+                  <div key={agent.id} className="flex items-center justify-between rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] px-3 py-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={`size-2 rounded-full ${agent.status === "active" ? "bg-green-400" : agent.status === "idle" ? "bg-[var(--foreground-30)]" : "bg-[var(--foreground-20)]"}`}
+                      />
+                      <span className="text-sm font-medium text-[var(--foreground-80)]">{agent.name}</span>
+                      {agent.isDefault ? (
+                        <span className="rounded-full bg-[var(--foreground-8)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-[var(--foreground-40)]">default</span>
+                      ) : null}
+                    </div>
+                    <span className="text-[11px] capitalize text-[var(--foreground-40)]">{agent.status}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {/* Active tasks */}
+          {activeTasks.length > 0 ? (
+            <section className="mt-5">
+              <p className="mb-2.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--foreground-40)]">
+                Active tasks · {activeTasks.length}
+              </p>
+              <div className="grid gap-1.5">
+                {activeTasks.slice(0, 4).map((task) => (
+                  <div key={task.id} className="flex items-center justify-between rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] px-3 py-2.5">
+                    <span className="truncate text-sm text-[var(--foreground-80)]">{task.title}</span>
+                    <Badge variant={task.status === "running" ? "running" : "neutral"} className="ml-3 shrink-0 text-[10px]">
+                      {task.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {/* Action buttons */}
+          <div className="mt-6 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onOpenBoard}
+              className="flex items-center gap-1.5 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-5)] px-3.5 py-2 text-sm font-medium text-[var(--foreground-80)] transition-colors hover:bg-[var(--foreground-10)]"
+            >
+              Open board
+            </button>
+            <button
+              type="button"
+              onClick={onCreateTask}
+              className="flex items-center gap-1.5 rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-5)] px-3.5 py-2 text-sm font-medium text-[var(--foreground-80)] transition-colors hover:bg-[var(--foreground-10)]"
+            >
+              Create task
+            </button>
+            {isActive && department.agents.some((a) => a.isDefault) ? (
+              <button
+                type="button"
+                onClick={onLaunchAgent}
+                className="flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-sm font-medium transition-colors"
+                style={{ background: `${department.color}18`, color: department.color, border: `1px solid ${department.color}30` }}
+              >
+                Launch agent
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

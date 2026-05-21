@@ -66,7 +66,12 @@ export const metadata: Metadata = {
     title: "Cofounder — Run an entire company with agents",
     description:
       "Activate departments, build a roadmap, launch tasks, and keep humans in the loop.",
-    type: "website"
+    type: "website",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Cofounder" }]
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/og-image.png"]
   }
 };
 

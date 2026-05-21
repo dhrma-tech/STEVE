@@ -1,3 +1,4 @@
+import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { howToChapters, howToSlugs, type HowToChapterSlug } from "@/data/how-to-content";
@@ -35,11 +36,14 @@ export default async function HowToPage({ params }: PageProps) {
   }
 
   return (
+    <>
     <main className="bg-[var(--background)] pb-24 pt-[130px] text-[var(--foreground)]">
       <MarketingContainer>
         <HowToRenderer chapter={content} />
       </MarketingContainer>
     </main>
+      <MarketingFooter />
+    </>
   );
 }
 

@@ -1,3 +1,4 @@
+import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import type { Metadata } from "next";
 import { docsSections } from "@/data/marketing-content";
 import { Card } from "@/components/ui/card";
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
 
 export default function DocsPage() {
   return (
+    <>
     <main className="bg-[var(--background)] pb-24 pt-[130px] text-[var(--foreground)]">
       <MarketingContainer className="grid gap-10">
         <header className="grid max-w-[760px] gap-4">
@@ -37,6 +39,8 @@ export default function DocsPage() {
         </div>
       </MarketingContainer>
     </main>
+      <MarketingFooter />
+    </>
   );
 }
 

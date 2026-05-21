@@ -1,14 +1,15 @@
 /**
  * Shared Ollama client for all AI features.
- * Model: mistral (running in WSL2 via `OLLAMA_HOST=0.0.0.0 ollama serve`)
+ * Model: mistral:latest — running natively on Windows via `ollama serve` in PowerShell.
+ * Default port: 11434 (Ollama default). Set OLLAMA_URL in .env.local to override.
  */
 
-export const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://localhost:11435";
-export const OLLAMA_MODEL = "mistral";
+export const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://localhost:11434";
+export const OLLAMA_MODEL = "mistral:latest";
 export const OLLAMA_TIMEOUT_MS = 600000;
 
 export const OLLAMA_OFFLINE_MESSAGE =
-  "AI is offline. Start Ollama in WSL2: `OLLAMA_HOST=0.0.0.0 ollama serve`, then retry.";
+  "AI is offline. Make sure Ollama is running: open PowerShell and run `ollama serve`, then retry.";
 
 /**
  * Call Ollama chat completion. Returns the model's reply text, or empty string on failure.

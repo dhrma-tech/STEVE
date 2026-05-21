@@ -57,22 +57,6 @@ export function LoadingWorkspace({ orgId, orgName }: { orgId: string; orgName: s
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden bg-[var(--background)]">
 
-      {/* Ambient glow rings */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div className="animate-loading-pulse absolute size-[520px] rounded-full"
-          style={{ background: "radial-gradient(circle, rgba(98,41,255,0.10) 0%, transparent 70%)" }} />
-        <div className="animate-loading-pulse absolute size-[320px] rounded-full"
-          style={{ background: "radial-gradient(circle, rgba(98,41,255,0.16) 0%, transparent 65%)", animationDelay: "0.4s" }} />
-        <div className="animate-loading-pulse absolute size-[140px] rounded-full"
-          style={{ background: "radial-gradient(circle, rgba(98,41,255,0.26) 0%, transparent 60%)", animationDelay: "0.8s" }} />
-      </div>
-
-      {/* Orbiting ring */}
-      <div aria-hidden="true" className="pointer-events-none absolute flex items-center justify-center">
-        <div className="animate-loading-orbit relative size-[200px] rounded-full border border-[var(--foreground-5)]">
-          <span className="absolute left-1/2 top-0 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--tt-brand-color-500)] shadow-[0_0_12px_4px_rgba(98,41,255,0.6)]" />
-        </div>
-      </div>
 
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center text-center">
@@ -100,7 +84,7 @@ export function LoadingWorkspace({ orgId, orgName }: { orgId: string; orgName: s
               >
                 <span className={cn(
                   "grid size-5 shrink-0 place-items-center rounded-full border transition-all duration-500",
-                  isDone   ? "border-[var(--tt-brand-color-500)] bg-[var(--tt-brand-color-500)]"
+                  isDone   ? "border-[var(--foreground-30)] bg-[var(--foreground-20)]"
                            : isActive ? "border-[var(--foreground-30)]"
                            : "border-[var(--foreground-10)]"
                 )}>
@@ -121,8 +105,8 @@ export function LoadingWorkspace({ orgId, orgName }: { orgId: string; orgName: s
 
         <div className="mt-10 h-px w-[260px] overflow-hidden rounded-full bg-[var(--foreground-8)]">
           <div
-            className="h-full rounded-full bg-[var(--tt-brand-color-500)] transition-all duration-700 ease-out"
-            style={{ width: `${progress}%`, boxShadow: "0 0 8px 1px rgba(98,41,255,0.6)" }}
+            className="h-full rounded-full bg-[var(--foreground-30)] transition-all duration-700 ease-out"
+            style={{ width: `${progress}%` }}
           />
         </div>
 
