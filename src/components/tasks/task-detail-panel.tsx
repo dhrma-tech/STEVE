@@ -110,13 +110,13 @@ export function TaskDetailPanel({
       </div>
 
       {error ? (
-        <div className="rounded-[10px] border border-[var(--tt-color-text-red-contrast)] bg-[var(--tt-color-text-red-contrast)] p-3 text-sm text-[var(--destructive)]">
+        <div className="rounded-[10px] border border-[rgba(239,68,68,0.36)] bg-[rgba(239,68,68,0.08)] p-3 text-sm text-[var(--destructive)]">
           {error}
         </div>
       ) : null}
 
       {pendingApprovals.length ? (
-        <div className="grid gap-3 rounded-[10px] border border-[var(--tt-color-text-yellow-contrast)] bg-[var(--tt-color-text-yellow-contrast)] p-3">
+        <div className="grid gap-3 rounded-[10px] border border-[rgba(245,158,11,0.38)] bg-[rgba(245,158,11,0.1)] p-3">
           <div className="flex items-center gap-2 text-[var(--alert)]">
             <ShieldAlert aria-hidden="true" className="size-4" />
             <h3 className="text-sm font-medium">Approval required</h3>
