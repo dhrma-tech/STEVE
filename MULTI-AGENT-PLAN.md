@@ -154,7 +154,7 @@ Each event is written to AgentAction in DB (for replay) AND streamed to client s
 ---
 
 ## Phase 4 — Streaming API
-**Status:** [ ] Not started
+**Status:** [x] Done — 2026-06-01
 **Estimate:** 1–2 days
 **Unlock:** Real-time UI instead of polling
 
@@ -286,7 +286,7 @@ Agents stop needing the user to re-explain context on every run.
 | 1 | Model Router | 1–2 | [x] Done 2026-06-01 |
 | 2 | Tool Definitions | 2–3 | [x] Done 2026-06-01 |
 | 3 | Agent Runner | 3–4 | [x] Done 2026-06-01 |
-| 4 | Streaming API | 1–2 | [ ] |
+| 4 | Streaming API | 1–2 | [x] Done 2026-06-01 |
 | 5 | Approval Gate | 1 | [ ] |
 | 6 | Multi-Agent Orchestration | 2–3 | [ ] |
 | 7 | Real-Time UI | 2 | [ ] |

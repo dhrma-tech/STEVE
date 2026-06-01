@@ -2,7 +2,9 @@ import type { Prisma } from "@prisma/client";
 import { errorResponse } from "@/lib/api/responses";
 import { requireOrgAdmin, requireOrgMember } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
-import { advanceSandboxSession, completeAgentSession, startAgentSession } from "@/lib/queue/sandbox-execution";
+import { advanceSandboxSession, startAgentSession } from "@/lib/queue/sandbox-execution";
+import { runAgent } from "@/lib/agents/runner";
+import { publish } from "@/lib/agents/event-bus";
 import { agentSkillCatalog, normalizeSkillKeys, skillsForDepartment } from "@/data/agents";
 
 const json = (value: unknown) => JSON.stringify(value);
@@ -319,17 +321,13 @@ export async function launchAgentSession({
   const session = await startAgentSession({ orgId, taskId: task.id, agentId: agent.id, message });
   if (!session) return { kind: "not_found" as const };
 
-  // Phase 2: complete in background (Ollama call + DB finalization)
-  void completeAgentSession({
-    orgId,
+  // Run agent in background — events are published to the SSE bus
+  void runAgent({
     sessionId: session.id,
-    taskId: task.id,
     agentId: agent.id,
-    message,
-    agentName: agent.name,
-    deptName: agent.department.name,
-    taskTitle: task.title,
-    taskDescription: task.description
+    orgId,
+    task: message?.trim() || `${task.title}${task.description ? `: ${task.description}` : ""}`,
+    onEvent: (event) => publish(session.id, event)
   });
 
   return {
