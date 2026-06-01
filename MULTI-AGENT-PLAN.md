@@ -47,7 +47,7 @@
 ---
 
 ## Phase 1 — Model Router
-**Status:** [ ] Not started
+**Status:** [x] Done — 2026-06-01
 **Estimate:** 1–2 days
 **Unlock:** Real Claude/GPT calls instead of always using Ollama
 
@@ -283,7 +283,7 @@ Agents stop needing the user to re-explain context on every run.
 
 | Phase | What | Days | Status |
 |---|---|---|---|
-| 1 | Model Router | 1–2 | [ ] |
+| 1 | Model Router | 1–2 | [x] Done 2026-06-01 |
 | 2 | Tool Definitions | 2–3 | [ ] |
 | 3 | Agent Runner | 3–4 | [ ] |
 | 4 | Streaming API | 1–2 | [ ] |

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/client";
-import { ollamaChatSafe, OLLAMA_OFFLINE_MESSAGE } from "@/lib/ai/ollama";
+import { OLLAMA_OFFLINE_MESSAGE } from "@/lib/ai/ollama";
+import { callModel } from "@/lib/ai/model-router";
 
 const json = (value: unknown) => JSON.stringify(value);
 
@@ -375,7 +376,7 @@ export async function completeAgentSession({
     brandKit: orgContext.brandKit
   });
 
-  const aiOutput = await ollamaChatSafe({ system, user });
+  const aiOutput = await callModel({ agentModel: task?.agent?.model, system, user });
 
   const actionPlan = getActionPlan(deptSlug);
   const now = new Date();
