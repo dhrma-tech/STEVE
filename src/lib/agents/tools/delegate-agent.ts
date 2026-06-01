@@ -14,14 +14,61 @@ export const delegateAgentTool: AgentTool = {
     }
   },
 
-  async execute(input) {
+  async execute(input, ctx) {
     const agentSlug = typeof input.agentSlug === "string" ? input.agentSlug : "";
     const task = typeof input.task === "string" ? input.task : "";
     if (!agentSlug || !task) return "Error: agentSlug and task are required";
 
-    // Phase 3 (runner.ts) wires up recursive runAgent() calls here.
-    // This handler is updated in Phase 3 to actually invoke the child agent.
-    console.warn(`[delegate-agent] delegation to "${agentSlug}" not yet active — implement Phase 3 runner first`);
-    return `Delegation to agent "${agentSlug}" requires Phase 3 (runner) to be implemented.`;
+    // Lazy import to break the circular dependency: runner → registry → delegate-agent → runner
+    const { runAgent } = await import("@/lib/agents/runner");
+    const { prisma } = await import("@/lib/db/client");
+
+    // Resolve agent slug → id
+    const childAgent = await prisma.agent.findFirst({
+      where: { organizationId: ctx.orgId, slug: agentSlug, archivedAt: null }
+    });
+    if (!childAgent) return `Error: no agent with slug "${agentSlug}" found in this org`;
+
+    // Create a child task for the delegation
+    const childTask = await prisma.task.create({
+      data: {
+        organizationId: ctx.orgId,
+        departmentId: childAgent.departmentId,
+        agentId: childAgent.id,
+        title: task.split(/\r?\n/)[0]?.slice(0, 80) ?? task.slice(0, 80),
+        description: task,
+        type: "agent_task",
+        status: "running",
+        priority: 1,
+        startedAt: new Date()
+      }
+    });
+
+    // Create child session
+    const childSession = await prisma.taskSession.create({
+      data: {
+        organizationId: ctx.orgId,
+        taskId: childTask.id,
+        agentId: childAgent.id,
+        status: "running",
+        startedAt: new Date(),
+        scratchpad: `# ${childAgent.name} — Running\n\n**Delegated from session:** ${ctx.sessionId}`
+      }
+    });
+
+    const events: string[] = [];
+    const result = await runAgent({
+      sessionId: childSession.id,
+      agentId: childAgent.id,
+      orgId: ctx.orgId,
+      task,
+      parentSessionId: ctx.sessionId,
+      onEvent: (event) => {
+        if (event.type === "tool_call") events.push(`[tool] ${event.tool}`);
+        if (event.type === "tool_result") events.push(`[result] ${event.output.slice(0, 100)}`);
+      }
+    });
+
+    return result.output || `Agent "${agentSlug}" completed with no output.`;
   }
 };

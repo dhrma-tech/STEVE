@@ -101,7 +101,7 @@ Builds the tools array to send to LLM based on agent's skillKeys + permission mo
 ---
 
 ## Phase 3 — Agent Runner (Core Engine)
-**Status:** [ ] Not started
+**Status:** [x] Done — 2026-06-01
 **Estimate:** 3–4 days
 **Unlock:** Real tool-use loop replaces single LLM call
 
@@ -285,7 +285,7 @@ Agents stop needing the user to re-explain context on every run.
 |---|---|---|---|
 | 1 | Model Router | 1–2 | [x] Done 2026-06-01 |
 | 2 | Tool Definitions | 2–3 | [x] Done 2026-06-01 |
-| 3 | Agent Runner | 3–4 | [ ] |
+| 3 | Agent Runner | 3–4 | [x] Done 2026-06-01 |
 | 4 | Streaming API | 1–2 | [ ] |
 | 5 | Approval Gate | 1 | [ ] |
 | 6 | Multi-Agent Orchestration | 2–3 | [ ] |

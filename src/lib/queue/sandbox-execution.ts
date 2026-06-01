@@ -6,7 +6,7 @@ const json = (value: unknown) => JSON.stringify(value);
 
 // ── Org-level context loader (Business Plan + Brand Kit) ──────────────────────
 
-async function loadOrgContext(orgId: string): Promise<{ businessPlan: string; brandKit: string }> {
+export async function loadOrgContext(orgId: string): Promise<{ businessPlan: string; brandKit: string }> {
   const files = await prisma.file.findMany({
     where: {
       organizationId: orgId,
@@ -96,7 +96,7 @@ function getActionPlan(deptSlug?: string | null): ActionStep[] {
 
 // ── Prompt builder ────────────────────────────────────────────────────────────
 
-function buildPrompt(ctx: {
+export function buildPrompt(ctx: {
   agentName: string;
   orgName: string;
   deptName: string;
