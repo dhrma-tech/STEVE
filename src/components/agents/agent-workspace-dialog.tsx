@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, CheckCircle2, Copy, Loader2, Paperclip, SendHorizonal, Sparkles, TerminalSquare, X } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, Copy, Loader2, Paperclip, SendHorizonal, Sparkles, TerminalSquare, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -77,6 +77,12 @@ export function AgentWorkspaceDialog({
   const [showCompletionBanner, setShowCompletionBanner] = React.useState(false);
   // Fix 13 — section tab state
   const [activeSection, setActiveSection] = React.useState(0);
+  // Phase 5 — approval gate
+  const [pendingApproval, setPendingApproval] = React.useState<{
+    tool: string; input: unknown; approvalId: string;
+  } | null>(null);
+  const [approving, setApproving] = React.useState(false);
+  const sseRef = React.useRef<EventSource | null>(null);
 
   const loadSession = React.useCallback((opts: { silent?: boolean; attempt?: number } = {}) => {
     if (!sessionId || !open) return;
@@ -139,6 +145,59 @@ export function AgentWorkspaceDialog({
 
   // Reset to first tab when session changes
   React.useEffect(() => { setActiveSection(0); }, [session?.id]);
+
+  // Phase 5 — SSE connection for approval events while session is running
+  React.useEffect(() => {
+    const agentId = session?.agent?.id;
+    const sessionRunning = session?.status === "running";
+    if (!session?.id || !agentId || !sessionRunning) {
+      sseRef.current?.close();
+      sseRef.current = null;
+      return;
+    }
+
+    sseRef.current?.close();
+    const es = new EventSource(`/api/orgs/${orgId}/agents/${agentId}/sessions/${session.id}/stream`);
+    sseRef.current = es;
+
+    es.onmessage = (e) => {
+      try {
+        const event = JSON.parse(e.data as string) as {
+          type: string; tool?: string; input?: unknown; approvalId?: string;
+        };
+        if (event.type === "approval_required" && event.approvalId) {
+          setPendingApproval({ tool: event.tool ?? "unknown", input: event.input ?? {}, approvalId: event.approvalId });
+        } else if (event.type === "done" || event.type === "error") {
+          setPendingApproval(null);
+          es.close();
+          loadSession({ silent: true });
+        }
+      } catch { /* ignore malformed events */ }
+    };
+
+    es.onerror = () => { es.close(); };
+
+    return () => {
+      es.close();
+      sseRef.current = null;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id, session?.agent?.id, session?.status]);
+
+  async function handleApprove(action: "approve" | "deny") {
+    if (!pendingApproval || !session?.agent?.id || approving) return;
+    setApproving(true);
+    try {
+      await fetch(`/api/orgs/${orgId}/agents/${session.agent.id}/sessions/${session.id}/approve`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action, approvalId: pendingApproval.approvalId })
+      });
+      setPendingApproval(null);
+    } catch { /* silent */ } finally {
+      setApproving(false);
+    }
+  }
 
   async function sendMessage() {
     if (!session || !message.trim() || sending) return;
@@ -218,6 +277,48 @@ export function AgentWorkspaceDialog({
 
         {session ? (
           <>
+          {/* Phase 5 — approval required banner (blocking) */}
+          {pendingApproval && (
+            <div
+              className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3 animate-[fade-in_150ms_ease-out_both]"
+              style={{
+                background: "rgba(245,158,11,0.08)",
+                borderColor: "rgba(245,158,11,0.25)",
+                borderLeft: "3px solid var(--alert)"
+              }}
+            >
+              <div className="flex min-w-0 items-center gap-2.5">
+                <AlertTriangle className="size-4 shrink-0 text-[var(--alert)]" aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[var(--alert)]">Action requires approval</p>
+                  <p className="mt-0.5 truncate text-xs text-[var(--foreground-50)]">
+                    <code className="font-mono">{pendingApproval.tool}</code>
+                    {" "}is requesting permission to run
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleApprove("deny")}
+                  disabled={approving}
+                  className="rounded-[8px] border border-[var(--destructive)]/40 px-3 py-1.5 text-xs text-[var(--destructive)] transition-colors hover:bg-[var(--destructive)]/10 disabled:pointer-events-none disabled:opacity-40"
+                >
+                  Deny
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleApprove("approve")}
+                  disabled={approving}
+                  className="flex items-center gap-1.5 rounded-[8px] border border-[var(--alert)]/40 bg-[var(--alert)]/10 px-3 py-1.5 text-xs font-medium text-[var(--alert)] transition-colors hover:bg-[var(--alert)]/20 disabled:pointer-events-none disabled:opacity-40"
+                >
+                  {approving ? <Loader2 className="size-3 animate-spin" /> : null}
+                  Approve
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Fix 11 — running agent banner */}
           {isRunning && !showCompletionBanner && (
             <div

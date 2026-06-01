@@ -172,7 +172,7 @@ Remove `void completeAgentSession()` call.
 ---
 
 ## Phase 5 — Approval Gate
-**Status:** [ ] Not started
+**Status:** [x] Done — 2026-06-01
 **Estimate:** 1 day
 **Unlock:** review_required permission mode actually works
 
@@ -287,7 +287,7 @@ Agents stop needing the user to re-explain context on every run.
 | 2 | Tool Definitions | 2–3 | [x] Done 2026-06-01 |
 | 3 | Agent Runner | 3–4 | [x] Done 2026-06-01 |
 | 4 | Streaming API | 1–2 | [x] Done 2026-06-01 |
-| 5 | Approval Gate | 1 | [ ] |
+| 5 | Approval Gate | 1 | [x] Done 2026-06-01 |
 | 6 | Multi-Agent Orchestration | 2–3 | [ ] |
 | 7 | Real-Time UI | 2 | [ ] |
 | 8 | Agent Memory | 1 | [ ] |
