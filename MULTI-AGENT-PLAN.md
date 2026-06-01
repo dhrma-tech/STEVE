@@ -76,7 +76,7 @@ Replace the `ollamaChatSafe()` call in `src/lib/queue/sandbox-execution.ts` with
 ---
 
 ## Phase 2 — Tool Definitions
-**Status:** [ ] Not started
+**Status:** [x] Done — 2026-06-01
 **Estimate:** 2–3 days
 **Unlock:** LLM has real callable capabilities
 
@@ -284,7 +284,7 @@ Agents stop needing the user to re-explain context on every run.
 | Phase | What | Days | Status |
 |---|---|---|---|
 | 1 | Model Router | 1–2 | [x] Done 2026-06-01 |
-| 2 | Tool Definitions | 2–3 | [ ] |
+| 2 | Tool Definitions | 2–3 | [x] Done 2026-06-01 |
 | 3 | Agent Runner | 3–4 | [ ] |
 | 4 | Streaming API | 1–2 | [ ] |
 | 5 | Approval Gate | 1 | [ ] |
