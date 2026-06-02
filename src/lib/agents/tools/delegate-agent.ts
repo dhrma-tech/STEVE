@@ -44,30 +44,33 @@ export const delegateAgentTool: AgentTool = {
       }
     });
 
-    // Create child session
+    // Create child session — linked to parent via parentSessionId
     const childSession = await prisma.taskSession.create({
       data: {
         organizationId: ctx.orgId,
         taskId: childTask.id,
         agentId: childAgent.id,
+        parentSessionId: ctx.sessionId,
         status: "running",
         startedAt: new Date(),
         scratchpad: `# ${childAgent.name} — Running\n\n**Delegated from session:** ${ctx.sessionId}`
       }
     });
 
-    const events: string[] = [];
+    // Publish delegate_start to the parent session's SSE bus
+    const { publish } = await import("@/lib/agents/event-bus");
+    publish(ctx.sessionId, { type: "delegate_start", childAgentSlug: agentSlug, childSessionId: childSession.id });
+
     const result = await runAgent({
       sessionId: childSession.id,
       agentId: childAgent.id,
       orgId: ctx.orgId,
       task,
       parentSessionId: ctx.sessionId,
-      onEvent: (event) => {
-        if (event.type === "tool_call") events.push(`[tool] ${event.tool}`);
-        if (event.type === "tool_result") events.push(`[result] ${event.output.slice(0, 100)}`);
-      }
+      onEvent: (event) => publish(childSession.id, event)
     });
+
+    publish(ctx.sessionId, { type: "delegate_done", childAgentSlug: agentSlug, output: result.output });
 
     return result.output || `Agent "${agentSlug}" completed with no output.`;
   }

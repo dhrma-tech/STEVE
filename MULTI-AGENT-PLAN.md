@@ -194,7 +194,7 @@ When SSE fires `approval_required`:
 ---
 
 ## Phase 6 — Multi-Agent Orchestration
-**Status:** [ ] Not started
+**Status:** [x] Done — 2026-06-02
 **Estimate:** 2–3 days
 **Unlock:** Agents can spawn and wait on child agents
 
@@ -288,7 +288,7 @@ Agents stop needing the user to re-explain context on every run.
 | 3 | Agent Runner | 3–4 | [x] Done 2026-06-01 |
 | 4 | Streaming API | 1–2 | [x] Done 2026-06-01 |
 | 5 | Approval Gate | 1 | [x] Done 2026-06-01 |
-| 6 | Multi-Agent Orchestration | 2–3 | [ ] |
+| 6 | Multi-Agent Orchestration | 2–3 | [x] Done 2026-06-02 |
 | 7 | Real-Time UI | 2 | [ ] |
 | 8 | Agent Memory | 1 | [ ] |
 | **Total** | | **~15–18 days** | |

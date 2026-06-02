@@ -170,6 +170,7 @@ model Agent {
   auditLogs       AuditLog[]
   chatMessages    ChatMessage[]
   chatThreads     ChatThread[]
+  memories        AgentMemory[]
   tasks           Task[]
   sessions        TaskSession[]
 
@@ -230,26 +231,30 @@ model Subtask {
 }
 
 model TaskSession {
-  id             String        @id @default(cuid())
-  taskId         String
-  organizationId String
-  agentId        String?
-  status         String
-  browserUrl     String?
-  replayUrl      String?
-  scratchpad     String?
-  elapsedMs      Int           @default(0)
-  startedAt      DateTime?
-  finishedAt     DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  actions        AgentAction[]
-  agent          Agent?        @relation(fields: [agentId], references: [id])
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  task           Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  id              String        @id @default(cuid())
+  taskId          String
+  organizationId  String
+  agentId         String?
+  parentSessionId String?
+  status          String
+  browserUrl      String?
+  replayUrl       String?
+  scratchpad      String?
+  elapsedMs       Int           @default(0)
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  actions         AgentAction[]
+  agent           Agent?        @relation(fields: [agentId], references: [id])
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  task            Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  parentSession   TaskSession?  @relation("SessionTree", fields: [parentSessionId], references: [id])
+  childSessions   TaskSession[] @relation("SessionTree")
 
   @@index([taskId])
   @@index([organizationId, status])
+  @@index([parentSessionId])
 }
 
 model AgentAction {
@@ -624,6 +629,18 @@ model CanvasViewState {
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, organizationId])
+}
+
+model AgentMemory {
+  id        String   @id @default(cuid())
+  agentId   String
+  key       String
+  value     String
+  updatedAt DateTime @updatedAt
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, key])
+  @@index([agentId])
 }
 
 model AuditLog {

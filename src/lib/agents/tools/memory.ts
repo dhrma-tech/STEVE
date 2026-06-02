@@ -1,15 +1,5 @@
-import { promises as fs } from "fs";
-import path from "path";
-import os from "os";
+import { prisma } from "@/lib/db/client";
 import type { AgentTool } from "./types";
-
-// File-system backed memory for Phase 2.
-// Phase 6 adds AgentMemory to the DB schema; at that point update these
-// handlers to use prisma.agentMemory instead.
-
-function memoryDir(agentId: string) {
-  return path.join(os.tmpdir(), "steve-sessions", "memory", agentId);
-}
 
 function safeKey(key: string) {
   return key.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 128);
@@ -32,13 +22,13 @@ export const memoryStoreTool: AgentTool = {
     const key = safeKey(typeof input.key === "string" ? input.key : "");
     const value = typeof input.value === "string" ? input.value : JSON.stringify(input.value);
     if (!key) return "Error: key is required";
-    const dir = memoryDir(ctx.agentId);
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(
-      path.join(dir, `${key}.json`),
-      JSON.stringify({ key, value, updatedAt: new Date().toISOString() }),
-      "utf-8"
-    );
+
+    await prisma.agentMemory.upsert({
+      where: { agentId_key: { agentId: ctx.agentId, key } },
+      update: { value },
+      create: { agentId: ctx.agentId, key, value }
+    });
+
     return `Memory stored: ${key} = ${value.slice(0, 100)}${value.length > 100 ? "…" : ""}`;
   }
 };
@@ -58,13 +48,13 @@ export const memoryRetrieveTool: AgentTool = {
   async execute(input, ctx) {
     const key = safeKey(typeof input.key === "string" ? input.key : "");
     if (!key) return "Error: key is required";
-    try {
-      const raw = await fs.readFile(path.join(memoryDir(ctx.agentId), `${key}.json`), "utf-8");
-      const entry = JSON.parse(raw) as { key: string; value: string; updatedAt: string };
-      return `${entry.key}: ${entry.value}\n(last updated: ${entry.updatedAt})`;
-    } catch {
-      return `Memory key "${key}" not found.`;
-    }
+
+    const entry = await prisma.agentMemory.findUnique({
+      where: { agentId_key: { agentId: ctx.agentId, key } }
+    });
+
+    if (!entry) return `Memory key "${key}" not found.`;
+    return `${entry.key}: ${entry.value}\n(last updated: ${entry.updatedAt.toISOString()})`;
   }
 };
 
@@ -75,26 +65,14 @@ export const memoryListTool: AgentTool = {
     input_schema: { type: "object", properties: {} }
   },
   async execute(_input, ctx) {
-    const dir = memoryDir(ctx.agentId);
-    try {
-      await fs.mkdir(dir, { recursive: true });
-      const files = await fs.readdir(dir);
-      const keys = files.filter(f => f.endsWith(".json")).map(f => f.replace(/\.json$/, ""));
-      if (!keys.length) return "No memories stored yet.";
-      const entries = await Promise.all(
-        keys.map(async (k) => {
-          try {
-            const raw = await fs.readFile(path.join(dir, `${k}.json`), "utf-8");
-            const e = JSON.parse(raw) as { value: string };
-            return `- ${k}: ${e.value.slice(0, 80)}${e.value.length > 80 ? "…" : ""}`;
-          } catch {
-            return `- ${k}: (unreadable)`;
-          }
-        })
-      );
-      return entries.join("\n");
-    } catch {
-      return "No memories stored yet.";
-    }
+    const entries = await prisma.agentMemory.findMany({
+      where: { agentId: ctx.agentId },
+      orderBy: { updatedAt: "desc" }
+    });
+
+    if (!entries.length) return "No memories stored yet.";
+    return entries
+      .map(e => `- ${e.key}: ${e.value.slice(0, 80)}${e.value.length > 80 ? "…" : ""}`)
+      .join("\n");
   }
 };
