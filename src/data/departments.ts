@@ -185,10 +185,10 @@ export const departmentVisuals = [
       accent: "#a78bfa",
       motif: "?"
     },
-    statusLabel: "Coming soon",
-    availabilityLabel: "Unlocks with support readiness",
+    statusLabel: "Active",
+    availabilityLabel: "Support inbox live",
     setupPrompt: "Capture the support channel, response promise, escalation path, and help-center material Support will need.",
-    launchPrompt: "Prepare Support Agent",
+    launchPrompt: "Launch Support Agent",
     contextTabs: [
       {
         id: "company",
@@ -223,10 +223,10 @@ export const departmentVisuals = [
       accent: "#818cf8",
       motif: "OPS"
     },
-    statusLabel: "Coming soon",
-    availabilityLabel: "Unlocks with operating cadence",
+    statusLabel: "Active",
+    availabilityLabel: "Operations system live",
     setupPrompt: "Describe the operating rhythm, owner, handoff, and review cadence Operations should stabilize.",
-    launchPrompt: "Prepare Operations Agent",
+    launchPrompt: "Launch Operations Agent",
     contextTabs: [
       {
         id: "company",
@@ -261,10 +261,10 @@ export const departmentVisuals = [
       accent: "#eab308",
       motif: "$"
     },
-    statusLabel: "Coming soon",
-    availabilityLabel: "Unlocks with billing/bookkeeping",
+    statusLabel: "Active",
+    availabilityLabel: "Finance tools live",
     setupPrompt: "Summarize the billing model, bookkeeping state, unit-economic question, and approval boundary for Finance.",
-    launchPrompt: "Prepare Finance Agent",
+    launchPrompt: "Launch Finance Agent",
     contextTabs: [
       {
         id: "company",
@@ -299,10 +299,10 @@ export const departmentVisuals = [
       accent: "#d1d5db",
       motif: "LAW"
     },
-    statusLabel: "Coming soon",
-    availabilityLabel: "Unlocks with incorporation/compliance",
+    statusLabel: "Active",
+    availabilityLabel: "Legal workspace live",
     setupPrompt: "List the legal task, jurisdiction context, approval need, and documents Legal should prepare for review.",
-    launchPrompt: "Prepare Legal Agent",
+    launchPrompt: "Launch Legal Agent",
     contextTabs: [
       {
         id: "company",

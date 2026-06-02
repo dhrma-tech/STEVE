@@ -66,6 +66,34 @@ export const agentSkillCatalog = [
     category: "Inbox",
     name: "Support inbox triage",
     description: "Route customer messages and prepare response drafts."
+  },
+  {
+    key: "email-outbound",
+    departmentSlug: "sales",
+    category: "Integration",
+    name: "Email outreach",
+    description: "Send and track outbound emails via Resend API."
+  },
+  {
+    key: "apify-scraping",
+    departmentSlug: "sales",
+    category: "Integration",
+    name: "Prospect scraping",
+    description: "Run Apify actors to gather prospect lists and web data."
+  },
+  {
+    key: "monitoring-ops",
+    departmentSlug: "engineering",
+    category: "Integration",
+    name: "Monitoring & analytics",
+    description: "Query PostHog events and Sentry issues for production monitoring."
+  },
+  {
+    key: "supabase-database",
+    departmentSlug: "engineering",
+    category: "Integration",
+    name: "Database access",
+    description: "Inspect Supabase tables, run SELECT queries, manage storage buckets."
   }
 ] as const;
 

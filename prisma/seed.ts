@@ -16,10 +16,10 @@ const departments = [
   ["marketing", "Marketing", "Creates positioning, content engines, SEO, social publishing, and campaign signals.", "grid", "#f87171", "active"],
   ["sales", "Sales", "Finds prospects, builds outbound workflows, and qualifies opportunities.", "growth", "#22c55e", "active"],
   ["design", "Design", "Creates the brand kit, visual identity, product UI, and creative assets.", "palette", "#60a5fa", "active"],
-  ["support", "Support", "Handles support workflows, inboxes, and customer response systems.", "lifebuoy", "#a78bfa", "coming_soon"],
-  ["operations", "Operations", "Maintains systems, processes, handoffs, and operating cadence.", "workflow", "#818cf8", "coming_soon"],
-  ["finance", "Finance", "Tracks bookkeeping, unit economics, billing readiness, and finance workflows.", "ledger", "#eab308", "coming_soon"],
-  ["legal", "Legal", "Guides incorporation, terms, compliance, and legal operating tasks.", "scale", "#9ca3af", "coming_soon"]
+  ["support", "Support", "Handles support workflows, inboxes, and customer response systems.", "lifebuoy", "#a78bfa", "active"],
+  ["operations", "Operations", "Maintains systems, processes, handoffs, and operating cadence.", "workflow", "#818cf8", "active"],
+  ["finance", "Finance", "Tracks bookkeeping, unit economics, billing readiness, and finance workflows.", "ledger", "#eab308", "active"],
+  ["legal", "Legal", "Guides incorporation, terms, compliance, and legal operating tasks.", "scale", "#9ca3af", "active"]
 ] as const;
 
 const roadmap = [
@@ -267,9 +267,9 @@ async function main() {
           stageId: createdStage.id,
           departmentId:
             key.includes("brand") ? departmentBySlug.get("design") :
-            key.includes("postiz") || key.includes("blog") || key.includes("seo") ? departmentBySlug.get("marketing") :
-            key.includes("prospect") || key.includes("outreach") || key.includes("deal") ? departmentBySlug.get("sales") :
-            key.includes("bookkeeping") || key.includes("billing") ? departmentBySlug.get("finance") :
+            key.includes("postiz") || key.includes("blog") || key.includes("seo") || key.includes("social") || key.includes("positioning") ? departmentBySlug.get("marketing") :
+            key.includes("prospect") || key.includes("outreach") || key.includes("deal") || key.includes("opportunit") || key.includes("qualify") ? departmentBySlug.get("sales") :
+            key.includes("bookkeeping") || key.includes("billing") || key.includes("bank") ? departmentBySlug.get("finance") :
             key.includes("incorporate") ? departmentBySlug.get("legal") :
             key.includes("support") ? departmentBySlug.get("support") :
             departmentBySlug.get("engineering"),

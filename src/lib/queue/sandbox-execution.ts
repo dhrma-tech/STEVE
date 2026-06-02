@@ -496,7 +496,7 @@ async function postAgentOutput({
 
 // ── Brand Kit extraction — runs after design agent completes brand_identity ───
 
-async function maybeExtractAndSaveBrandKit(
+export async function maybeExtractAndSaveBrandKit(
   aiOutput: string,
   orgId: string,
   sessionId: string,

@@ -81,7 +81,7 @@ export const departmentDefinitions: DepartmentDefinition[] = [
     description: "Handles support workflows, inboxes, and customer response systems.",
     icon: "lifebuoy",
     color: "#a78bfa",
-    availability: "coming_soon",
+    availability: "active",
     lucideIcon: LifeBuoy
   },
   {
@@ -90,7 +90,7 @@ export const departmentDefinitions: DepartmentDefinition[] = [
     description: "Maintains systems, processes, handoffs, and operating cadence.",
     icon: "workflow",
     color: "#818cf8",
-    availability: "coming_soon",
+    availability: "active",
     lucideIcon: Settings2
   },
   {
@@ -99,7 +99,7 @@ export const departmentDefinitions: DepartmentDefinition[] = [
     description: "Tracks bookkeeping, unit economics, billing readiness, and finance workflows.",
     icon: "ledger",
     color: "#eab308",
-    availability: "coming_soon",
+    availability: "active",
     lucideIcon: CreditCard
   },
   {
@@ -108,7 +108,7 @@ export const departmentDefinitions: DepartmentDefinition[] = [
     description: "Guides incorporation, terms, compliance, and legal operating tasks.",
     icon: "scale",
     color: "#9ca3af",
-    availability: "coming_soon",
+    availability: "active",
     lucideIcon: Scale
   }
 ];

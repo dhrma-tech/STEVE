@@ -17,6 +17,17 @@ export async function activateOrganization({
     where: { organizationId, isDefault: true }
   });
 
+  const agentSkillKeysBySlug: Record<string, string[]> = {
+    engineering:  ["github-repository", "vercel-preview", "supabase-database", "monitoring-ops"],
+    marketing:    ["postiz-social"],
+    sales:        ["email-outbound", "apify-scraping"],
+    design:       [],
+    support:      ["support-inbox"],
+    operations:   [],
+    finance:      ["stripe-billing"],
+    legal:        []
+  };
+
   const departmentBySlug = new Map<string, string>();
 
   for (const [sortOrder, definition] of departmentDefinitions.entries()) {
@@ -51,7 +62,9 @@ export async function activateOrganization({
       where: { organizationId_slug: { organizationId, slug: `${definition.slug}-default` } },
       update: {
         departmentId: department.id,
-        isDefault: true
+        isDefault: true,
+        toolsJson: json({ skillKeys: agentSkillKeysBySlug[definition.slug] ?? [] }),
+        permissionsJson: json({ mode: "review_required", dangerousActionsRequireApproval: true })
       },
       create: {
         organizationId,
@@ -62,8 +75,8 @@ export async function activateOrganization({
         isDefault: true,
         status: "idle",
         model: "claude-sonnet-sandbox",
-        toolsJson: json({ sandbox: true }),
-        permissionsJson: json({ dangerousActionsRequireApproval: true })
+        toolsJson: json({ skillKeys: agentSkillKeysBySlug[definition.slug] ?? [] }),
+        permissionsJson: json({ mode: "review_required", dangerousActionsRequireApproval: true })
       }
     });
   }

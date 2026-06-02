@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db/client";
 import { resolveModel } from "@/lib/ai/model-router";
 import { ollamaChatSafe } from "@/lib/ai/ollama";
 import { buildToolset } from "./tools/registry";
-import { buildPrompt, loadOrgContext } from "@/lib/queue/sandbox-execution";
+import { buildPrompt, loadOrgContext, maybeExtractAndSaveBrandKit } from "@/lib/queue/sandbox-execution";
 import type { AgentTool, ToolContext } from "./tools/types";
 
 // ── Event types ───────────────────────────────────────────────────────────────
@@ -472,5 +472,18 @@ async function finalizeRun({
         metadataJson: JSON.stringify({ kind: "agent_output" })
       }
     });
+  }
+
+  // Brand kit extraction — runs only for Design department agents
+  if (output && taskId) {
+    const taskForBrandKit = await prisma.task.findUnique({
+      where: { id: taskId },
+      select: { department: { select: { slug: true } }, roadmapItem: { select: { key: true } } }
+    }).catch(() => null);
+
+    if (taskForBrandKit?.department?.slug === "design") {
+      const metaJson = JSON.stringify({ itemKey: taskForBrandKit.roadmapItem?.key ?? "brand_identity" });
+      await maybeExtractAndSaveBrandKit(output, orgId, sessionId, "design", metaJson).catch(() => {});
+    }
   }
 }

@@ -346,6 +346,21 @@ function defaultConfig(provider: string) {
   if (provider === "postiz") {
     return { sandbox: true, channels: [] };
   }
+  if (provider === "email") {
+    return { sandbox: true, provider: "resend", fromAddress: "", apiKey: "" };
+  }
+  if (provider === "sentry") {
+    return { sandbox: true, authToken: "", organizationSlug: "" };
+  }
+  if (provider === "posthog") {
+    return { sandbox: true, apiKey: "", projectId: "" };
+  }
+  if (provider === "support") {
+    return { sandbox: true, provider: "plain", apiKey: "", apiUrl: "https://core-api.uk.plain.com/graphql/v1" };
+  }
+  if (provider === "apify") {
+    return { sandbox: true, token: "" };
+  }
   return { sandbox: true };
 }
 
