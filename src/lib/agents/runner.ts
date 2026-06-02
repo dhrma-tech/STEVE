@@ -79,10 +79,11 @@ export async function runAgent(opts: {
   });
   const taskRecord = session?.task ?? null;
 
-  // Load org + shared context
-  const [org, orgContext] = await Promise.all([
+  // Load org + shared context + agent memories
+  const [org, orgContext, agentMemories] = await Promise.all([
     prisma.organization.findUnique({ where: { id: orgId } }),
-    loadOrgContext(orgId)
+    loadOrgContext(orgId),
+    prisma.agentMemory.findMany({ where: { agentId }, orderBy: { updatedAt: "desc" } })
   ]);
 
   // Parse agent skill keys
@@ -112,8 +113,8 @@ export async function runAgent(opts: {
   const toolset = buildToolset(skillKeys);
   const toolCtx: ToolContext = { orgId, agentId, sessionId, skillKeys };
 
-  // Build system + user prompt
-  const { system, user } = buildPrompt({
+  // Build system + user prompt, then inject stored memories
+  const { system: baseSystem, user } = buildPrompt({
     agentName: agent.name,
     orgName: org?.name ?? "your company",
     deptName: agent.department.name,
@@ -130,6 +131,10 @@ export async function runAgent(opts: {
     businessPlan: orgContext.businessPlan,
     brandKit: orgContext.brandKit
   });
+
+  const system = agentMemories.length > 0
+    ? baseSystem + "\n\n## Your Memory\n" + agentMemories.map(m => `- ${m.key}: ${m.value}`).join("\n")
+    : baseSystem;
 
   // Resolve model and run the appropriate loop
   const modelConfig = resolveModel(agent.model);

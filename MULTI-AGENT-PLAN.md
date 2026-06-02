@@ -257,7 +257,7 @@ Timeline of AgentEvents rendered as visual steps:
 ---
 
 ## Phase 8 — Agent Memory
-**Status:** [ ] Not started
+**Status:** [x] Done — 2026-06-02
 **Estimate:** 1 day
 **Unlock:** Agents remember facts across sessions
 
@@ -290,7 +290,7 @@ Agents stop needing the user to re-explain context on every run.
 | 5 | Approval Gate | 1 | [x] Done 2026-06-01 |
 | 6 | Multi-Agent Orchestration | 2–3 | [x] Done 2026-06-02 |
 | 7 | Real-Time UI | 2 | [x] Done 2026-06-02 |
-| 8 | Agent Memory | 1 | [ ] |
+| 8 | Agent Memory | 1 | [x] Done 2026-06-02 |
 | **Total** | | **~15–18 days** | |
 
 ---
