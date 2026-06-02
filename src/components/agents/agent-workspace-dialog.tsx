@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingState } from "@/components/ui/loading-state";
 import type { AgentSessionDetail } from "@/components/agents/types";
+import { ExecutionFeed, type FeedItem } from "@/components/agents/execution-feed";
 import { cn } from "@/lib/utils/cn";
 
 type ApiPayload<T> = { data?: T; error?: { message: string } };
@@ -83,6 +84,9 @@ export function AgentWorkspaceDialog({
   } | null>(null);
   const [approving, setApproving] = React.useState(false);
   const sseRef = React.useRef<EventSource | null>(null);
+  // Phase 7 — live execution feed
+  const [liveItems, setLiveItems] = React.useState<FeedItem[]>([]);
+  let feedItemCounter = React.useRef(0);
 
   const loadSession = React.useCallback((opts: { silent?: boolean; attempt?: number } = {}) => {
     if (!sessionId || !open) return;
@@ -143,8 +147,12 @@ export function AgentWorkspaceDialog({
     return () => clearTimeout(id);
   }, [session?.status]);
 
-  // Reset to first tab when session changes
-  React.useEffect(() => { setActiveSection(0); }, [session?.id]);
+  // Reset to first tab and clear live feed when session changes
+  React.useEffect(() => {
+    setActiveSection(0);
+    setLiveItems([]);
+    feedItemCounter.current = 0;
+  }, [session?.id]);
 
   // Phase 5 — SSE connection for approval events while session is running
   React.useEffect(() => {
@@ -163,14 +171,87 @@ export function AgentWorkspaceDialog({
     es.onmessage = (e) => {
       try {
         const event = JSON.parse(e.data as string) as {
-          type: string; tool?: string; input?: unknown; approvalId?: string;
+          type: string;
+          // text_delta
+          delta?: string;
+          // tool_call / tool_result
+          tool?: string; input?: unknown; output?: string; success?: boolean;
+          // approval_required
+          approvalId?: string;
+          // delegate_start / delegate_done
+          childAgentSlug?: string; childSessionId?: string;
         };
-        if (event.type === "approval_required" && event.approvalId) {
-          setPendingApproval({ tool: event.tool ?? "unknown", input: event.input ?? {}, approvalId: event.approvalId });
-        } else if (event.type === "done" || event.type === "error") {
-          setPendingApproval(null);
-          es.close();
-          loadSession({ silent: true });
+
+        const nextId = () => `feed-${++feedItemCounter.current}`;
+
+        switch (event.type) {
+          case "text_delta":
+            if (event.delta) {
+              setLiveItems((prev) => {
+                const last = prev[prev.length - 1];
+                if (last?.kind === "text") {
+                  return [...prev.slice(0, -1), { ...last, text: last.text + event.delta }];
+                }
+                return [...prev, { kind: "text", text: event.delta!, id: nextId() }];
+              });
+            }
+            break;
+
+          case "tool_call":
+            setLiveItems((prev) => [
+              ...prev,
+              { kind: "tool", name: event.tool ?? "unknown", input: event.input ?? {}, id: nextId() }
+            ]);
+            break;
+
+          case "tool_result":
+            setLiveItems((prev) => {
+              // Match the last unresolved tool card with this name
+              for (let i = prev.length - 1; i >= 0; i--) {
+                const item = prev[i];
+                if (item.kind === "tool" && item.name === event.tool && item.output === undefined) {
+                  const next = [...prev];
+                  next[i] = { ...item, output: event.output ?? "", success: event.success !== false };
+                  return next;
+                }
+              }
+              return prev;
+            });
+            break;
+
+          case "delegate_start":
+            setLiveItems((prev) => [
+              ...prev,
+              { kind: "delegation", agentSlug: event.childAgentSlug ?? "agent", sessionId: event.childSessionId ?? "", id: nextId() }
+            ]);
+            break;
+
+          case "delegate_done":
+            setLiveItems((prev) => {
+              for (let i = prev.length - 1; i >= 0; i--) {
+                const item = prev[i];
+                if (item.kind === "delegation" && item.agentSlug === event.childAgentSlug && item.output === undefined) {
+                  const next = [...prev];
+                  next[i] = { ...item, output: event.output ?? "" };
+                  return next;
+                }
+              }
+              return prev;
+            });
+            break;
+
+          case "approval_required":
+            if (event.approvalId) {
+              setPendingApproval({ tool: event.tool ?? "unknown", input: event.input ?? {}, approvalId: event.approvalId });
+            }
+            break;
+
+          case "done":
+          case "error":
+            setPendingApproval(null);
+            es.close();
+            loadSession({ silent: true });
+            break;
         }
       } catch { /* ignore malformed events */ }
     };
@@ -444,7 +525,9 @@ export function AgentWorkspaceDialog({
                 className="flex-1 overflow-y-auto px-5 py-4"
                 style={{ background: "var(--terminal-bg)", fontFamily: "var(--font-mono, monospace)" }}
               >
-                {isRunning && !output ? (
+                {isRunning && liveItems.length > 0 ? (
+                  <ExecutionFeed items={liveItems} agentSlug={agentSlug} />
+                ) : isRunning && !output ? (
                   <TerminalRunning session={session} agentSlug={agentSlug} />
                 ) : output ? (
                   <div key={`section-${activeSection}`} className={hasSections ? "animate-[tab-content-fade_150ms_ease-out_both]" : undefined}>

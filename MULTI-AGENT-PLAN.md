@@ -231,7 +231,7 @@ Example: PM agent → delegates to Engineer agent → delegates to Designer agen
 ---
 
 ## Phase 7 — Real-Time UI
-**Status:** [ ] Not started
+**Status:** [x] Done — 2026-06-02
 **Estimate:** 2 days
 **Unlock:** Live execution feed in the workspace dialog
 
@@ -289,7 +289,7 @@ Agents stop needing the user to re-explain context on every run.
 | 4 | Streaming API | 1–2 | [x] Done 2026-06-01 |
 | 5 | Approval Gate | 1 | [x] Done 2026-06-01 |
 | 6 | Multi-Agent Orchestration | 2–3 | [x] Done 2026-06-02 |
-| 7 | Real-Time UI | 2 | [ ] |
+| 7 | Real-Time UI | 2 | [x] Done 2026-06-02 |
 | 8 | Agent Memory | 1 | [ ] |
 | **Total** | | **~15–18 days** | |
 
