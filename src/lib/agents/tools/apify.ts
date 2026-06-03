@@ -43,7 +43,7 @@ export const apifySearchProspectsTool: AgentTool = {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ queries: query, maxPagesPerQuery: 1, resultsPerPage: maxItems, outputPageTitle: true })
+          body: JSON.stringify({ queries: [query], maxPagesPerQuery: 1, resultsPerPage: maxItems })
         }
       );
       if (!res.ok) {
