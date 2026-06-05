@@ -106,7 +106,13 @@ export function AgentConfigPanel({
   const [nameSaveState, setNameSaveState] = React.useState<"idle" | "saving" | "saved">("idle");
   const nameInputRef = React.useRef<HTMLInputElement>(null);
 
-  React.useEffect(() => { setNameValue(agent?.name ?? ""); setIsEditingName(false); }, [agent?.id]);
+  React.useEffect(() => {
+    if (!agent) return;
+    queueMicrotask(() => {
+      setNameValue(agent.name);
+      setIsEditingName(false);
+    });
+  }, [agent?.id, agent?.name]);
   React.useEffect(() => {
     if (isEditingName && nameInputRef.current) {
       nameInputRef.current.focus();
@@ -480,7 +486,7 @@ export function AgentConfigPanel({
         ) : (
           <div className="flex items-center gap-2 text-[var(--foreground-50)]">
           <Play aria-hidden="true" className="size-3.5 shrink-0 opacity-50" />
-          <p className="text-xs">No sessions yet — click "Run agent" above to start.</p>
+          <p className="text-xs">No sessions yet — click &quot;Run agent&quot; above to start.</p>
         </div>
         )}
       </div>

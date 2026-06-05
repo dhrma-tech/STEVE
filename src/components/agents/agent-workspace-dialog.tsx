@@ -3,7 +3,6 @@
 import * as React from "react";
 import { AlertTriangle, Check, CheckCircle2, Copy, Loader2, Paperclip, SendHorizonal, Sparkles, TerminalSquare, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingState } from "@/components/ui/loading-state";
@@ -53,13 +52,16 @@ export function AgentWorkspaceDialog({
   // Track which step IDs have been seen as completed to animate only transitions
   const completedStepIds = React.useRef<Set<string>>(new Set());
   const initializedSessionId = React.useRef<string | null>(null);
-  // Pre-populate on first load so already-completed steps don't animate
-  if (session && session.id !== initializedSessionId.current) {
-    initializedSessionId.current = session.id;
-    session.actions.forEach((a) => {
-      if (a.status === "completed") completedStepIds.current.add(a.id);
-    });
-  }
+
+  React.useEffect(() => {
+    // Pre-populate on first load so already-completed steps don't animate
+    if (session && session.id !== initializedSessionId.current) {
+      initializedSessionId.current = session.id;
+      session.actions.forEach((a) => {
+        if (a.status === "completed") completedStepIds.current.add(a.id);
+      });
+    }
+  }, [session?.id, session?.actions]);
 
   async function handleCopy() {
     const text = session?.scratchpad ?? output;
@@ -86,7 +88,7 @@ export function AgentWorkspaceDialog({
   const sseRef = React.useRef<EventSource | null>(null);
   // Phase 7 — live execution feed
   const [liveItems, setLiveItems] = React.useState<FeedItem[]>([]);
-  let feedItemCounter = React.useRef(0);
+  const feedItemCounter = React.useRef(0);
 
   const loadSession = React.useCallback((opts: { silent?: boolean; attempt?: number } = {}) => {
     if (!sessionId || !open) return;

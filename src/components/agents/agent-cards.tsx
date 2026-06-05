@@ -4,7 +4,6 @@ import { Cpu, Inbox, Loader2, Play, Plus, Settings2, Zap } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
 import { AgentPulseDot } from "@/components/motion/animated-list";
 import { Stagger, StaggerItem } from "@/components/motion/stagger";
 import { agentModelOptions } from "@/data/agents";

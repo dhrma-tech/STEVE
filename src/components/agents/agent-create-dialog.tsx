@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { SelectField } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import type { AgentDetail, AgentWorkspacePayload } from "@/components/agents/types";
 import { agentModelOptions } from "@/data/agents";
 import { PermissionModeSelector } from "@/components/agents/permission-mode-selector";
@@ -105,7 +104,7 @@ export function AgentCreateDialog({
           <div className="rounded-[10px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-4 text-center">
             <p className="text-sm font-medium text-[var(--foreground-80)]">No departments available</p>
             <p className="mt-1 text-xs text-[var(--foreground-50)]">
-              Activate your company first — go to the Co tab and click "Activate company".
+              Activate your company first — go to the Co tab and click &quot;Activate company&quot;.
             </p>
           </div>
         ) : null}
