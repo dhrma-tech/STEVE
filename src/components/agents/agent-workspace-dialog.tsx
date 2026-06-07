@@ -264,7 +264,6 @@ export function AgentWorkspaceDialog({
       es.close();
       sseRef.current = null;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id, session?.agent?.id, session?.status]);
 
   async function handleApprove(action: "approve" | "deny") {
@@ -306,12 +305,13 @@ export function AgentWorkspaceDialog({
   const isRunning = session?.status === "running";
   const isComplete = session?.status === "completed";
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const output = React.useMemo(() => {
     if (!session?.scratchpad) return "";
     const lines = session.scratchpad.split("\n");
     const bodyStart = lines.findIndex((l) => l.startsWith("---"));
     return bodyStart >= 0 ? lines.slice(bodyStart + 1).join("\n").trim() : session.scratchpad;
-  }, [session?.scratchpad]);
+  }, [session]);
 
   const agentSlug = (session?.agent?.name ?? "agent").toLowerCase().replace(/\s+/g, "-");
 
@@ -798,7 +798,7 @@ function TerminalOutput({ text, agentSlug, isRunning }: { text: string; agentSlu
                 className="text-[11px] font-semibold uppercase tracking-widest"
                 style={{ color: "var(--terminal-green)" }}
               >
-                // {line.slice(3)}
+                {`// ${line.slice(3)}`}
               </span>
             </div>
           );
