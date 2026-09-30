@@ -21,7 +21,7 @@ export default function OrgError({
   }, [error]);
 
   return (
-    <main className="flex min-h-[calc(100dvh-68px)] items-center justify-center bg-[var(--app-canvas)] p-6">
+    <main className="flex min-h-[calc(100dvh-68px)] items-center justify-center bg-[var(--background)] p-6">
       <div className="w-full max-w-md">
         <ErrorState
           title="Workspace encounter an error"

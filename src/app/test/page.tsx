@@ -1,6 +1,10 @@
+import { notFound } from "next/navigation";
 import { ChatTester } from "@/components/ai/chat-tester";
 
 export default function TestPage() {
+  // Developer-only diagnostic page: never served in production.
+  if (process.env.NODE_ENV === "production") notFound();
+
   return (
     <main
       className="flex min-h-dvh flex-col items-center gap-8 p-8"

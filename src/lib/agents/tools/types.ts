@@ -8,11 +8,15 @@ export interface ToolDefinition {
   };
 }
 
+import type { RunScope } from "@/lib/agents/run-scope";
+
 export interface ToolContext {
   orgId: string;
   agentId: string;
   sessionId: string;
   skillKeys: string[];
+  /** Position in the run tree: depth, delegation chain, effective permission mode and shared budget. */
+  scope: RunScope;
 }
 
 export type ToolExecuteFn = (input: Record<string, unknown>, ctx: ToolContext) => Promise<string>;

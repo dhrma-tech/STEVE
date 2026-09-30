@@ -12,7 +12,11 @@
     "db:generate": "prisma generate",
     "db:migrate": "tsx prisma/apply-migration.ts",
     "db:seed": "tsx prisma/seed.ts",
-    "verify": "pnpm typecheck && pnpm lint"
+    "verify": "pnpm typecheck && pnpm lint:ci && pnpm test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint:ci": "eslint .",
+    "worker": "tsx src/worker/index.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
@@ -58,7 +62,8 @@
     "prisma": "7.8.0",
     "tailwindcss": "4.2.4",
     "tsx": "4.21.0",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vitest": "^5.0.2"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

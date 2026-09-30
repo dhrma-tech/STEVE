@@ -30,6 +30,6 @@ a {
 
 ::selection {
   background: rgba(253, 224, 71, 0.4);
-  color: var(--app-black-base);
+  color: var(--card);
 }
 

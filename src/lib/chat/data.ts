@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { errorResponse } from "@/lib/api/responses";
 import { requireOrgMember } from "@/lib/auth/session";
 import { generateChatResponse, type ChatAgentSummary } from "@/lib/ai/sandbox-chat";
+import { maybeRunFromChat } from "@/lib/chat/run-command";
 import { prisma } from "@/lib/db/client";
 
 const json = (value: unknown) => JSON.stringify(value);
@@ -319,20 +320,22 @@ export async function finalizeChatMessage({
     }
   });
 
-  await prisma.chatMessage.create({
-    data: {
-      organizationId: orgId,
-      threadId,
-      senderType: "system",
-      body: `Ran ${actionMessages.length} action${actionMessages.length === 1 ? "" : "s"}.`,
-      metadataJson: json({
-        kind: "action_log",
-        actionType: "run.summary",
-        status: "completed",
-        count: actionMessages.length
-      })
-    }
-  });
+  if (actionMessages.length > 0) {
+    await prisma.chatMessage.create({
+      data: {
+        organizationId: orgId,
+        threadId,
+        senderType: "system",
+        body: `Ran ${actionMessages.length} action${actionMessages.length === 1 ? "" : "s"}.`,
+        metadataJson: json({
+          kind: "action_log",
+          actionType: "run.summary",
+          status: "completed",
+          count: actionMessages.length
+        })
+      }
+    });
+  }
 
   await prisma.chatThread.update({ where: { id: threadId }, data: { updatedAt: new Date() } });
 
@@ -350,14 +353,16 @@ export async function sendChatMessage(input: ChatMessageInput) {
   const preparation = await prepareChatMessage(input);
   if (!preparation) return null;
 
-  const response = await generateChatResponse({
-    body: preparation.trimmedBody,
-    organizationName: preparation.organizationName,
-    threadKind: preparation.thread.kind,
-    mentions: preparation.mentions,
-    attachmentNames: preparation.attachments.map((file) => file.name),
-    agents: preparation.agents
-  });
+  const response =
+    (await maybeRunFromChat({ orgId: input.orgId, preparation })) ??
+    (await generateChatResponse({
+      body: preparation.trimmedBody,
+      organizationName: preparation.organizationName,
+      threadKind: preparation.thread.kind,
+      mentions: preparation.mentions,
+      attachmentNames: preparation.attachments.map((file) => file.name),
+      agents: preparation.agents
+    }));
 
   return finalizeChatMessage({
     orgId: input.orgId,
@@ -498,15 +503,9 @@ async function createActionMessages({
   agentId: string | null;
   attachmentCount: number;
 }) {
-  const messages = [
-    {
-      body: "Writing to workspace...",
-      actionType: "workspace.write"
-    },
-    ...(attachmentCount
-      ? [{ body: "Saving workspace files.", actionType: "files.save" }]
-      : [])
-  ];
+  const messages = attachmentCount
+    ? [{ body: `Saved ${attachmentCount} attached file${attachmentCount === 1 ? "" : "s"} to the workspace.`, actionType: "files.save" }]
+    : [];
 
   for (const message of messages) {
     await prisma.chatMessage.create({

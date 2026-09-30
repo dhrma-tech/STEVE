@@ -38,3 +38,8 @@ pnpm-debug.log*
 # Large media files (>100MB — too big for GitHub)
 public/rgfxfgnh.mkv
 
+prisma/*.bak-*
+prisma/*.db-wal
+prisma/*.db-shm
+dev.db-wal
+dev.db-shm

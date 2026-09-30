@@ -944,3 +944,43 @@ Verification: `pnpm typecheck` → exit 0. Zero `var(--app-|var(--brand-|rgba(` 
 ### Overhaul status after Slice 17
 
 **17/17 slices complete. 100% spec alignment.**
+
+## Post-slice-17 cleanup (2026-09-29)
+- Migrated last legacy token consumers (orbit-preview, org loading/error, app error, globals.css) to Section V tokens.
+- Deleted dead legacy aliases (--app-*, --brand-*, --warning, --danger) from the :root shim; live shim tokens (--terminal-*, --color-*, etc.) retained.
+- Lint: fixed 21 no-unescaped-entities errors. pnpm lint 0 errors, pnpm typecheck exit 0, pnpm build passes.
+- Docs: CLAUDE.md and MULTI-AGENT-PLAN.md brought current.
+
+## Orchestration Phase 0 — safety net (2026-09-29)
+- Added Vitest (`pnpm test`), scripted Anthropic provider + in-memory DB under `src/lib/agents/testing/`, 16 tests + 6 todos (runner, delegation, approvals, kill switch, auth secret, flags).
+- Added `.github/workflows/ci.yml` (typecheck, lint:ci, test, build). New scripts: `test`, `test:watch`, `lint:ci`; `verify` now includes tests.
+- Security: `src/lib/auth/secret.ts` requires AUTH_SECRET (>=32 chars) in production; `/api/ai/chat` requires login; `/test` is 404 in production.
+- Flags: `src/lib/agents/flags.ts` (`ORCHESTRATOR_V2`, `AGENTS_PAUSED` kill switch enforced in `runAgent`). Documented in `.env.example`.
+- Verified: typecheck 0, lint 0 errors, tests 16 passed, build passes. Plan: MULTI-AGENT-ORCHESTRATION-PLAN.md.
+
+## Orchestration Phase 1 — one execution path (2026-09-29)
+- New `src/lib/agents/run-service.ts` (`startAgentRun`): single entry for agent launch, task create/start, approval auto-start, roadmap launch and chat `/run`. Enforces the kill switch, resolves the agent (named, task's, department default), marks the task running, creates the session, starts `runAgent` in the background.
+- Deleted `src/lib/queue/sandbox-execution.ts` (simulated steps, fake delay, single-shot completion, step-through advance) and `POST /sessions/:id/actions`. Prompt helpers moved to `src/lib/agents/prompt.ts`.
+- Runner surfaces failures (session scratchpad, task chat, event stream) with actionable API-key messages. Tasks with no agent stay queued; `POST /tasks/:id/start` returns 409 `no_agent`.
+- Chat: `/run` command (`src/lib/chat/run-command.ts`); removed fabricated "Writing to workspace..." messages.
+- `prisma/apply-migration.ts` now applies all migrations in order (was init only), with backup and idempotent handling. Applied to local `prisma/dev.db` (backup: `prisma/dev.db.bak-*`, gitignored).
+- Tests: 29 passing (+13): run-service, chat command parsing. Verified typecheck 0, lint 0 errors, build passes, live dev-server run of launch, task start and chat `/run`.
+
+## Orchestration Phase 2 — guardrails (2026-09-29)
+- Policy: `src/lib/agents/policy/` (risk table for all tools, pure engine, run limits and budget, pricing estimates, secret redaction, policy store, durable approvals). `run-scope.ts` tracks depth, delegation chain and permission mode across a run tree.
+- `src/lib/agents/tool-executor.ts` runs every tool call for both model loops: limits, policy decision, approval, repeat guard, audit record, redaction and size cap. Runner rewritten around it; approval events carry risk and summary; `limit_reached` event added.
+- Delegation: cycle and depth guards, child never less restricted than parent, child approvals forwarded to the parent stream; delegating itself no longer asks.
+- Org controls: `Policy` table; `GET/PATCH /api/orgs/:orgId/settings/agent-policy`; org pause and daily budget enforced in `startAgentRun`; per-run tree writes a `UsageRecord`.
+- Approve route takes `scope` (once / run / always) and reports stale or duplicate answers. Approval banner shows summary and risk.
+- Migration `20260929000000_add_agent_policy_and_approval_tool_fields` (applied to local dev db; backup made).
+- Tests: 125 passing (+96). Mutation check: disabling the comms rule or the cycle guard fails 6 tests. Verified typecheck 0, lint 0 errors, build passes, live policy API check.
+
+## Orchestration Phase 3a — durable runtime on SQLite (2026-09-30)
+- Migration `20260929120000_add_durable_runs`: `Run`, `RunEvent`, `Job` (applied to local dev db; backup made).
+- New `src/lib/agents/engine/`: step machine (`advance.ts`), database job queue behind a `JobQueue` interface (`queue.ts`), worker loop with retry/backoff and recovery sweeper (`worker.ts`), run store, provider adapters (retry, circuit breaker, output trimming), finalize, wake-ups. Delegates run as their own runs, in parallel.
+- Approvals resume runs through the queue; tool executor split into evaluate / request approval / run; `startAgentRun` queues a run; stream route replays the event log from `Last-Event-ID` and the client reconnects; task cancel cascades to delegated runs and open approvals. Deleted `runner.ts` and `event-bus.ts`.
+- Worker entry points: inline in the web server (`src/instrumentation.ts`, default), `pnpm worker` (`src/worker/index.ts`), `POST /api/internal/worker/tick` (Bearer `WORKER_TICK_SECRET`).
+- Tests run against a real temporary SQLite database per file (`tests/setup-db.ts`, `src/lib/agents/testing/test-db.ts`); the in-memory fake is gone. Ported `tool-executor.test.ts` and `run-service.test.ts`; added `worker.test.ts`.
+- Fixed during the live check: standalone `pnpm worker` exited when idle (`keepProcessAlive` option); blank `AGENT_WORKER_CONCURRENCY` / `MODEL_RETRY_BASE_MS` now fall back to defaults instead of 0.
+- `.env.example`: `APPROVAL_TIMEOUT_MINUTES` default is now 1440; added `AGENT_WORKER`, `AGENT_WORKER_CONCURRENCY`, `WORKER_TICK_SECRET`, `AGENT_TOOL_TIMEOUT_MS`, `MODEL_RETRY_BASE_MS`.
+- Verified: tests 194 passed (15 files), typecheck 0, lint 0 errors (54 pre-existing warnings, none in Phase 3 files), build passes, live check on a copy of the dev db (inline worker, hot reload, standalone worker, tick route, stream resume, 20-run burst with two workers).
