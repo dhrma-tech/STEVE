@@ -1,6 +1,6 @@
 # CLAUDE.md — Cofounder Design System Overhaul
 
-> Last updated: Slice 13 complete (2026-05-15)
+> Last updated: All 17 slices complete + legacy alias cleanup (2026-09-29)
 > Read this before touching any file in this session.
 
 ---
@@ -28,16 +28,19 @@ This is **STEVE** — a full Cofounder.co clone built over 17 phases. Product is
 | Slice 11 | Integrations cluster | ✅ |
 | Slice 12 | Side-panel cluster | ✅ |
 | Slice 13 | Tasks cluster | ✅ |
-| Slice 14+ | 4 remaining clusters | 📋 |
+| Slice 14 | Onboarding cluster | ✅ |
+| Slice 15 | Roadmap cluster | ✅ |
+| Slice 16 | Files cluster | ✅ |
+| Slice 17 | Departments cluster (pixel-drift wiring) | ✅ |
 
-**Progress: 13/17 slices complete (76%). ~82% spec alignment.**
+**Progress: 17/17 slices complete. 100% spec alignment. Multi-agent system (MULTI-AGENT-PLAN.md phases 1–8) also complete.**
 
 ---
 
 ## Design system foundation (what's done)
 
 ### Token layer (`src/styles/tokens.css`)
-319 Section V dark tokens + Section B light tokens + legacy `:root` shim. Additional named tokens: `--border-subtle`, `--background-settings`. **Legacy shim stays until all 4 remaining clusters are done.**
+319 Section V dark tokens + Section B light tokens + legacy `:root` shim. Additional named tokens: `--border-subtle`, `--background-settings`. **Legacy shim is partially retired:** dead `--app-*`, `--brand-*`, `--warning`, `--danger` aliases were deleted (zero consumers). Still live and kept: `--terminal-*`, `--color-*`, `--hero-blue`, `--feature-blue-*`, `--running`, `--success`, `--caret`.
 
 ### Animation layer (`src/styles/animations.css`)
 36 Section L keyframes + utility classes. Wired so far: `canvasDashFlow` (orbital edges), `animate-agent-pulse` (running agents), `animate-agent-cue-pop` (workspace dialog), `animate-typing-dot` (chat typing indicator), `animate-attention-slide-up` + `animate-attention-item` (inbox panel/items).
@@ -63,28 +66,11 @@ This is **STEVE** — a full Cofounder.co clone built over 17 phases. Product is
 
 ---
 
-## What's pending (4 clusters)
+## What's remaining
 
-| Cluster | Key files | Size | Spec | Priority |
-|---|---|---|---|---|
-| **onboarding** | `company-onboarding-workspace.tsx`, `design-onboarding-wizard.tsx`, `option-card.tsx`, `personal-onboarding-wizard.tsx`, `stepper.tsx` | medium | M 2–7, A/Q | ⭐ next |
-| **roadmap** | `roadmap-card.tsx`, `roadmap-detail-panel.tsx`, `roadmap-modal.tsx`, `roadmap-stage-board.tsx` | medium | K, F, L | ⭐ next |
-| **files** | `file-cards.tsx`, `file-library.tsx`, `file-preview-panel.tsx`, `folder-tree.tsx`, `upload-dialog.tsx` | medium | F (Library) | ⭐ next |
-| **departments** | `department-board.tsx`, `department-cover.tsx`, `department-context-tabs.tsx`, `department-detail-panel.tsx`, `department-roadmap-strip.tsx`, `department-sections.tsx` | large | G, B, L | final |
+No UI clusters pending (onboarding, roadmap, files, departments all done in slices 14–17).
 
-**Note on departments:** Contains pixel-drift DOM animation wiring (`.animate-pixel-drift`, `.animate-pixel-wave`) — the only remaining Section L wiring. Heavier than the other three. Best tackled last.
-
----
-
-## Resume instructions for Slice 14
-
-1. Read `checkpoint-slice-13.md` — tasks cluster complete state.
-2. Pick ONE cluster from onboarding / roadmap / files.
-3. `ls` the cluster directory, grep for legacy tokens, build mapping.
-4. Execute token migration + any animation wiring.
-5. `pnpm typecheck` → must exit 0.
-6. Update `REGISTRY.md`, append `CHANGES.md`, write `checkpoint-slice-14.md`.
-7. Stop and await review.
+Open items are external, not code: provider credentials (GitHub OAuth, Stripe, Vercel, Supabase, Postiz, S3), licensed fonts (Departure Mono, ppmondwest), and legal review of `/privacy-policy` and `/terms`. See the P2 table in `MASTER_GAP_REPORT.md`. The multi-agent system (`MULTI-AGENT-PLAN.md`) is code-complete but has no recorded live run with real API keys.
 
 ---
 
@@ -129,7 +115,7 @@ This is **STEVE** — a full Cofounder.co clone built over 17 phases. Product is
 2. **No hardcoded values** — every color, shadow, spacing, easing → token.
 3. **Marketing locked.** 100% done. Do not touch.
 4. **One cluster per slice.** Typecheck after each. Stop and report.
-5. **Legacy `:root` shim stays** until all 4 remaining clusters are done.
+5. **Legacy `:root` shim:** remaining live aliases migrate only when their consumers do.
 6. **SVG attribute values** use resolved literals (DECISION-60).
 
 ---
@@ -142,5 +128,5 @@ This is **STEVE** — a full Cofounder.co clone built over 17 phases. Product is
 | `src/styles/animations.css` | 36 Section L keyframes + utility classes |
 | `src/lib/z-index.ts` | Section S z-index constants |
 | `report100.txt` | **The spec.** Sections A–V. |
-| `checkpoint-slice-13.md` | Most recent checkpoint |
+| `checkpoint-slice-17.md` | Most recent checkpoint |
 | `CHANGES.md` | All cluster logs + pending list |

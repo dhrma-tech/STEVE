@@ -1,9 +1,17 @@
 import type { AgentTool } from "./types";
 
+/**
+ * Delegation is carried out by the run engine (engine/advance.ts), not by this tool: it starts the other agent
+ * as its own durable run, and this run waits for it in the database. The definition here is what the model sees.
+ * `execute` exists only to satisfy the tool interface and is never called by the engine.
+ */
 export const delegateAgentTool: AgentTool = {
   definition: {
     name: "delegate_agent",
-    description: "Delegate a sub-task to another agent in the organization. The child agent runs autonomously and returns its output.",
+    description:
+      "Delegate a sub-task to another agent in the organization. The other agent runs on its own and its result comes back to you. " +
+      "An agent cannot delegate to itself or to an agent already in the chain, delegation depth is limited, and the delegated " +
+      "agent is never less restricted than you are.",
     input_schema: {
       type: "object",
       properties: {
@@ -14,64 +22,7 @@ export const delegateAgentTool: AgentTool = {
     }
   },
 
-  async execute(input, ctx) {
-    const agentSlug = typeof input.agentSlug === "string" ? input.agentSlug : "";
-    const task = typeof input.task === "string" ? input.task : "";
-    if (!agentSlug || !task) return "Error: agentSlug and task are required";
-
-    // Lazy import to break the circular dependency: runner → registry → delegate-agent → runner
-    const { runAgent } = await import("@/lib/agents/runner");
-    const { prisma } = await import("@/lib/db/client");
-
-    // Resolve agent slug → id
-    const childAgent = await prisma.agent.findFirst({
-      where: { organizationId: ctx.orgId, slug: agentSlug, archivedAt: null }
-    });
-    if (!childAgent) return `Error: no agent with slug "${agentSlug}" found in this org`;
-
-    // Create a child task for the delegation
-    const childTask = await prisma.task.create({
-      data: {
-        organizationId: ctx.orgId,
-        departmentId: childAgent.departmentId,
-        agentId: childAgent.id,
-        title: task.split(/\r?\n/)[0]?.slice(0, 80) ?? task.slice(0, 80),
-        description: task,
-        type: "agent_task",
-        status: "running",
-        priority: 1,
-        startedAt: new Date()
-      }
-    });
-
-    // Create child session — linked to parent via parentSessionId
-    const childSession = await prisma.taskSession.create({
-      data: {
-        organizationId: ctx.orgId,
-        taskId: childTask.id,
-        agentId: childAgent.id,
-        parentSessionId: ctx.sessionId,
-        status: "running",
-        startedAt: new Date(),
-        scratchpad: `# ${childAgent.name} — Running\n\n**Delegated from session:** ${ctx.sessionId}`
-      }
-    });
-
-    // Publish delegate_start to the parent session's SSE bus
-    const { publish } = await import("@/lib/agents/event-bus");
-    publish(ctx.sessionId, { type: "delegate_start", childAgentSlug: agentSlug, childSessionId: childSession.id });
-
-    const result = await runAgent({
-      sessionId: childSession.id,
-      agentId: childAgent.id,
-      orgId: ctx.orgId,
-      task,
-      parentSessionId: ctx.sessionId,
-      onEvent: (event) => publish(childSession.id, event)
-    });
-
-    publish(ctx.sessionId, { type: "delegate_done", childAgentSlug: agentSlug, output: result.output });
-
-    return result.output || `Agent "${agentSlug}" completed with no output.`;
+  async execute() {
+    return "Error: delegation is handled by the run engine and cannot be called directly.";
   }
 };

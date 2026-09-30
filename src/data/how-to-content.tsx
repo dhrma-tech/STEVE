@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities -- editorial copy with literal quotes */
 import * as React from "react";
 
 export type HowToChapterSlug = "start" | "build" | "sell" | "scale" | "resources";

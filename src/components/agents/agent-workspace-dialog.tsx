@@ -82,8 +82,9 @@ export function AgentWorkspaceDialog({
   const [activeSection, setActiveSection] = React.useState(0);
   // Phase 5 — approval gate
   const [pendingApproval, setPendingApproval] = React.useState<{
-    tool: string; input: unknown; approvalId: string;
+    tool: string; input: unknown; approvalId: string; risk?: string; summary?: string; reason?: string;
   } | null>(null);
+  const [approvalError, setApprovalError] = React.useState<string | null>(null);
   const [approving, setApproving] = React.useState(false);
   const sseRef = React.useRef<EventSource | null>(null);
   // Phase 7 — live execution feed
@@ -179,7 +180,9 @@ export function AgentWorkspaceDialog({
           // tool_call / tool_result
           tool?: string; input?: unknown; output?: string; success?: boolean;
           // approval_required
-          approvalId?: string;
+          approvalId?: string; risk?: string; summary?: string; reason?: string;
+          // limit_reached / error
+          message?: string;
           // delegate_start / delegate_done
           childAgentSlug?: string; childSessionId?: string;
         };
@@ -244,7 +247,11 @@ export function AgentWorkspaceDialog({
 
           case "approval_required":
             if (event.approvalId) {
-              setPendingApproval({ tool: event.tool ?? "unknown", input: event.input ?? {}, approvalId: event.approvalId });
+              setApprovalError(null);
+              setPendingApproval({
+                tool: event.tool ?? "unknown", input: event.input ?? {}, approvalId: event.approvalId,
+                risk: event.risk, summary: event.summary, reason: event.reason
+              });
             }
             break;
 
@@ -258,7 +265,8 @@ export function AgentWorkspaceDialog({
       } catch { /* ignore malformed events */ }
     };
 
-    es.onerror = () => { es.close(); };
+    // Do not close on error: the browser reconnects by itself and resumes from the last event it saw.
+    es.onerror = () => undefined;
 
     return () => {
       es.close();
@@ -266,17 +274,25 @@ export function AgentWorkspaceDialog({
     };
   }, [session?.id, session?.agent?.id, session?.status]);
 
-  async function handleApprove(action: "approve" | "deny") {
+  async function handleApprove(action: "approve" | "deny", scope: "once" | "run" = "once") {
     if (!pendingApproval || !session?.agent?.id || approving) return;
     setApproving(true);
+    setApprovalError(null);
     try {
-      await fetch(`/api/orgs/${orgId}/agents/${session.agent.id}/sessions/${session.id}/approve`, {
+      const res = await fetch(`/api/orgs/${orgId}/agents/${session.agent.id}/sessions/${session.id}/approve`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action, approvalId: pendingApproval.approvalId })
+        body: JSON.stringify({ action, approvalId: pendingApproval.approvalId, scope })
       });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        setApprovalError(body?.error?.message ?? "Could not record that decision.");
+        return;
+      }
       setPendingApproval(null);
-    } catch { /* silent */ } finally {
+    } catch {
+      setApprovalError("Could not reach the server.");
+    } finally {
       setApproving(false);
     }
   }
@@ -375,9 +391,22 @@ export function AgentWorkspaceDialog({
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-[var(--alert)]">Action requires approval</p>
                   <p className="mt-0.5 truncate text-xs text-[var(--foreground-50)]">
-                    <code className="font-mono">{pendingApproval.tool}</code>
-                    {" "}is requesting permission to run
+                    {pendingApproval.summary ?? (
+                      <>
+                        <code className="font-mono">{pendingApproval.tool}</code>
+                        {" "}is requesting permission to run
+                      </>
+                    )}
                   </p>
+                  {pendingApproval.risk ? (
+                    <p className="mt-0.5 truncate text-[11px] uppercase tracking-wide text-[var(--foreground-50)]">
+                      {pendingApproval.risk.replace(/_/g, " ")}
+                      {pendingApproval.reason ? ` · ${pendingApproval.reason}` : ""}
+                    </p>
+                  ) : null}
+                  {approvalError ? (
+                    <p className="mt-0.5 text-xs text-[var(--destructive)]">{approvalError}</p>
+                  ) : null}
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
@@ -396,8 +425,18 @@ export function AgentWorkspaceDialog({
                   className="flex items-center gap-1.5 rounded-[8px] border border-[var(--alert)]/40 bg-[var(--alert)]/10 px-3 py-1.5 text-xs font-medium text-[var(--alert)] transition-colors hover:bg-[var(--alert)]/20 disabled:pointer-events-none disabled:opacity-40"
                 >
                   {approving ? <Loader2 className="size-3 animate-spin" /> : null}
-                  Approve
+                  Approve once
                 </button>
+                {pendingApproval.risk !== "external_comms" && pendingApproval.risk !== "spend" ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleApprove("approve", "run")}
+                    disabled={approving}
+                    className="rounded-[8px] border border-[var(--border-10)] px-3 py-1.5 text-xs text-[var(--foreground-80)] transition-colors hover:bg-[var(--foreground-5)] disabled:pointer-events-none disabled:opacity-40"
+                  >
+                    Approve for this run
+                  </button>
+                ) : null}
               </div>
             </div>
           )}

@@ -207,7 +207,7 @@ export function PersonalOnboardingWizard({ initialProfile: _ }: { initialProfile
         {step === 2 ? (
           <div className="grid gap-7">
             <h2 className="text-center text-[22px] font-medium leading-snug text-[var(--foreground)]">
-              What's your experience building products?
+              What&apos;s your experience building products?
             </h2>
             <div className="grid gap-2">
               {EXPERIENCE_OPTIONS.map((opt, i) => (

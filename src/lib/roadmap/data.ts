@@ -1,7 +1,7 @@
 import { errorResponse } from "@/lib/api/responses";
 import { requireOrgMember } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
-import { completeAgentSession, startAgentSession } from "@/lib/queue/sandbox-execution";
+import { startAgentRun } from "@/lib/agents/run-service";
 import { roadmapDefinitions } from "@/lib/onboarding/definitions";
 import {
   roadmapDependencyPairs,
@@ -221,23 +221,12 @@ export async function launchRoadmapItem({
 
   // For agent tasks: start a session immediately so the workspace dialog can open
   if (workType === "agent") {
-    await prisma.task.update({ where: { id: task.id }, data: { status: "running", startedAt: new Date() } });
-    const session = await startAgentSession({
+    const session = await startAgentRun({
       orgId,
       taskId: task.id,
       agentId: defaultAgent?.id ?? null
     });
     if (session) {
-      void completeAgentSession({
-        orgId,
-        sessionId: session.id,
-        taskId: task.id,
-        agentId: defaultAgent?.id ?? null,
-        agentName: defaultAgent?.name ?? "Agent",
-        deptName: task.agent?.name ?? "company",
-        taskTitle: task.title,
-        taskDescription: task.description
-      });
       return { kind: "task_created" as const, item: serialized, task: serializeTask(task), sessionId: session.id };
     }
   }

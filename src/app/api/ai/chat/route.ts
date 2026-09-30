@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ollamaChat, OLLAMA_OFFLINE_MESSAGE } from "@/lib/ai/ollama";
+import { routeError } from "@/lib/api/route-errors";
+import { AuthError, requireUser } from "@/lib/auth/session";
 
 export async function POST(request: NextRequest) {
   try {
+    await requireUser();
+
     const { messages, systemPrompt } = (await request.json()) as {
       messages: Array<{ role: string; content: string }>;
       systemPrompt?: string;
@@ -18,6 +22,7 @@ export async function POST(request: NextRequest) {
     const content = await ollamaChat({ system, user: userMsg });
     return NextResponse.json({ content, usage: { input_tokens: 0, output_tokens: 0 } });
   } catch (error) {
+    if (error instanceof AuthError) return routeError(error);
     const msg = error instanceof Error ? error.message : "AI request failed";
     const isOffline = msg.includes("fetch") || msg.includes("ECONNREFUSED") || msg.includes("connect") || msg.includes("timeout");
     return NextResponse.json(

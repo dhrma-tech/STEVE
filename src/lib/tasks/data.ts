@@ -2,7 +2,8 @@ import type { Prisma } from "@prisma/client";
 import { errorResponse } from "@/lib/api/responses";
 import { requireOrgMember } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
-import { completeAgentSession, startAgentSession } from "@/lib/queue/sandbox-execution";
+import { startAgentRun } from "@/lib/agents/run-service";
+import { cancelRunsForTask } from "@/lib/agents/engine/advance";
 import {
   activeTaskStatuses,
   appTargetOptions,
@@ -272,7 +273,11 @@ export async function createTask({
   }
 
   if (startsNow) {
-    await createSessionForTask({ orgId, taskId: task.id, agentId: assignment.agentId });
+    const session = await createSessionForTask({ orgId, taskId: task.id, agentId: assignment.agentId });
+    if (!session) {
+      // No agent could take it: leave the task queued instead of "running" with nothing behind it.
+      await prisma.task.update({ where: { id: task.id }, data: { status: "queued", startedAt: null } });
+    }
   }
 
   return getTaskDetail(orgId, task.id);
@@ -460,11 +465,9 @@ export async function startTask({ orgId, taskId }: { orgId: string; taskId: stri
     return { kind: "approval_required" as const, approval: pendingApproval };
   }
 
+  // startAgentRun marks the task running before the agent starts, so a fast run cannot be overwritten here.
   const session = await createSessionForTask({ orgId, taskId, agentId: task.agentId });
-  await prisma.task.update({
-    where: { id: taskId },
-    data: { status: "running", startedAt: task.startedAt ?? new Date() }
-  });
+  if (!session) return { kind: "no_agent" as const };
 
   return { kind: "started" as const, session, task: await getTaskDetail(orgId, taskId) };
 }
@@ -484,6 +487,8 @@ export async function cancelTask({ orgId, taskId }: { orgId: string; taskId: str
       data: { status: "canceled" }
     })
   ]);
+  // Stop the agent runs behind the task, including anything they delegated and any approvals they were waiting on.
+  await cancelRunsForTask(taskId);
 
   return getTaskDetail(orgId, taskId);
 }
@@ -573,22 +578,8 @@ export async function reviewTaskApproval({
             where: { organizationId: orgId, departmentId: task.departmentId, archivedAt: null }
           }));
         if (agent) {
-          await prisma.task.update({
-            where: { id: taskId },
-            data: { status: "running", agentId: agent.id, startedAt: new Date() }
-          });
-          const session = await startAgentSession({ orgId, taskId, agentId: agent.id });
+          const session = await startAgentRun({ orgId, taskId, agentId: agent.id });
           if (session) {
-            void completeAgentSession({
-              orgId,
-              sessionId: session.id,
-              taskId,
-              agentId: agent.id,
-              agentName: agent.name,
-              deptName: task.department?.name ?? "company",
-              taskTitle: task.title,
-              taskDescription: task.description
-            });
             console.log(`Auto-started agent session ${session.id} for task ${taskId} after approval`);
           }
         } else {
@@ -844,24 +835,7 @@ async function ensureTaskThread({ orgId, taskId, userId, title }: { orgId: strin
 }
 
 async function createSessionForTask({ orgId, taskId, agentId }: { orgId: string; taskId: string; agentId: string | null }) {
-  const task = await prisma.task.findFirst({
-    where: { id: taskId, organizationId: orgId },
-    include: { department: true, agent: { include: { department: true } } }
-  });
-  const session = await startAgentSession({ orgId, taskId, agentId });
-  if (session && task) {
-    void completeAgentSession({
-      orgId,
-      sessionId: session.id,
-      taskId,
-      agentId,
-      agentName: task.agent?.name ?? "Agent",
-      deptName: task.department?.name ?? task.agent?.department.name ?? "company",
-      taskTitle: task.title,
-      taskDescription: task.description
-    });
-  }
-  return session;
+  return startAgentRun({ orgId, taskId, agentId });
 }
 
 function buildCalendar(tasks: ReturnType<typeof serializeTaskSummary>[]) {

@@ -1,4 +1,5 @@
 import { generateChatResponse } from "@/lib/ai/sandbox-chat";
+import { maybeRunFromChat } from "@/lib/chat/run-command";
 import {
   finalizeChatMessage,
   prepareChatMessage,
@@ -85,14 +86,16 @@ export function buildChatMessageStream(input: StreamChatInput): ReadableStream<U
           }
         });
 
-        const response = await generateChatResponse({
-          body: preparation.trimmedBody,
-          organizationName: preparation.organizationName,
-          threadKind: preparation.thread.kind,
-          mentions: preparation.mentions,
-          attachmentNames: preparation.attachments.map((file) => file.name),
-          agents: preparation.agents
-        });
+        const response =
+          (await maybeRunFromChat({ orgId: input.orgId, preparation })) ??
+          (await generateChatResponse({
+            body: preparation.trimmedBody,
+            organizationName: preparation.organizationName,
+            threadKind: preparation.thread.kind,
+            mentions: preparation.mentions,
+            attachmentNames: preparation.attachments.map((file) => file.name),
+            agents: preparation.agents
+          }));
 
         for (const chunk of splitForStreaming(response.body)) {
           emit({ event: "token", data: { delta: chunk } });

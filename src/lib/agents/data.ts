@@ -2,9 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { errorResponse } from "@/lib/api/responses";
 import { requireOrgAdmin, requireOrgMember } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
-import { advanceSandboxSession, startAgentSession } from "@/lib/queue/sandbox-execution";
-import { runAgent } from "@/lib/agents/runner";
-import { publish } from "@/lib/agents/event-bus";
+import { startAgentRun } from "@/lib/agents/run-service";
 import { agentSkillCatalog, normalizeSkillKeys, skillsForDepartment } from "@/data/agents";
 
 const json = (value: unknown) => JSON.stringify(value);
@@ -317,18 +315,8 @@ export async function launchAgentSession({
     });
   }
 
-  // Phase 1: create session as "running" immediately
-  const session = await startAgentSession({ orgId, taskId: task.id, agentId: agent.id, message });
+  const session = await startAgentRun({ orgId, taskId: task.id, agentId: agent.id, message });
   if (!session) return { kind: "not_found" as const };
-
-  // Run agent in background — events are published to the SSE bus
-  void runAgent({
-    sessionId: session.id,
-    agentId: agent.id,
-    orgId,
-    task: message?.trim() || `${task.title}${task.description ? `: ${task.description}` : ""}`,
-    onEvent: (event) => publish(session.id, event)
-  });
 
   return {
     kind: "launched" as const,
@@ -355,12 +343,6 @@ export async function getSessionActions(orgId: string, sessionId: string) {
   });
 
   return session ? session.actions.map(serializeAction) : null;
-}
-
-export async function advanceSessionActions(orgId: string, sessionId: string, finish = false) {
-  await requireOrgMember(orgId);
-  const session = await advanceSandboxSession({ orgId, sessionId, finish });
-  return session ? getSessionDetail(orgId, sessionId) : null;
 }
 
 export async function updateSessionScratchpad({ orgId, sessionId, scratchpad }: { orgId: string; sessionId: string; scratchpad: string }) {

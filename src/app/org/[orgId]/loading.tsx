@@ -7,14 +7,14 @@ import { LoadingState } from "@/components/ui/loading-state";
  */
 export default function OrgLoading() {
   return (
-    <div className="flex min-h-[calc(100dvh-68px)] flex-col bg-[var(--app-canvas)] lg:flex-row">
+    <div className="flex min-h-[calc(100dvh-68px)] flex-col bg-[var(--background)] lg:flex-row">
       {/* Simulation of the Canvas / Left area */}
       <div className="flex-1 p-6">
         <LoadingState rows={8} label="Initializing workspace" className="h-full border-none bg-transparent" />
       </div>
 
       {/* Simulation of the Side Panel */}
-      <aside className="w-full border-t border-[var(--app-border)] bg-[var(--app-panel)] lg:w-[390px] lg:border-l lg:border-t-0 xl:w-[430px]">
+      <aside className="w-full border-t border-[var(--border-10)] bg-[var(--background-sidepanel)] lg:w-[390px] lg:border-l lg:border-t-0 xl:w-[430px]">
         <div className="flex flex-col gap-6 p-6">
           <div className="flex items-center gap-3">
              <div className="size-9 animate-pulse rounded-[9px] bg-[rgba(255,255,255,0.06)]" />

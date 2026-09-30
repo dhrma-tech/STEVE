@@ -59,30 +59,10 @@
   --color-lime-300: #bbf451;
   --hero-blue: #1a6fd1;
 
-  --app-canvas: #1e1e23;
-  --app-panel: #25252b;
-  --app-surface-2: #29292e;
-  --app-deep: #1d1d22;
-  --app-black-base: #0e0e11;
-  --app-card: #050505;
-  --app-border: rgba(255, 255, 255, 0.1);
-  --app-input-border: rgba(255, 255, 255, 0.15);
-  --app-text: #f9f9f9;
-  --app-text-80: rgba(255, 255, 255, 0.8);
-  --app-text-50: rgba(255, 255, 255, 0.5);
-  --app-text-30: rgba(255, 255, 255, 0.3);
-  --app-primary-light: #eeeee8e6;
-  --app-workspace-glass: #202024a8;
-  --app-workspace-raised: #26262aeb;
 
-  --brand-500: #6229ff;
-  --brand-400: #7a52ff;
-  --brand-300: #9d8aff;
 
   --success: #34a853;
   --running: #3b82f6;
-  --warning: #f59e0b;
-  --danger: #ef4444;
   --caret: #879e3e;
 
   --radius-md: 0.375rem;

@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db/client";
+import { getAuthSecret } from "@/lib/auth/secret";
 
 export const sessionCookieName = "steve_session";
 const maxAgeSeconds = 60 * 60 * 24 * 30;
@@ -192,7 +193,7 @@ function verifyPayload(value: string): SessionPayload | null {
 }
 
 function signatureFor(encodedPayload: string) {
-  return createHmac("sha256", process.env.AUTH_SECRET ?? "cofounder-local-dev-session-secret")
+  return createHmac("sha256", getAuthSecret())
     .update(encodedPayload)
     .digest("base64url");
 }

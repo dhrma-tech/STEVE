@@ -17,6 +17,14 @@ export async function POST(_request: Request, context: RouteContext) {
       return errorResponse("CONFLICT", "This task is paused for human approval.", 409, result);
     }
 
+    if (result.kind === "no_agent") {
+      return errorResponse(
+        "CONFLICT",
+        "No agent is assigned to this task and its department has no agent to run it. Assign an agent first.",
+        409
+      );
+    }
+
     return dataResponse(result, { status: 201 });
   } catch (error) {
     return routeError(error);
