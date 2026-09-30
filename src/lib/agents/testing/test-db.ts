@@ -1,7 +1,6 @@
 /**
- * Helpers for tests that use the real (temporary) database created by tests/setup-db.ts.
+ * Helpers for tests that use the real (temporary) Postgres database created by tests/setup-db.ts.
  */
-import Database from "better-sqlite3";
 import { prisma } from "@/lib/db/client";
 import { Worker } from "@/lib/agents/engine/worker";
 
@@ -9,38 +8,24 @@ export const ORG = "org_test";
 /** A user who can review approvals (approvals record who decided, and that is a real foreign key). */
 export const USER = "user_1";
 
-function databasePath(): string {
-  const path = process.env.STEVE_TEST_DB_PATH;
-  if (!path) throw new Error("STEVE_TEST_DB_PATH is not set: tests must run through tests/setup-db.ts");
-  return path;
-}
+let tableList: string | null = null;
 
-/** Empty every table (keeping the schema and the migration ledger) and recreate the test organization. */
+/** Empty every table (keeping the schema) and recreate the test organization. */
 export async function resetDb(): Promise<void> {
-  const db = new Database(databasePath());
-  try {
-    db.pragma("foreign_keys = OFF");
-    const tables = db
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != '_local_migrations'")
-      .all() as Array<{ name: string }>;
-    for (const { name } of tables) db.exec(`DELETE FROM "${name}"`);
-    db.pragma("foreign_keys = ON");
-  } finally {
-    db.close();
+  if (!tableList) {
+    const rows = await prisma.$queryRawUnsafe<Array<{ tablename: string }>>(
+      "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'"
+    );
+    tableList = rows.map((row) => `"${row.tablename}"`).join(", ");
   }
+  await prisma.$executeRawUnsafe(`TRUNCATE ${tableList} CASCADE`);
   await prisma.organization.create({ data: { id: ORG, name: "Test Org", slug: "test-org" } });
   await prisma.user.create({ data: { id: USER, email: "reviewer@test.example", name: "Reviewer" } });
 }
 
-/** Run raw SQL against the test database (to simulate things like an expired lease). */
-export function rawExec(sql: string, ...params: unknown[]): void {
-  const db = new Database(databasePath());
-  try {
-    db.prepare(sql).run(...params);
-  } finally {
-    db.close();
-  }
-}
+/** A time relative to now, for backdating leases, expiries and timestamps in tests. */
+export const ago = (ms: number) => new Date(Date.now() - ms);
+export const fromNow = (ms: number) => new Date(Date.now() + ms);
 
 export async function seedAgent(opts: {
   slug: string;

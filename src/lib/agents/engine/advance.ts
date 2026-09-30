@@ -619,6 +619,43 @@ async function closeOut(run: Run, root: Run, result: { outcome: "completed" | "f
   });
   if (isRoot) await recordTreeUsage(rootFresh, totals);
   if (run.parentRunId) await enqueueAdvance(run.parentRunId);
+  await markClosedOut(run.id);
+}
+
+async function markClosedOut(runId: string) {
+  await prisma.run.updateMany({ where: { id: runId, closedOutAt: null }, data: { closedOutAt: new Date() } });
+}
+
+/**
+ * Finish the close-out of runs that reached a final state but whose worker stopped before updating the session,
+ * task and parent (the status change and the close-out are separate writes). Each run is claimed first, so two
+ * sweepers never both repair it. Returns how many were repaired.
+ */
+export async function repairUnclosedRuns(olderThanMs: number): Promise<number> {
+  const stale = await prisma.run.findMany({
+    where: { status: { in: ["completed", "failed", "cancelled"] }, closedOutAt: null, finishedAt: { lt: new Date(Date.now() - olderThanMs) } },
+    take: 50
+  });
+  let repaired = 0;
+  for (const run of stale) {
+    const claimed = await prisma.run.updateMany({ where: { id: run.id, closedOutAt: null }, data: { closedOutAt: new Date() } });
+    if (claimed.count !== 1) continue;
+    const outcome = run.status as "completed" | "failed" | "cancelled";
+    const isRoot = run.id === run.rootRunId;
+    const root = isRoot ? run : ((await getRun(run.rootRunId)) ?? run);
+    await finalizeRunRecords({
+      run,
+      agentName: await agentName(run.agentId),
+      outcome,
+      output: run.outputText,
+      errorMessage: outcome === "completed" ? null : run.errorMessage,
+      usage: isRoot && outcome !== "cancelled" ? usageNote(budgetFromRoot(root)) : null
+    });
+    if (isRoot && outcome !== "cancelled") await recordTreeUsage(root, budgetFromRoot(root));
+    if (run.parentRunId) await enqueueAdvance(run.parentRunId);
+    repaired += 1;
+  }
+  return repaired;
 }
 
 /** Cancel a run and everything it delegated to. Safe to call more than once. */
@@ -638,6 +675,7 @@ export async function cancelRun(runId: string, reason = "Cancelled by a user."):
     usage: null
   });
   if (run.parentRunId) await enqueueAdvance(run.parentRunId);
+  await markClosedOut(run.id);
 }
 
 async function cancelDescendants(run: Run) {

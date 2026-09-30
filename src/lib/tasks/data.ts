@@ -634,10 +634,10 @@ function taskWhere(orgId: string, filters: ReturnType<typeof normalizeTaskFilter
     ...(filters.q
       ? {
           OR: [
-            { title: { contains: filters.q } },
-            { description: { contains: filters.q } },
-            { department: { name: { contains: filters.q } } },
-            { agent: { name: { contains: filters.q } } }
+            { title: { contains: filters.q, mode: "insensitive" } },
+            { description: { contains: filters.q, mode: "insensitive" } },
+            { department: { name: { contains: filters.q, mode: "insensitive" } } },
+            { agent: { name: { contains: filters.q, mode: "insensitive" } } }
           ]
         }
       : {})

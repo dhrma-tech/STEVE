@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/db/client";
 import { scriptedModel } from "@/lib/agents/testing/scripted-anthropic";
-import { ORG, rawExec, resetDb, seedAgent, seedTask, testWorker } from "@/lib/agents/testing/test-db";
+import { ago, ORG, resetDb, seedAgent, seedTask, testWorker } from "@/lib/agents/testing/test-db";
 import { startAgentRun } from "@/lib/agents/run-service";
 import { getRunBySession, getRun } from "@/lib/agents/engine/run-store";
 import { getQueue } from "@/lib/agents/engine/queue";
@@ -38,7 +38,7 @@ async function queuedRun() {
 
 const jobsOf = (runId: string) => prisma.job.findMany({ where: { runId }, orderBy: { createdAt: "asc" } });
 /** Make every queued job due now, as if its backoff had passed. */
-const makeDue = () => rawExec("UPDATE Job SET runAt = ? WHERE status = 'queued'", Date.now() - 1);
+const makeDue = () => prisma.job.updateMany({ where: { status: "queued" }, data: { runAt: ago(1) } });
 
 let started: Worker[] = [];
 
@@ -110,7 +110,7 @@ describe("job failures", () => {
     };
 
     await testWorker().runOnce();
-    makeDue();
+    await makeDue();
     await testWorker().runOnce();
 
     expect(await jobsOf(run.id)).toEqual([expect.objectContaining({ status: "done", attempts: 2 })]);
@@ -118,13 +118,13 @@ describe("job failures", () => {
 
   it("fails the job and the run once the job has used all its attempts", async () => {
     const { run, session, task } = await queuedRun();
-    rawExec("UPDATE Job SET maxAttempts = 2 WHERE runId = ?", run.id);
+    await prisma.job.updateMany({ where: { runId: run.id }, data: { maxAttempts: 2 } });
     control.advance = async () => {
       throw new Error("always broken");
     };
 
     await testWorker().runOnce();
-    makeDue();
+    await makeDue();
     await testWorker().runOnce();
 
     expect(await jobsOf(run.id)).toEqual([
@@ -189,9 +189,12 @@ describe("long-running mode", () => {
 
     const { run, session } = await queuedRun();
 
-    await vi.waitFor(async () => expect((await getRun(run.id))?.status).toBe("completed"), { timeout: 10_000, interval: 50 });
+    // The run is closed out (session updated) just after its status changes; wait for the whole thing.
+    await vi.waitFor(async () => expect((await getRun(run.id))?.closedOutAt).toBeTruthy(), { timeout: 10_000, interval: 50 });
+    expect((await getRun(run.id))?.status).toBe("completed");
     expect((await prisma.taskSession.findUnique({ where: { id: session.id } }))?.status).toBe("completed");
-    expect(await getQueue().hasPending(run.id)).toBe(false);
+    // The run is marked completed a moment before the worker marks its job done.
+    await vi.waitFor(async () => expect(await getQueue().hasPending(run.id)).toBe(false), { timeout: 5_000, interval: 50 });
   });
 
   it("finishes the job in hand when stopped, then takes no more", async () => {
@@ -231,11 +234,33 @@ describe("long-running mode", () => {
 describe("sweep", () => {
   it("returns a job whose worker vanished to the queue", async () => {
     const { run } = await queuedRun();
-    rawExec("UPDATE Job SET status = 'active', lockedBy = 'dead', lockedUntil = ?, attempts = 1 WHERE runId = ?", Date.now() - 1000, run.id);
+    await prisma.job.updateMany({ where: { runId: run.id }, data: { status: "active", lockedBy: "dead", lockedUntil: ago(1000), attempts: 1 } });
 
     const stats = await testWorker().sweep();
 
     expect(stats.requeuedJobs).toBe(1);
     expect(await jobsOf(run.id)).toEqual([expect.objectContaining({ status: "queued", lockedBy: null, type: ADVANCE_JOB })]);
+  });
+
+  it("finishes the close-out of a run whose worker stopped right after marking it completed", async () => {
+    const { run, session, task } = await queuedRun();
+    // The worker died between the status change and the close-out: the session still says running.
+    await prisma.run.update({ where: { id: run.id }, data: { status: "completed", outputText: "Shipped it.", finishedAt: ago(5 * 60_000) } });
+    await prisma.job.deleteMany();
+
+    const stats = await testWorker({ runningStaleMs: 60_000 }).sweep();
+    expect(stats.closedOutRuns).toBe(1);
+    expect((await prisma.taskSession.findUnique({ where: { id: session.id } }))?.status).toBe("completed");
+    expect((await prisma.task.findUnique({ where: { id: task.id } }))?.status).toBe("ready_to_review");
+    expect((await getRun(run.id))?.closedOutAt).not.toBeNull();
+
+    // Done once: a second sweep leaves it alone.
+    expect((await testWorker({ runningStaleMs: 60_000 }).sweep()).closedOutRuns).toBe(0);
+  });
+
+  it("leaves a recently finished run to its own worker", async () => {
+    const { run } = await queuedRun();
+    await prisma.run.update({ where: { id: run.id }, data: { status: "completed", finishedAt: new Date() } });
+    expect((await testWorker({ runningStaleMs: 60_000 }).sweep()).closedOutRuns).toBe(0);
   });
 });

@@ -397,10 +397,10 @@ function threadWhere(orgId: string, filters: ReturnType<typeof normalizeThreadFi
     ...(filters.q
       ? {
           OR: [
-            { title: { contains: filters.q } },
-            { task: { title: { contains: filters.q } } },
-            { agent: { name: { contains: filters.q } } },
-            { messages: { some: { body: { contains: filters.q } } } }
+            { title: { contains: filters.q, mode: "insensitive" } },
+            { task: { title: { contains: filters.q, mode: "insensitive" } } },
+            { agent: { name: { contains: filters.q, mode: "insensitive" } } },
+            { messages: { some: { body: { contains: filters.q, mode: "insensitive" } } } }
           ]
         }
       : {})

@@ -9,6 +9,7 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
     clearMocks: true,
+    globalSetup: ["./tests/global-setup.ts"],
     setupFiles: ["./tests/setup-db.ts"],
     testTimeout: 20000
   }

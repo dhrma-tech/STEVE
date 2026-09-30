@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db/client";
 import { DbJobQueue } from "@/lib/agents/engine/queue";
-import { rawExec, resetDb } from "@/lib/agents/testing/test-db";
+import { ago, resetDb } from "@/lib/agents/testing/test-db";
 
 const queue = new DbJobQueue();
 const lease = { leaseMs: 30_000 };
@@ -108,7 +108,7 @@ describe("leases", () => {
     await queue.claim("w1", lease);
     expect(await queue.requeueExpired()).toEqual({ requeued: 0, failed: 0 }); // lease still valid
 
-    rawExec("UPDATE Job SET lockedUntil = ? WHERE id = ?", Date.now() - 1000, id);
+    await prisma.job.update({ where: { id }, data: { lockedUntil: ago(1000) } });
     expect(await queue.requeueExpired()).toEqual({ requeued: 1, failed: 0 });
 
     const again = await queue.claim("w2", lease);
@@ -118,7 +118,7 @@ describe("leases", () => {
   it("gives up on a job whose workers keep vanishing", async () => {
     const { id } = await queue.enqueue({ type: "t", maxAttempts: 1 });
     await queue.claim("w1", lease);
-    rawExec("UPDATE Job SET lockedUntil = ? WHERE id = ?", Date.now() - 1000, id);
+    await prisma.job.update({ where: { id }, data: { lockedUntil: ago(1000) } });
 
     expect(await queue.requeueExpired()).toEqual({ requeued: 0, failed: 1 });
     expect((await prisma.job.findUnique({ where: { id } }))?.status).toBe("failed");

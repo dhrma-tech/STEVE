@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/db/client";
 import { scriptedModel, type ScriptedTurn } from "@/lib/agents/testing/scripted-anthropic";
-import { drainAll, ORG, rawExec, resetDb, seedAgent, seedTask, testWorker, USER } from "@/lib/agents/testing/test-db";
+import { ago, drainAll, fromNow, ORG, resetDb, seedAgent, seedTask, testWorker, USER } from "@/lib/agents/testing/test-db";
 import { startAgentRun } from "@/lib/agents/run-service";
 import { cancelRun, cancelRunsForTask } from "@/lib/agents/engine/advance";
 import { getRun, getRunBySession, listEvents } from "@/lib/agents/engine/run-store";
@@ -314,7 +314,7 @@ describe("approvals", () => {
     // Days later, after a deploy: nothing in memory survives, only the database.
     resetCircuits();
     const approval = await pendingApproval();
-    rawExec("UPDATE Approval SET expiresAt = ? WHERE id = ?", Date.now() + 3 * 86_400_000, approval.id);
+    await prisma.approval.update({ where: { id: approval.id }, data: { expiresAt: fromNow(3 * 86_400_000) } });
     await answer(session.id, approval.id, "approve");
     await drainAll(testWorker({ id: "after-restart" }));
 
@@ -352,7 +352,7 @@ describe("approvals", () => {
     await drainAll();
 
     const approval = await pendingApproval();
-    rawExec("UPDATE Approval SET expiresAt = ? WHERE id = ?", Date.now() - 1000, approval.id);
+    await prisma.approval.update({ where: { id: approval.id }, data: { expiresAt: ago(1000) } });
     expect(await expireDueApprovals()).toBe(1);
     await drainAll();
 
@@ -527,9 +527,9 @@ describe("cancellation", () => {
 
 describe("crash recovery", () => {
   /** Simulate a worker dying mid-step: its lease on the job and the run simply runs out. */
-  function expireLeases() {
-    rawExec("UPDATE Job SET lockedUntil = ? WHERE status = 'active'", Date.now() - 1000);
-    rawExec("UPDATE Run SET lockedUntil = ? WHERE lockedUntil IS NOT NULL", Date.now() - 1000);
+  async function expireLeases() {
+    await prisma.job.updateMany({ where: { status: "active" }, data: { lockedUntil: ago(1000) } });
+    await prisma.run.updateMany({ where: { lockedUntil: { not: null } }, data: { lockedUntil: ago(1000) } });
   }
 
   it("re-runs a read-only call that a dead worker never finished, on a different worker", async () => {
@@ -548,7 +548,7 @@ describe("crash recovery", () => {
     void dying.runOnce(); // tool call: never returns, as if the process was killed
     await vi.waitFor(async () => expect(JSON.parse((await getRun(run.id))!.stateJson!).pending[0].status).toBe("executing"));
 
-    expireLeases();
+    await expireLeases();
     const survivor = testWorker({ id: "survivor" });
     const stats = await survivor.sweep();
     expect(stats.requeuedJobs).toBe(1);
@@ -573,7 +573,7 @@ describe("crash recovery", () => {
     void dying.runOnce();
     await vi.waitFor(async () => expect(JSON.parse((await getRun(run.id))!.stateJson!).pending[0].status).toBe("executing"));
 
-    expireLeases();
+    await expireLeases();
     const survivor = testWorker({ id: "survivor" });
     await survivor.sweep();
     await drainAll(survivor);
@@ -587,8 +587,8 @@ describe("crash recovery", () => {
     const { start } = await setup();
     scriptedModel.load([{ text: "Recovered." }]);
     const { run } = await start();
-    rawExec("DELETE FROM Job"); // the queue lost it
-    rawExec("UPDATE Run SET updatedAt = ? WHERE id = ?", Date.now() - 10 * 60_000, run.id);
+    await prisma.job.deleteMany(); // the queue lost it
+    await prisma.run.update({ where: { id: run.id }, data: { updatedAt: ago(10 * 60_000) } });
 
     const worker = testWorker();
     expect((await worker.sweep()).reawakenedRuns).toBe(1);
@@ -615,7 +615,7 @@ describe("provider failures", () => {
     expect(job).toMatchObject({ status: "queued", attempts: 1 });
     expect(job.lastError).toMatch(/did not respond/);
 
-    rawExec("UPDATE Job SET runAt = ? WHERE id = ?", Date.now() - 1000, job.id); // the backoff has passed
+    await prisma.job.update({ where: { id: job.id }, data: { runAt: ago(1000) } }); // the backoff has passed
     await drainAll(worker);
     expect(await getRun(run.id)).toMatchObject({ status: "completed", outputText: "Back online." });
   });

@@ -18,7 +18,7 @@ import {
   onRunEvents
 } from "@/lib/agents/engine/run-store";
 import { RunBudget } from "@/lib/agents/policy/limits";
-import { ORG, rawExec, resetDb, seedAgent, seedSession } from "@/lib/agents/testing/test-db";
+import { ago, ORG, resetDb, seedAgent, seedSession } from "@/lib/agents/testing/test-db";
 
 async function newRun(over: Partial<Parameters<typeof createRun>[0]> = {}) {
   const agent = await seedAgent({ slug: `a-${Math.random().toString(36).slice(2, 8)}`, name: "Agent", departmentSlug: "eng" });
@@ -139,7 +139,7 @@ describe("run lease", () => {
     await releaseRunLease(run.id, "w1");
     expect(await acquireRunLease(run.id, "w2", 30_000)).toBe(true);
 
-    rawExec("UPDATE Run SET lockedUntil = ? WHERE id = ?", Date.now() - 1000, run.id);
+    await prisma.run.update({ where: { id: run.id }, data: { lockedUntil: ago(1000) } });
     expect(await acquireRunLease(run.id, "w3", 30_000)).toBe(true);
   });
 

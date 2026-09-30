@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db/client";
 import { expireDueApprovals } from "../policy/approvals";
-import { advanceRun, failRunById } from "./advance";
+import { advanceRun, failRunById, repairUnclosedRuns } from "./advance";
 import { getQueue, type ClaimedJob, type JobQueue } from "./queue";
 import { ADVANCE_JOB, enqueueAdvance, onWake } from "./wake";
 
@@ -27,7 +27,7 @@ export type WorkerOptions = {
   log?: (message: string) => void;
 };
 
-export type SweepStats = { requeuedJobs: number; failedJobs: number; expiredApprovals: number; reawakenedRuns: number };
+export type SweepStats = { requeuedJobs: number; failedJobs: number; expiredApprovals: number; reawakenedRuns: number; closedOutRuns: number };
 
 /** AGENT_WORKER_CONCURRENCY, or 4. Blank or invalid falls back to the default instead of a worker that never claims a job. */
 export function workerConcurrency(env: NodeJS.ProcessEnv = process.env): number {
@@ -206,8 +206,10 @@ export class Worker {
       reawakened += 1;
     }
 
-    const stats = { requeuedJobs: requeued, failedJobs: failed, expiredApprovals, reawakenedRuns: reawakened };
-    if (requeued || failed || expiredApprovals || reawakened) this.log(`sweep: ${JSON.stringify(stats)}`);
+    const closedOutRuns = await repairUnclosedRuns(this.runningStaleMs);
+
+    const stats = { requeuedJobs: requeued, failedJobs: failed, expiredApprovals, reawakenedRuns: reawakened, closedOutRuns };
+    if (requeued || failed || expiredApprovals || reawakened || closedOutRuns) this.log(`sweep: ${JSON.stringify(stats)}`);
     return stats;
   }
 }

@@ -90,10 +90,10 @@ export async function getAgentWorkspaceData(orgId: string, query: { departmentId
     ...(filters.q
       ? {
           OR: [
-            { name: { contains: filters.q } },
-            { description: { contains: filters.q } },
-            { prompt: { contains: filters.q } },
-            { department: { name: { contains: filters.q } } }
+            { name: { contains: filters.q, mode: "insensitive" } },
+            { description: { contains: filters.q, mode: "insensitive" } },
+            { prompt: { contains: filters.q, mode: "insensitive" } },
+            { department: { name: { contains: filters.q, mode: "insensitive" } } }
           ]
         }
       : {})

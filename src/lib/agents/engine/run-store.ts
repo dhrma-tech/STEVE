@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
 import type { Prisma, Run } from "@prisma/client";
 import { prisma } from "@/lib/db/client";
+import { listen, notify as pgNotify } from "@/lib/db/notify";
 import type { AgentEvent } from "../events";
 import { isForwardedEvent } from "../events";
 import { defaultLimits, RunBudget, type RunLimits } from "../policy/limits";
@@ -124,6 +125,8 @@ export function parseGrants(root: Pick<Run, "grantsJson">): Set<string> {
 
 export async function addRunGrant(rootRunId: string, toolName: string) {
   await prisma.$transaction(async (tx) => {
+    // Lock the root row: concurrent approvals would otherwise each read the old list and the last write would win.
+    await tx.$executeRaw`SELECT 1 FROM "Run" WHERE "id" = ${rootRunId} FOR UPDATE`;
     const root = await tx.run.findUnique({ where: { id: rootRunId }, select: { grantsJson: true } });
     if (!root) return;
     const grants = parseGrants(root);
@@ -137,27 +140,45 @@ export async function addRunGrant(rootRunId: string, toolName: string) {
 const g = globalThis as typeof globalThis & { _steveRunEvents?: EventEmitter };
 const emitter: EventEmitter = (g._steveRunEvents ??= new EventEmitter().setMaxListeners(0));
 
-/** Wake anything in this process that is waiting on a run's events. Other processes find out by polling. */
+/** Postgres NOTIFY channel carrying the id of a run that logged an event. */
+const RUN_EVENTS_CHANNEL = "steve_run_events";
+
+/**
+ * Wake anything waiting on a run's events: events logged in this process call the listener directly, events
+ * logged by another process (a standalone worker, another server) arrive through Postgres NOTIFY.
+ */
 export function onRunEvents(runId: string, listener: () => void): () => void {
   emitter.on(runId, listener);
-  return () => emitter.off(runId, listener);
+  const unlisten = listen(RUN_EVENTS_CHANNEL, (payload) => {
+    if (payload === runId) listener();
+  });
+  return () => {
+    emitter.off(runId, listener);
+    unlisten();
+  };
 }
 
 function notify(runId: string) {
   emitter.emit(runId);
+  void pgNotify(RUN_EVENTS_CHANNEL, runId);
 }
 
 export type StoredEvent = { seq: number; type: string; createdAt: Date; data: Record<string, unknown> };
 
 /** Append one event to a run's log and return its sequence number. */
 export async function appendEvent(runId: string, event: AgentEvent): Promise<number> {
-  const { eventSeq } = await prisma.run.update({
-    where: { id: runId },
-    data: { eventSeq: { increment: 1 } },
-    select: { eventSeq: true }
-  });
   const { type, ...rest } = event;
-  await prisma.runEvent.create({ data: { runId, seq: eventSeq, type, payloadJson: JSON.stringify(rest) } });
+  // One transaction: the increment locks the run row until the event row is committed, so events become visible
+  // in sequence order and a reader resuming after seq N never skips an N+1 that was still being written.
+  const eventSeq = await prisma.$transaction(async (tx) => {
+    const { eventSeq: seq } = await tx.run.update({
+      where: { id: runId },
+      data: { eventSeq: { increment: 1 } },
+      select: { eventSeq: true }
+    });
+    await tx.runEvent.create({ data: { runId, seq, type, payloadJson: JSON.stringify(rest) } });
+    return seq;
+  });
   notify(runId);
   return eventSeq;
 }

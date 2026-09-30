@@ -357,7 +357,7 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
 | 1 — One execution path | **done 2026-09-29** (see notes below) |
 | 2 — Guardrails | **done 2026-09-29** (see notes below) |
 | 3a — Durable runtime on SQLite | **done 2026-09-30** (see notes below) |
-| 3b — Postgres + pg-boss | not started |
+| 3b — Postgres + pg-boss | **done 2026-09-30** (see notes below) |
 | 4–10 | not started |
 
 **Phase 0 notes**
@@ -406,6 +406,11 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
 - New env: `AGENT_WORKER`, `AGENT_WORKER_CONCURRENCY`, `WORKER_TICK_SECRET`, `AGENT_TOOL_TIMEOUT_MS`, `MODEL_RETRY_BASE_MS` (documented in `.env.example`).
 - Not yet proven: the step machine has never run against a real model; everything above uses a scripted model or stops at the missing key. SQLite with a web server and a worker writing at once held up under the 20-run burst, but that burst is light (each run makes only a few writes). Graceful `SIGINT`/`SIGTERM` shutdown of `pnpm worker` is written but was not exercised (those signals could not be delivered to it on this Windows machine). Rolling summarization of long conversations (listed under Phase 3 above) is not built; only old tool output is trimmed.
 
-**Phase 3b (next)**: Postgres for environments that run agents, a pg-boss adapter behind `JobQueue`, baselined Prisma migrations in place of `apply-migration.ts`, and about 20 case-sensitive `contains` queries to revisit. Needs a Postgres to test against.
+**Phase 3b notes (Postgres)**
+- Delivered: Postgres for every environment (Prisma `postgresql` provider with `@prisma/adapter-pg`), one baselined migration applied by `prisma migrate deploy`, `pnpm db:local` (embedded Postgres in `.pgdata/`) and `pnpm db:import-sqlite` (one-time copy of `dev.db`). The `Job` queue claims with `FOR UPDATE SKIP LOCKED` and dedupes under an advisory lock; `PgBossJobQueue` implements the same `JobQueue` (`AGENT_QUEUE=pg-boss`). LISTEN/NOTIFY wakes workers and streams across processes.
+- Decision: the default queue stays the `Job` table. On Postgres it is the same technique pg-boss uses, it keeps exact backoff and lease semantics that the crash-recovery tests pin down, and its rows sit next to the runs they drive. pg-boss is a supported switch, tested by a contract suite, not the default. Its `retry` uses pg-boss's own backoff (1–30 s), so the worker's requested delay is approximate there.
+- Found by the move: two lost-update races that SQLite's single writer had hidden (run grants, event ordering), fixed; and a crash window between a run's final status and its close-out, now repaired by the sweeper (`Run.closedOutAt`).
+- The `contains` queries: user-facing search and two fixed-text lookups are case-insensitive as before; the idempotency-key lookup stays exact.
+- Not yet proven: the user's own PostgreSQL 16 (credentials to be added; only `DATABASE_URL` changes) and Supabase (use the session pooler or a direct connection for workers; set `PG_NOTIFY=off` behind a transaction pooler). Tests and the live check ran on Postgres 18 (embedded); CI uses 17.
 
 Existing code to build on rather than rewrite: `src/lib/agents/engine/*` (step machine, queue interface, worker), `tools/*` (tool implementations), `TaskSession.parentSessionId` and `Approval` (schema), `execution-feed.tsx` and `agent-workspace-dialog.tsx` (UI), `model-router.ts` (extend to tiers).

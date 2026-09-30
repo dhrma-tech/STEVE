@@ -526,11 +526,11 @@ function fileWhere(orgId: string, filters: ReturnType<typeof normalizeFilters>):
     ...(filters.q
       ? {
           OR: [
-            { name: { contains: filters.q } },
-            { mimeType: { contains: filters.q } },
-            { folder: { name: { contains: filters.q } } },
-            { department: { name: { contains: filters.q } } },
-            { task: { title: { contains: filters.q } } }
+            { name: { contains: filters.q, mode: "insensitive" } },
+            { mimeType: { contains: filters.q, mode: "insensitive" } },
+            { folder: { name: { contains: filters.q, mode: "insensitive" } } },
+            { department: { name: { contains: filters.q, mode: "insensitive" } } },
+            { task: { title: { contains: filters.q, mode: "insensitive" } } }
           ]
         }
       : {})

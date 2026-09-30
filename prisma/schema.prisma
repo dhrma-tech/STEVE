@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model User {
@@ -727,6 +727,9 @@ model Run {
   createdAt      DateTime  @default(now())
   startedAt      DateTime?
   finishedAt     DateTime?
+  /// Set once the session, task, chat and parent have been updated for the final state. A final run without it
+  /// was interrupted between its status change and its close-out; the sweeper finishes the job.
+  closedOutAt    DateTime?
   updatedAt      DateTime  @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   session        TaskSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)

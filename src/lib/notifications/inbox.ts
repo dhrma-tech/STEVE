@@ -43,7 +43,7 @@ export async function getInboxItemsForUser({
       take: 5
     }),
     prisma.file.findMany({
-      where: { organizationId: orgId, archivedAt: null, name: { contains: "Business Plan" } },
+      where: { organizationId: orgId, archivedAt: null, name: { contains: "Business Plan", mode: "insensitive" } },
       orderBy: { updatedAt: "desc" },
       take: 2
     }),

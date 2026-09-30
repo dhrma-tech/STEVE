@@ -588,7 +588,7 @@ export async function getSupportSettings(orgId: string) {
       orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }]
     }),
     prisma.integrationEvent.findMany({
-      where: { organizationId: orgId, eventType: { contains: "support" } },
+      where: { organizationId: orgId, eventType: { contains: "support", mode: "insensitive" } },
       orderBy: { createdAt: "desc" },
       take: 5
     })
