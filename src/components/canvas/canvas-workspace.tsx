@@ -62,6 +62,7 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
   const queryTab = initialTabFromQuery(query);
   const initialTaskId = firstParam(query.task);
   const initialAgentId = firstParam(query.agent);
+  const initialPlanId = firstParam(query.plan);
   const initialSelectedId = querySelectedNodeId ?? (queryTab || initialTaskId || initialAgentId ? null : data.viewState.selectedNodeId ?? null);
   const initialTab = queryTab ?? (initialTaskId ? "tasks" : initialAgentId ? "company" : data.viewState.activeTab ?? "home");
   const initialRoadmapOpen = firstParam(query.open_tech_tree) === "1";
@@ -251,6 +252,7 @@ export function CanvasWorkspace({ data, query }: CanvasWorkspaceProps) {
               onLaunchDepartmentAgent={launchDepartmentAgent}
               selectedTaskId={initialTaskId}
               selectedAgentId={initialAgentId}
+              selectedPlanId={initialPlanId}
               onLaunchTaskSession={launchSession}
               onFileOpen={setLibraryFileId}
             />
@@ -471,7 +473,8 @@ function selectedNodeFromQuery(query: Record<string, string | string[] | undefin
 
 function initialTabFromQuery(query: Record<string, string | string[] | undefined>) {
   const tab = firstParam(query.tab);
-  return tab && ["home", "cofounder", "company", "tasks", "library"].includes(tab) ? tab : null;
+  if (!tab && firstParam(query.plan)) return "plans";
+  return tab && ["home", "cofounder", "company", "tasks", "plans", "library"].includes(tab) ? tab : null;
 }
 
 function firstParam(value: string | string[] | undefined) {

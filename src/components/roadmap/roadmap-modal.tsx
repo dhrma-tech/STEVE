@@ -23,7 +23,9 @@ type RoadmapItem = RoadmapData["stages"][number]["items"][number];
 type RoadmapLaunchResponse =
   | { kind: "task_created" | "existing_task"; task: { id: string; title: string; status: string }; item: RoadmapItem; sessionId?: string | null }
   | { kind: "approval_requested"; task: { id: string; title: string; status: string }; approval: { id: string; status: string }; item: RoadmapItem }
-  | { kind: "already_complete"; item: RoadmapItem };
+  | { kind: "already_complete"; item: RoadmapItem }
+  | { kind: "plan_created"; task: { id: string; title: string; status: string }; item: RoadmapItem; sessionId: string; planId: string }
+  | { kind: "existing_plan"; task: { id: string; title: string; status: string }; item: RoadmapItem; planId: string };
 
 export function RoadmapModal({
   orgId,
@@ -77,7 +79,11 @@ export function RoadmapModal({
           ? "An active task already exists for this roadmap item."
           : result?.kind === "already_complete"
             ? "This roadmap item is already complete."
-            : "Roadmap task created.";
+            : result?.kind === "plan_created"
+              ? "The Chief of Staff is planning this. Review and approve the plan in the Plans tab."
+              : result?.kind === "existing_plan"
+                ? "A plan for this roadmap item is already under way. Follow it in the Plans tab."
+                : "Roadmap task created.";
       setLaunchState({ itemId: item.id, busy: false, message, error: null });
       roadmapState.reload();
 

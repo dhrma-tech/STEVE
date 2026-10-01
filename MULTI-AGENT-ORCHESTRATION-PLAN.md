@@ -359,7 +359,8 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
 | 3a — Durable runtime on SQLite | **done 2026-09-30** (see notes below) |
 | 3b — Postgres + pg-boss | **done 2026-09-30** (see notes below) |
 | 4 — Team awareness and delegation protocol | **done 2026-10-01** (see notes below) |
-| 5–10 | not started |
+| 5 — Orchestrator and planning | **done 2026-10-01** (see notes below) |
+| 6–10 | not started |
 
 **Phase 0 notes**
 - Delivered: Vitest with a scripted Anthropic provider and in-memory DB (`src/lib/agents/testing/`), 16 passing tests (single run, delegation, approval approve/deny, kill switch, auth secret, flags) plus 6 `it.todo` markers for Phase 2–4 requirements; CI workflow (`.github/workflows/ci.yml`); `AUTH_SECRET` now required (32+ chars) in production; `/api/ai/chat` requires login; `/test` returns 404 in production; `ORCHESTRATOR_V2` flag and `AGENTS_PAUSED` env kill switch (enforced in `runAgent`).
@@ -420,5 +421,12 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
 - Deviation: no `await_children` tool. Delegation already ends the parent's step as `waiting_children` and it resumes with all handoffs, so a separate wait tool would add nothing.
 - Plain-text endings: a delegated run is re-prompted once, then its text is wrapped into a handoff rather than failed. A root run may end in plain text.
 - Exit criterion met with mocked models: the build/copy/outreach scenario test runs three children concurrently and returns three structured handoffs; the feed renders concurrent children. Not run against a real model.
+
+**Phase 5 notes (Chief of Staff and planning)**
+- Delivered: `Plan`/`PlanNode` DAG (migration `20261001200000_plans_orchestrator`); Chief of Staff and Reviewer system agents; `propose_plan` with validated plans; founder review (edit, reassign, remove, approve, cancel) with cost/time estimates and risk hotspots; manager auto-approve within the daily budget; scheduler job `plan.advance` that runs independent steps in parallel as linked Tasks; Reviewer pass with one retry on feedback; replanning on failed, blocked or needs-input steps (capped at 2) or escalation to the founder; founder report with a record-based fallback; roadmap launch creates a plan and plan completion completes the item. Code in `src/lib/agents/plans/`. UI: Plans tab in the canvas side panel and inbox items.
+- Exit criterion met with mocked models (`plans.test.ts`): the goal "Launch our landing page and announce it" gives a 6-step plan across 4 departments. It waits for approval, runs brand and copy in parallel, starts every step after its dependencies, has the copy and build reviewed, replans after an injected deploy failure, and ends with the report.
+- Decisions: plan steps are root runs (each has its own tree limits and budget), not children of the Chief of Staff's run, so a long plan never holds one run open and each step is visible and cancellable on its own. The Chief of Staff does not do work and cannot delegate; it plans, and the scheduler executes. A revision after a failure goes ahead without a second founder review: the founder approved the goal, and replans are capped. Rejected reviews get one more attempt before replanning. If the Reviewer itself fails, the step is accepted as "not reviewed" rather than blocking the plan.
+- Deviation: plan nodes are not assignable to people yet (decision 5 in §11 is still open). The Chief of Staff uses the department agents' model until Phase 8 adds tiers (`Agent.modelTier = planner` is recorded). Mission Control's delegation tree and the morning briefing are Phase 7.
+- Not run against a real model.
 
 Existing code to build on rather than rewrite: `src/lib/agents/engine/*` (step machine, queue interface, worker), `tools/*` (tool implementations), `TaskSession.parentSessionId` and `Approval` (schema), `execution-feed.tsx` and `agent-workspace-dialog.tsx` (UI), `model-router.ts` (extend to tiers).

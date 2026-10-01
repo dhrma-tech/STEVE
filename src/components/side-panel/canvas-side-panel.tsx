@@ -7,6 +7,7 @@ import { AgentControlCenter } from "@/components/agents/agent-control-center";
 import { ChatWorkspace } from "@/components/chat/chat-workspace";
 import { DepartmentDetailPanel } from "@/components/departments/department-detail-panel";
 import { FileLibrary } from "@/components/files/file-library";
+import { PlanWorkspace } from "@/components/plans/plan-workspace";
 import { TaskCreateDialog, type TaskCreateDefaults } from "@/components/tasks/task-create-dialog";
 import { TaskWorkspace } from "@/components/tasks/task-workspace";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,7 @@ export function CanvasSidePanel({
   onLaunchDepartmentAgent,
   selectedTaskId,
   selectedAgentId,
+  selectedPlanId,
   onLaunchTaskSession,
   onFileOpen
 }: {
@@ -41,6 +43,7 @@ export function CanvasSidePanel({
   onLaunchDepartmentAgent: (department: NonNullable<DepartmentDetailData>) => void;
   selectedTaskId?: string | null;
   selectedAgentId?: string | null;
+  selectedPlanId?: string | null;
   onLaunchTaskSession: (sessionId: string) => void;
   onFileOpen?: (fileId: string) => void;
 }) {
@@ -88,6 +91,10 @@ export function CanvasSidePanel({
               <TabsTrigger value="tasks" className="flex-1 gap-2 px-2 text-xs">
                 <Kanban className="size-3.5" />
                 <span className="hidden sm:inline">Tasks</span>
+              </TabsTrigger>
+              <TabsTrigger value="plans" className="flex-1 gap-2 px-2 text-xs">
+                <GitBranch className="size-3.5" />
+                <span className="hidden sm:inline">Plans</span>
               </TabsTrigger>
               <TabsTrigger value="library" className="flex-1 gap-2 px-2 text-xs">
                 <FolderOpen className="size-3.5" />
@@ -140,6 +147,10 @@ export function CanvasSidePanel({
                 compact
                 onLaunchSession={onLaunchTaskSession}
               />
+            </TabsContent>
+
+            <TabsContent value="plans" className="mt-0 h-full overflow-y-auto animate-tab-content-fade">
+              <PlanWorkspace orgId={data.organization.id} initialPlanId={selectedPlanId} onOpenSession={onLaunchTaskSession} />
             </TabsContent>
 
             <TabsContent value="library" className="mt-0 grid h-full gap-4 overflow-y-auto animate-tab-content-fade">

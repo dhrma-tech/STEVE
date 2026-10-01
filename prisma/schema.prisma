@@ -82,6 +82,7 @@ model Organization {
   usageRecords            UsageRecord[]
   policies                Policy[]
   runs                    Run[]
+  plans                   Plan[]
 
   @@index([status])
   @@index([currentPlan])
@@ -714,7 +715,12 @@ model Run {
   callChainJson  String       @default("[]")
   mode           String       @default("review_required")
   /// task (a person started it) | delegation (another agent handed it work) | consult (a read-only question from another agent)
+  /// | plan (the Chief of Staff planning or replanning a goal) | plan_node (one step of an approved plan)
+  /// | review (the Reviewer checking a step against its acceptance criteria) | plan_report (the founder report at the end)
   kind           String       @default("task")
+  /// The plan this run belongs to, and the plan step it works on or reviews.
+  planId         String?
+  planNodeId     String?
   /// queued | running | waiting_approval | waiting_children | completed | failed | cancelled
   status         String       @default("queued")
   requestText    String
@@ -755,6 +761,7 @@ model Run {
   @@unique([parentRunId, parentSlotId])
   @@index([organizationId, status])
   @@index([rootRunId])
+  @@index([planId])
   @@index([status, updatedAt])
 }
 
@@ -794,4 +801,83 @@ model Job {
   @@index([status, runAt])
   @@index([runId, status])
   @@index([dedupeKey, status])
+}
+
+/// A goal the Chief of Staff turned into a dependency graph of work (see src/lib/agents/plans).
+model Plan {
+  id                  String       @id @default(cuid())
+  organizationId      String
+  goal                String
+  /// drafting | proposed | running | replanning | reporting | completed | failed | cancelled
+  status              String       @default("drafting")
+  /// What the plan does, in the Chief of Staff's words.
+  summary             String?
+  version             Int          @default(1)
+  replanCount         Int          @default(0)
+  maxReplans          Int          @default(2)
+  /// A manager asked for the plan to start without review when it fits the budget.
+  autoApprove         Boolean      @default(false)
+  roadmapItemId       String?
+  createdByUserId     String?
+  approvedByUserId    String?
+  orchestratorAgentId String
+  /// The Chief of Staff's task for this goal: planning, replanning and the report run on it.
+  taskId              String?
+  estimatedCostCents  Float        @default(0)
+  estimatedMinutes    Int          @default(0)
+  /// completed | failed, decided when the last step settles; the plan takes it once the report is written.
+  outcome             String?
+  reportText          String?
+  errorMessage        String?
+  lockedBy            String?
+  lockedUntil         DateTime?
+  createdAt           DateTime     @default(now())
+  approvedAt          DateTime?
+  finishedAt          DateTime?
+  updatedAt           DateTime     @updatedAt
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  nodes               PlanNode[]
+
+  @@index([organizationId, status])
+  @@index([status, updatedAt])
+}
+
+/// One step of a plan: an owner agent, acceptance criteria and the steps it waits for.
+model PlanNode {
+  id                     String    @id @default(cuid())
+  planId                 String
+  /// Short stable id the Chief of Staff uses for dependencies ("build-page").
+  key                    String
+  title                  String
+  description            String
+  agentId                String?
+  departmentId           String?
+  /// The visible task for this step (created when it first starts).
+  taskId                 String?
+  /// The current execution run, and the Reviewer's run while one is checking it.
+  runId                  String?
+  reviewRunId            String?
+  /// pending | starting | running | reviewing | done | failed | skipped
+  status                 String    @default("pending")
+  dependsOnJson          String    @default("[]")
+  acceptanceCriteriaJson String    @default("[]")
+  /// The Reviewer checks the result against the acceptance criteria before the step counts as done.
+  review                 Boolean   @default(false)
+  estimatedCostCents     Float?
+  estimatedMinutes       Int?
+  riskNotes              String?
+  attempts               Int       @default(0)
+  /// Why the last attempt was rejected or failed; given to the next attempt and to replanning.
+  feedback               String?
+  resultJson             String?
+  reviewJson             String?
+  sortOrder              Int       @default(0)
+  startedAt              DateTime?
+  finishedAt             DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  plan                   Plan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, key])
+  @@index([planId, status])
 }

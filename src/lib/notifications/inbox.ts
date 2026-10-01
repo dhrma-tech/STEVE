@@ -3,7 +3,7 @@ import { listOpenQuestions } from "@/lib/agents/policy/approvals";
 
 export type InboxItem = {
   id: string;
-  kind: "onboarding" | "roadmap" | "task" | "file" | "integration" | "billing" | "agent_question";
+  kind: "onboarding" | "roadmap" | "task" | "file" | "integration" | "billing" | "agent_question" | "plan";
   title: string;
   description: string;
   href: string;
@@ -25,7 +25,7 @@ export async function getInboxItemsForUser({
   orgId: string;
   userId: string;
 }): Promise<InboxState> {
-  const [organization, roadmapItems, tasks, files, integrations, billing, readLogs, questions] = await Promise.all([
+  const [organization, roadmapItems, tasks, files, integrations, billing, readLogs, questions, plans] = await Promise.all([
     prisma.organization.findUniqueOrThrow({ where: { id: orgId } }),
     prisma.roadmapItem.findMany({
       where: { organizationId: orgId, status: { in: ["available", "complete"] } },
@@ -63,7 +63,19 @@ export async function getInboxItemsForUser({
       },
       select: { targetId: true }
     }),
-    listOpenQuestions(orgId)
+    listOpenQuestions(orgId),
+    // Plans waiting for the founder's review, and ones that finished in the last week (their report is ready).
+    prisma.plan.findMany({
+      where: {
+        organizationId: orgId,
+        OR: [
+          { status: "proposed" },
+          { status: { in: ["completed", "failed"] }, finishedAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } }
+        ]
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 6
+    })
   ]);
 
   const readIds = new Set(readLogs.map((log) => log.targetId).filter(Boolean));
@@ -116,6 +128,22 @@ export async function getInboxItemsForUser({
       href: `/org/${orgId}/canvas?session=${question.sessionId ?? ""}`,
       status: "waiting",
       createdAt: new Date().toISOString()
+    });
+  }
+
+  for (const plan of plans) {
+    const review = plan.status === "proposed";
+    items.push({
+      id: `plan:${plan.id}:${plan.status}`,
+      kind: "plan",
+      title: (review ? `Review plan: ${plan.goal}` : `${plan.status === "completed" ? "Done" : "Stopped"}: ${plan.goal}`).slice(0, 200),
+      description: review
+        ? plan.summary ?? "The Chief of Staff has a plan ready. Review and approve it to start."
+        : (plan.reportText ?? plan.errorMessage ?? "The Chief of Staff's report is ready.").slice(0, 280),
+      href: `/org/${orgId}/canvas?plan=${plan.id}`,
+      status: plan.status,
+      // Plans to review stay at the top until approved, like agent questions.
+      createdAt: (review ? new Date() : plan.updatedAt).toISOString()
     });
   }
 

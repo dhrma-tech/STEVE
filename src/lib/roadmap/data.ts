@@ -2,14 +2,15 @@ import { errorResponse } from "@/lib/api/responses";
 import { requireOrgMember } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { startAgentRun } from "@/lib/agents/run-service";
+import { createGoalPlan } from "@/lib/agents/plans/store";
 import { roadmapDefinitions } from "@/lib/onboarding/definitions";
+import { markRoadmapItemComplete, progressFor, syncRoadmapUnlocks } from "@/lib/roadmap/progress";
 import {
   roadmapDependencyPairs,
   roadmapStageDescriptions,
   roadmapStatusMeta,
   roadmapWorkTypeMeta,
-  workTypeFor,
-  type RoadmapStatus
+  workTypeFor
 } from "@/data/roadmap";
 
 const json = (value: unknown) => JSON.stringify(value);
@@ -166,12 +167,26 @@ export async function launchRoadmapItem({
     return { kind: "input_required" as const, item: serialized };
   }
 
+  // A plan still under way for this item is its open work. A plan that failed or was cancelled is not: the founder
+  // can launch again, so the tasks a plan created do not count as open tasks below.
+  const livePlan = await prisma.plan.findFirst({
+    where: { organizationId: orgId, roadmapItemId: item.id, status: { notIn: ["completed", "failed", "cancelled"] } },
+    orderBy: { createdAt: "desc" }
+  });
+  if (livePlan) {
+    const planningTask = livePlan.taskId ? await prisma.task.findUnique({ where: { id: livePlan.taskId }, include: { agent: true } }) : null;
+    if (planningTask) {
+      return { kind: "existing_plan" as const, item: serialized, task: serializeTask(planningTask), planId: livePlan.id };
+    }
+  }
+
   const existing = await prisma.task.findFirst({
     where: {
       organizationId: orgId,
       roadmapItemId: item.id,
       archivedAt: null,
-      status: { notIn: ["completed", "canceled", "archived"] }
+      status: { notIn: ["completed", "canceled", "archived"] },
+      OR: [{ metadataJson: null }, { NOT: { metadataJson: { contains: '"source":"plan"' } } }]
     },
     include: { agent: true },
     orderBy: { updatedAt: "desc" }
@@ -179,6 +194,20 @@ export async function launchRoadmapItem({
 
   if (existing) {
     return { kind: "existing_task" as const, item: serialized, task: serializeTask(existing) };
+  }
+
+  // Agent work goes to the Chief of Staff, who plans it across departments for the founder to review. Picking a
+  // specific agent skips planning and runs that agent directly.
+  if (workType === "agent" && !agentId) {
+    const { plan, task, sessionId } = await createGoalPlan({
+      orgId,
+      userId: user.id,
+      goal: item.title,
+      context: buildTaskDescription({ item, input, workType }),
+      roadmapItemId: item.id
+    });
+    const planningTask = await prisma.task.findUniqueOrThrow({ where: { id: task.id }, include: { agent: true } });
+    return { kind: "plan_created" as const, item: serialized, task: serializeTask(planningTask), sessionId, planId: plan.id };
   }
 
   const task = await prisma.task.create({
@@ -259,18 +288,8 @@ export async function completeRoadmapItem({
     };
   }
 
-  const updated = await prisma.roadmapItem.update({
-    where: { id: item.id },
-    data: { status: "complete", completedAt: item.completedAt ?? new Date() },
-    include: roadmapItemInclude()
-  });
-
-  await prisma.task.updateMany({
-    where: { organizationId: orgId, roadmapItemId: item.id, archivedAt: null, status: { notIn: ["completed", "canceled", "archived"] } },
-    data: { status: "completed", completedAt: new Date() }
-  });
-
-  await syncRoadmapUnlocks(orgId);
+  await markRoadmapItemComplete(orgId, item.id);
+  const updated = await prisma.roadmapItem.findUniqueOrThrow({ where: { id: item.id }, include: roadmapItemInclude() });
   const roadmap = await getRoadmapData(orgId);
 
   return {
@@ -351,39 +370,6 @@ export async function ensureRoadmapStructure(orgId: string) {
       }
     });
   }
-}
-
-async function syncRoadmapUnlocks(orgId: string) {
-  const items = await prisma.roadmapItem.findMany({
-    where: { organizationId: orgId },
-    include: { dependencies: { include: { dependsOn: true } } }
-  });
-
-  const updates: Array<Promise<unknown>> = [];
-  for (const item of items) {
-    if (item.status === "complete") {
-      if (!item.completedAt) {
-        updates.push(prisma.roadmapItem.update({ where: { id: item.id }, data: { completedAt: new Date() } }));
-      }
-      continue;
-    }
-
-    const nextStatus: RoadmapStatus = item.dependencies.every((dependency) => dependency.dependsOn.status === "complete") ? "available" : "locked";
-    if (item.status !== nextStatus) {
-      updates.push(prisma.roadmapItem.update({ where: { id: item.id }, data: { status: nextStatus } }));
-    }
-  }
-
-  if (updates.length) {
-    await Promise.all(updates);
-  }
-
-  const latest = await prisma.roadmapItem.findMany({ where: { organizationId: orgId } });
-  const progress = progressFor(latest.map((item) => ({ status: item.status })));
-  await prisma.organization.update({
-    where: { id: orgId },
-    data: { roadmapProgress: progress.percent }
-  });
 }
 
 async function findRoadmapItem(orgId: string, itemId: string) {
@@ -490,21 +476,6 @@ function serializeTask(task: {
     type: task.type,
     updatedAt: task.updatedAt.toISOString(),
     agent: task.agent ? { id: task.agent.id, name: task.agent.name, status: task.agent.status } : null
-  };
-}
-
-function progressFor(items: Array<{ status: string }>) {
-  const total = items.length;
-  const complete = items.filter((item) => item.status === "complete").length;
-  const available = items.filter((item) => item.status === "available").length;
-  const locked = items.filter((item) => item.status === "locked").length;
-
-  return {
-    total,
-    complete,
-    available,
-    locked,
-    percent: total ? Math.round((complete / total) * 100) : 0
   };
 }
 

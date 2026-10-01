@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/client";
 import { ACTIVE_STATUSES } from "./engine/types";
 import { buildToolset } from "./tools/registry";
+import { SYSTEM_AGENT_SLUGS } from "./plans/system-agents";
 
 /**
  * The agent directory: who is on the team, what each agent is for and what it can do. Injected into every agent's
@@ -45,7 +46,8 @@ function skillKeysOf(toolsJson: string | null): string[] {
 export async function loadDirectory(orgId: string): Promise<DirectoryEntry[]> {
   const [agents, load] = await Promise.all([
     prisma.agent.findMany({
-      where: { organizationId: orgId, archivedAt: null },
+      // The Chief of Staff and the Reviewer coordinate the team; nobody delegates to them.
+      where: { organizationId: orgId, archivedAt: null, slug: { notIn: [...SYSTEM_AGENT_SLUGS] } },
       include: { department: { select: { name: true, slug: true, description: true, sortOrder: true } } },
       orderBy: [{ department: { sortOrder: "asc" } }, { name: "asc" }],
       take: MAX_ENTRIES

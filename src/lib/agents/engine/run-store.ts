@@ -53,6 +53,10 @@ export async function createRun(data: {
   mode: string;
   parent?: { run: Run; slotId: string };
   limits?: RunLimits;
+  /** Run.kind; default task. */
+  kind?: string;
+  planId?: string | null;
+  planNodeId?: string | null;
 }) {
   const id = data.id ?? newRunId();
   const parent = data.parent?.run ?? null;
@@ -71,6 +75,9 @@ export async function createRun(data: {
       callChainJson: JSON.stringify(callChain),
       mode: data.mode,
       requestText: data.requestText,
+      ...(data.kind ? { kind: data.kind } : {}),
+      planId: data.planId ?? null,
+      planNodeId: data.planNodeId ?? null,
       // Limits, grants and totals live on the root run only.
       ...(parent ? {} : { limitsJson: JSON.stringify(data.limits ?? defaultLimits()) })
     }

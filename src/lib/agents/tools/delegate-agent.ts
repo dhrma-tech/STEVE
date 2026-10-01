@@ -139,4 +139,11 @@ export const finishRunTool: AgentTool = {
 };
 
 /** Tools the engine carries out itself instead of calling `execute`. */
-export const ENGINE_TOOLS: ReadonlySet<string> = new Set(["delegate_agent", "delegate_many", "ask_agent", "ask_user", "finish_run"]);
+export const ENGINE_TOOLS: ReadonlySet<string> = new Set([
+  "delegate_agent",
+  "delegate_many",
+  "ask_agent",
+  "ask_user",
+  "finish_run",
+  "propose_plan"
+]);

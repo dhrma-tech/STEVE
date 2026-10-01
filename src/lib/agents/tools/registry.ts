@@ -5,6 +5,7 @@ import { githubListReposTool, githubReadFileTool, githubCreateBranchTool, github
 import { vercelListDeploymentsTool, vercelGetDeploymentTool, vercelTriggerDeployTool } from "./vercel";
 import { postizCreatePostTool, postizSchedulePostTool, postizListPostsTool } from "./postiz";
 import { askAgentTool, askUserTool, delegateAgentTool, delegateManyTool, finishRunTool } from "./delegate-agent";
+import { proposePlanTool } from "./plan-tools";
 import { classifyToolCall } from "../policy/risk";
 import { memoryStoreTool, memoryRetrieveTool, memoryListTool } from "./memory";
 import { createTaskTool, updateTaskTool, assignTaskTool } from "./create-task";
@@ -16,7 +17,13 @@ import { supabaseListTablesTool, supabaseRunQueryTool, supabaseCreateBucketTool 
 import { supportListThreadsTool, supportCreateThreadTool, supportReplyToThreadTool } from "./support";
 
 export type ToolsetOptions = {
-  /** A consult (an `ask_agent` question) gets read-only tools only: no changes, no delegation, no questions to people. */
+  /**
+   * The run's kind (see Run.kind). Most kinds get the agent's full toolset. The rest look but do not touch:
+   * - consult (an `ask_agent` question): read-only, no delegation, no questions to people;
+   * - plan (the Chief of Staff planning a goal): read-only plus consulting teammates, asking the founder and `propose_plan`;
+   * - review (the Reviewer checking a step): read-only plus `finish_run` for the verdict;
+   * - plan_report (the Chief of Staff's report to the founder): read-only.
+   */
   kind?: string;
 };
 
@@ -27,8 +34,18 @@ export type ToolsetOptions = {
  */
 export function buildToolset(skillKeys: string[], options: ToolsetOptions = {}): AgentTool[] {
   const all = buildFullToolset(skillKeys);
-  if (options.kind === "consult") return all.filter((tool) => classifyToolCall(tool.definition.name) === "read" && tool !== askUserTool && tool !== finishRunTool);
-  return all;
+  const readOnly = all.filter((tool) => classifyToolCall(tool.definition.name) === "read" && tool !== askUserTool && tool !== finishRunTool);
+  switch (options.kind) {
+    case "consult":
+    case "plan_report":
+      return readOnly;
+    case "plan":
+      return [...readOnly, askAgentTool, askUserTool, proposePlanTool];
+    case "review":
+      return [...readOnly, finishRunTool];
+    default:
+      return all;
+  }
 }
 
 function buildFullToolset(skillKeys: string[]): AgentTool[] {

@@ -16,6 +16,12 @@ export type StartAgentRunInput = {
   agentId?: string | null;
   /** Extra instruction from the user; replaces the task text as the agent's request. */
   message?: string | null;
+  /** Run.kind (default task). Plans start their planning, step, review and report runs through here too. */
+  kind?: string;
+  planId?: string | null;
+  planNodeId?: string | null;
+  /** Allow a task that is archived (review runs work on hidden tasks, like consults). */
+  includeArchived?: boolean;
 };
 
 /**
@@ -31,11 +37,20 @@ export type StartAgentRunInput = {
  * Throws AgentsPausedError while the global kill switch or the org's pause is on, and a 429 AppError once the
  * org has used its daily agent budget.
  */
-export async function startAgentRun({ orgId, taskId, agentId = null, message = null }: StartAgentRunInput) {
+export async function startAgentRun({
+  orgId,
+  taskId,
+  agentId = null,
+  message = null,
+  kind,
+  planId = null,
+  planNodeId = null,
+  includeArchived = false
+}: StartAgentRunInput) {
   assertAgentsNotPaused();
 
   const task = await prisma.task.findFirst({
-    where: { id: taskId, organizationId: orgId, archivedAt: null },
+    where: { id: taskId, organizationId: orgId, ...(includeArchived ? {} : { archivedAt: null }) },
     include: { department: true }
   });
   if (!task) return null;
@@ -104,7 +119,10 @@ export async function startAgentRun({ orgId, taskId, agentId = null, message = n
     agentId: agent.id,
     requestText: request,
     mode,
-    limits: await resolveRunLimits(orgId, agent.id)
+    limits: await resolveRunLimits(orgId, agent.id),
+    kind,
+    planId,
+    planNodeId
   });
   await enqueueAdvance(run.id);
 

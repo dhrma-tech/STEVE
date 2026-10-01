@@ -1,5 +1,5 @@
 import { listen, notify } from "@/lib/db/notify";
-import { getQueue } from "./queue";
+import { getQueue, type JobInput } from "./queue";
 
 /** Job type that moves a run forward by one step. */
 export const ADVANCE_JOB = "run.advance";
@@ -33,13 +33,12 @@ export function wakeWorkers(): void {
  * already queued for the run, further calls do nothing, and a worker that finds the run busy retries later.
  */
 export async function enqueueAdvance(runId: string, options: { delayMs?: number } = {}): Promise<void> {
-  await getQueue().enqueue({
-    type: ADVANCE_JOB,
-    runId,
-    payload: { runId },
-    dedupeKey: `advance:${runId}`,
-    runAt: options.delayMs ? new Date(Date.now() + options.delayMs) : undefined
-  });
+  await enqueueJob({ type: ADVANCE_JOB, runId, payload: { runId }, dedupeKey: `advance:${runId}` }, options);
+}
+
+/** Queue a job and wake the workers (here and, through NOTIFY, in other processes) unless it is delayed. */
+export async function enqueueJob(job: Omit<JobInput, "runAt">, options: { delayMs?: number } = {}): Promise<void> {
+  await getQueue().enqueue({ ...job, runAt: options.delayMs ? new Date(Date.now() + options.delayMs) : undefined });
   wakeWorkers();
   if (!options.delayMs) void notify(JOBS_CHANNEL);
 }

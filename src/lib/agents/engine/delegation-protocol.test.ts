@@ -34,6 +34,12 @@ async function startRoot(agentId: string, message = "Launch the landing page and
   return { session, run: (await getRunBySession(session.id))!, task };
 }
 
+/**
+ * How long a scripted model call is held so calls from agents running in parallel overlap. Generous on purpose:
+ * on a busy machine (the whole suite runs at once) setting up a run can take longer than a few hundred ms.
+ */
+const OVERLAP_MS = 1500;
+
 const childrenOf = (runId: string) => prisma.run.findMany({ where: { parentRunId: runId }, orderBy: { createdAt: "asc" } });
 const eventsOf = async (runId: string) => (await listEvents(runId, 0, 1000)).map((e) => ({ type: e.type, ...e.data }));
 
@@ -65,10 +71,10 @@ describe("scenario: build, copy and outreach in parallel", () => {
       { text: "Launch work is done: page, copy and outreach drafts." }
     ]);
     scriptedModel.route("Engineering Agent", [
-      finish("Landing page built.", { artifacts: [{ type: "pr", ref: "#12", title: "Landing page" }] }, { delayMs: 400 })
+      finish("Landing page built.", { artifacts: [{ type: "pr", ref: "#12", title: "Landing page" }] }, { delayMs: OVERLAP_MS })
     ]);
-    scriptedModel.route("Marketing Agent", [finish("Copy written.", { findings: ["Indie founders respond to speed"] }, { delayMs: 400 })]);
-    scriptedModel.route("Sales Agent", [finish("20 outreach drafts ready.", { status: "needs_input", openQuestions: ["Which offer?"] }, { delayMs: 400 })]);
+    scriptedModel.route("Marketing Agent", [finish("Copy written.", { findings: ["Indie founders respond to speed"] }, { delayMs: OVERLAP_MS })]);
+    scriptedModel.route("Sales Agent", [finish("20 outreach drafts ready.", { status: "needs_input", openQuestions: ["Which offer?"] }, { delayMs: OVERLAP_MS })]);
 
     const { run, session } = await startRoot(ops.id);
     const worker = new Worker({ id: "parallel", concurrency: 4, pollMs: 20, sweepMs: 60_000 });

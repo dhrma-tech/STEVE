@@ -11,6 +11,10 @@ import { isOrgPaused } from "../policy/store";
 import { delegationBlockReason, parsePermissionMode, stricterMode, type RunScope } from "../run-scope";
 import { evaluateToolCall, finishUnapprovedCall, requestToolApproval, runToolCall, type Emit } from "../tool-executor";
 import { buildToolset } from "../tools/registry";
+import { recordProposedPlan } from "../plans/proposal";
+import { planRunSystemPrompt, PLAN_PROMPT_KINDS } from "../plans/prompts";
+import { isSystemAgentSlug } from "../plans/system-agents";
+import { enqueuePlanAdvance } from "../plans/wake";
 import type { AgentTool, ToolContext } from "../tools/types";
 import { finalizeRunRecords, recordTreeUsage, usageNote } from "./finalize";
 import {
@@ -47,6 +51,16 @@ import { enqueueAdvance } from "./wake";
 const MAX_TURNS_PER_AGENT = 20;
 const TEXT_FLUSH_MS = 250;
 const LOW_RISK = new Set(["read", "write_internal"]);
+
+/**
+ * Runs that must end with a particular tool call: work handed over by another agent (or by the plan) ends with a
+ * structured handoff, the Reviewer ends with its verdict, and planning ends with a plan.
+ */
+function requiredEnding(kind: string): "finish_run" | "propose_plan" | null {
+  if (kind === "delegation" || kind === "plan_node" || kind === "review") return "finish_run";
+  if (kind === "plan") return "propose_plan";
+  return null;
+}
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
@@ -204,6 +218,37 @@ async function prepareState(run: Run, agent: NonNullable<Awaited<ReturnType<type
   } catch { /* ignore */ }
 
   const request = run.requestText;
+  const model = resolveModel(agent.model);
+  const memorySection = memories.length > 0 ? `## Your Memory\n${memories.map((m) => `- ${m.key}: ${m.value}`).join("\n")}` : "";
+
+  // The Chief of Staff and the Reviewer steer the team instead of doing department work: their own prompts.
+  if (PLAN_PROMPT_KINDS.has(run.kind)) {
+    const plan = run.planId ? await prisma.plan.findUnique({ where: { id: run.planId }, select: { status: true } }) : null;
+    const system = [
+      planRunSystemPrompt({
+        kind: run.kind,
+        agentName: agent.name,
+        orgName: org?.name ?? "your company",
+        replanning: plan?.status === "replanning",
+        businessPlan: orgContext.businessPlan,
+        brandKit: orgContext.brandKit,
+        team: renderDirectory(directory, agent.id)
+      }),
+      memorySection
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    return {
+      provider: model.provider,
+      modelId: model.modelId,
+      system,
+      user: request,
+      skillKeys,
+      messages: model.provider === "ollama" ? [] : initialMessages(model.provider, system, request),
+      pending: null
+    };
+  }
+
   const { system: baseSystem, user } = buildPrompt({
     agentName: agent.name,
     orgName: org?.name ?? "your company",
@@ -223,7 +268,7 @@ async function prepareState(run: Run, agent: NonNullable<Awaited<ReturnType<type
     brandKit: orgContext.brandKit
   });
   const sections = [baseSystem];
-  if (memories.length > 0) sections.push(`## Your Memory\n${memories.map((m) => `- ${m.key}: ${m.value}`).join("\n")}`);
+  if (memorySection) sections.push(memorySection);
   if (run.kind === "consult") {
     sections.push(
       "## A teammate's question\n" +
@@ -233,11 +278,10 @@ async function prepareState(run: Run, agent: NonNullable<Awaited<ReturnType<type
   } else {
     const team = renderDirectory(directory, agent.id);
     if (team) sections.push(team);
-    sections.push(collaborationGuide({ mustHandOff: run.kind === "delegation" }));
+    sections.push(collaborationGuide({ mustHandOff: requiredEnding(run.kind) === "finish_run" }));
   }
   const system = sections.join("\n\n");
 
-  const model = resolveModel(agent.model);
   return {
     provider: model.provider,
     modelId: model.modelId,
@@ -330,14 +374,19 @@ async function stepModelTurn(ctx: StepContext): Promise<AdvanceResult> {
 
   if (turn.toolCalls.length === 0) {
     state.pending = null;
-    // Delegated work must end with a structured handoff. Ask once; after that, wrap the text so the parent still gets one.
-    if (run.kind === "delegation" && !state.nudgedToFinish && run.turnCount + 1 < MAX_TURNS_PER_AGENT) {
+    // Delegated work must end with a structured handoff, and planning with a plan. Ask once; after that, delegated
+    // work's text is wrapped so the parent still gets a handoff, and the scheduler reports a plan that never came.
+    const ending = requiredEnding(run.kind);
+    if (ending && !state.nudgedToFinish && run.turnCount + 1 < MAX_TURNS_PER_AGENT) {
       state.nudgedToFinish = true;
       state.messages.push({
         role: "user",
         content:
-          "You ended without calling finish_run. The agent that delegated this work needs a structured handoff: call " +
-          "finish_run now with your status, a short summary, artifacts, findings and next steps."
+          ending === "propose_plan"
+            ? "You ended without calling propose_plan. Record the plan now with propose_plan (a summary and the steps), " +
+              "or ask the founder with ask_user if the goal is too unclear to plan."
+            : "You ended without calling finish_run. The agent that delegated this work needs a structured handoff: call " +
+              "finish_run now with your status, a short summary, artifacts, findings and next steps."
       });
       await saveState(run.id, state, { outputText, turnCount: { increment: 1 } });
       return "more";
@@ -445,6 +494,26 @@ async function processSlots(ctx: StepContext): Promise<"waiting_approval" | "wai
         waitingApproval = true;
         break;
       }
+      continue;
+    }
+
+    if (slot.name === "propose_plan") {
+      if (!slot.counted) {
+        ctx.scope.tree.budget.recordToolCall();
+        slot.counted = true;
+      }
+      const result =
+        ctx.run.kind === "plan"
+          ? await recordProposedPlan(ctx.run, slot.input)
+          : ({ ok: false, error: "Error: only the Chief of Staff's planning run can propose a plan." } as const);
+      if (result.ok) {
+        // Proposing the plan ends the planning run, like finish_run.
+        ctx.state.finish = { status: "done", summary: result.summary, artifacts: [], findings: [], nextSteps: [], openQuestions: [] };
+        settle(slot, { output: result.message, success: true });
+      } else {
+        settle(slot, { output: result.error, success: false });
+      }
+      await saveState(ctx.run.id, ctx.state);
       continue;
     }
 
@@ -649,6 +718,10 @@ async function startChildren(ctx: StepContext, slot: Slot) {
     const child = await prisma.agent.findFirst({ where: { organizationId: run.organizationId, slug: brief.agentSlug, archivedAt: null } });
     if (!child) {
       refuse(`no agent with slug "${brief.agentSlug}" in this organization. Check Your team for the right slug.`);
+      continue;
+    }
+    if (isSystemAgentSlug(child.slug)) {
+      refuse(`"${brief.agentSlug}" coordinates the team and does not take delegated work. Pick a teammate from Your team.`);
       continue;
     }
     // Loops and runaway depth are refused before anything is created; the reason goes back to the model.
@@ -868,7 +941,7 @@ async function agentName(agentId: string): Promise<string> {
  */
 function finalHandoff(ctx: StepContext, output: string): HandoffInput | null {
   if (ctx.state.finish) return ctx.state.finish;
-  if (ctx.run.kind === "delegation") return handoffFromText(output);
+  if (requiredEnding(ctx.run.kind) === "finish_run") return handoffFromText(output);
   return null;
 }
 
@@ -924,6 +997,8 @@ async function closeOut(run: Run, root: Run, result: { outcome: "completed" | "f
   if (isRoot) await recordTreeUsage(rootFresh, totals);
   if (run.parentRunId) await enqueueAdvance(run.parentRunId);
   await markClosedOut(run.id);
+  // After the close-out: the plan reads the step's task and result, which the close-out writes.
+  if (run.planId) await enqueuePlanAdvance(run.planId);
 }
 
 async function markClosedOut(runId: string) {
@@ -957,6 +1032,7 @@ export async function repairUnclosedRuns(olderThanMs: number): Promise<number> {
     });
     if (isRoot && outcome !== "cancelled") await recordTreeUsage(root, budgetFromRoot(root));
     if (run.parentRunId) await enqueueAdvance(run.parentRunId);
+    if (run.planId) await enqueuePlanAdvance(run.planId);
     repaired += 1;
   }
   return repaired;
@@ -980,6 +1056,8 @@ export async function cancelRun(runId: string, reason = "Cancelled by a user."):
   });
   if (run.parentRunId) await enqueueAdvance(run.parentRunId);
   await markClosedOut(run.id);
+  // After the close-out: the plan reads the step's task and result, which the close-out writes.
+  if (run.planId) await enqueuePlanAdvance(run.planId);
 }
 
 async function cancelDescendants(run: Run) {

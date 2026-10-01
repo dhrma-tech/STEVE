@@ -72,7 +72,9 @@ export const TOOL_RISK: Record<string, ToolRisk> = {
   ask_agent: "delegate",
   // Pausing to ask the founder and handing back a result have no effect outside the run.
   ask_user: "read",
-  finish_run: "read"
+  finish_run: "read",
+  // Records the Chief of Staff's plan on its Plan row; nothing runs until the founder approves it.
+  propose_plan: "write_internal"
 };
 
 /** Risks that can never be pre-approved for a run or an agent: every use needs a fresh human decision. */
