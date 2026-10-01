@@ -358,7 +358,8 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
 | 2 — Guardrails | **done 2026-09-29** (see notes below) |
 | 3a — Durable runtime on SQLite | **done 2026-09-30** (see notes below) |
 | 3b — Postgres + pg-boss | **done 2026-09-30** (see notes below) |
-| 4–10 | not started |
+| 4 — Team awareness and delegation protocol | **done 2026-10-01** (see notes below) |
+| 5–10 | not started |
 
 **Phase 0 notes**
 - Delivered: Vitest with a scripted Anthropic provider and in-memory DB (`src/lib/agents/testing/`), 16 passing tests (single run, delegation, approval approve/deny, kill switch, auth secret, flags) plus 6 `it.todo` markers for Phase 2–4 requirements; CI workflow (`.github/workflows/ci.yml`); `AUTH_SECRET` now required (32+ chars) in production; `/api/ai/chat` requires login; `/test` returns 404 in production; `ORCHESTRATOR_V2` flag and `AGENTS_PAUSED` env kill switch (enforced in `runAgent`).
@@ -412,5 +413,12 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
 - Found by the move: two lost-update races that SQLite's single writer had hidden (run grants, event ordering), fixed; and a crash window between a run's final status and its close-out, now repaired by the sweeper (`Run.closedOutAt`).
 - The `contains` queries: user-facing search and two fixed-text lookups are case-insensitive as before; the idempotency-key lookup stays exact.
 - Not yet proven: the user's own PostgreSQL 16 (credentials to be added; only `DATABASE_URL` changes) and Supabase (use the session pooler or a direct connection for workers; set `PG_NOTIFY=off` behind a transaction pooler). Tests and the live check ran on Postgres 18 (embedded); CI uses 17.
+
+**Phase 4 notes (team awareness and delegation)**
+- Delivered: agent directory in every system prompt (`directory.ts`; `Agent.role`, `capabilitiesJson`, `modelTier`); typed briefs for `delegate_agent` and new `delegate_many`; `finish_run` with the §7 handoff validated by Zod (`engine/handoff.ts`), stored on `Run.resultJson`; `ask_agent` read-only consults (`Run.kind = consult`); `ask_user` questions as `Approval` rows with `kind: question`, shown in the inbox and workspace dialog, answered via `POST /api/orgs/:orgId/agent-questions/:approvalId/answer`. Migration `20261001100000_team_delegation_protocol`.
+- Budget split: the parent's remaining budget is divided equally among the children started in one turn; a brief's `budgetCents` can only lower a share. `Run.budgetCapCents` and `Run.costCents` (own spend plus descendants).
+- Deviation: no `await_children` tool. Delegation already ends the parent's step as `waiting_children` and it resumes with all handoffs, so a separate wait tool would add nothing.
+- Plain-text endings: a delegated run is re-prompted once, then its text is wrapped into a handoff rather than failed. A root run may end in plain text.
+- Exit criterion met with mocked models: the build/copy/outreach scenario test runs three children concurrently and returns three structured handoffs; the feed renders concurrent children. Not run against a real model.
 
 Existing code to build on rather than rewrite: `src/lib/agents/engine/*` (step machine, queue interface, worker), `tools/*` (tool implementations), `TaskSession.parentSessionId` and `Approval` (schema), `execution-feed.tsx` and `agent-workspace-dialog.tsx` (UI), `model-router.ts` (extend to tiers).

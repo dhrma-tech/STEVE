@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Loader2, XCircle } from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronDown, ChevronRight, HelpCircle, Loader2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 // ── Public types (consumed by agent-workspace-dialog) ─────────────────────────
@@ -9,7 +9,20 @@ import { cn } from "@/lib/utils/cn";
 export type FeedItem =
   | { kind: "text"; text: string; id: string }
   | { kind: "tool"; name: string; input: unknown; output?: string; success?: boolean; id: string }
-  | { kind: "delegation"; agentSlug: string; sessionId: string; output?: string; id: string };
+  | {
+      kind: "delegation";
+      agentSlug: string;
+      sessionId: string;
+      output?: string;
+      id: string;
+      /** A read-only question to a teammate (ask_agent) rather than handed-over work. */
+      consult?: boolean;
+      objective?: string;
+      /** Handoff status once finished: done | blocked | failed | needs_input. */
+      status?: string;
+      summary?: string;
+    }
+  | { kind: "question"; approvalId: string; question: string; answer?: string | null; status?: string; id: string };
 
 // ── Root feed component ───────────────────────────────────────────────────────
 
@@ -27,6 +40,7 @@ export function ExecutionFeed({ items, agentSlug }: { items: FeedItem[]; agentSl
         if (item.kind === "text") return <TextBlock key={item.id} text={item.text} />;
         if (item.kind === "tool") return <ToolCard key={item.id} item={item} />;
         if (item.kind === "delegation") return <DelegationCard key={item.id} item={item} />;
+        if (item.kind === "question") return <QuestionCard key={item.id} item={item} />;
         return null;
       })}
 
@@ -51,7 +65,7 @@ function TextBlock({ text }: { text: string }) {
       {text.split("\n").map((line, i) => (
         <div key={i} className="flex gap-2">
           <span className="shrink-0 select-none" style={{ color: "var(--terminal-text-muted)" }}>›</span>
-          <span style={{ color: "var(--terminal-text)" }}>{line || " "}</span>
+          <span style={{ color: "var(--terminal-text)" }}>{line || " "}</span>
         </div>
       ))}
     </div>
@@ -139,7 +153,10 @@ function ToolCard({ item }: { item: Extract<FeedItem, { kind: "tool" }> }) {
 
 function DelegationCard({ item }: { item: Extract<FeedItem, { kind: "delegation" }> }) {
   const [open, setOpen] = React.useState(false);
-  const done = item.output !== undefined;
+  const done = item.output !== undefined || item.status !== undefined;
+  const ok = !item.status || item.status === "done";
+  const body = item.summary ?? item.output;
+  const verb = item.consult ? (done ? "Asked" : "Asking") : done ? "Delegated to" : "Delegating to";
 
   return (
     <div
@@ -155,15 +172,23 @@ function DelegationCard({ item }: { item: Extract<FeedItem, { kind: "delegation"
         className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-[var(--foreground-5)]"
       >
         {done ? (
-          <CheckCircle2 className="size-3.5 shrink-0 text-[var(--tt-color-text-green-contrast)]" />
+          ok ? (
+            <CheckCircle2 className="size-3.5 shrink-0 text-[var(--tt-color-text-green-contrast)]" />
+          ) : (
+            <XCircle className="size-3.5 shrink-0 text-[var(--alert)]" />
+          )
         ) : (
           <Loader2 className="size-3.5 shrink-0 animate-spin" style={{ color: "rgb(139,92,246)" }} />
         )}
         <ArrowRight className="size-3 shrink-0" style={{ color: "rgb(139,92,246)" }} />
-        <span className="flex-1 text-xs font-medium" style={{ color: "var(--terminal-text-bright)" }}>
-          {done ? "Delegated to" : "Delegating to"}:{" "}
+        <span className="min-w-0 flex-1 truncate text-xs font-medium" style={{ color: "var(--terminal-text-bright)" }}>
+          {verb}:{" "}
           <code className="font-mono" style={{ color: "rgb(139,92,246)" }}>{item.agentSlug}</code>
+          {item.objective ? <span style={{ color: "var(--terminal-text-muted)" }}> · {item.objective}</span> : null}
         </span>
+        {done && !ok && item.status ? (
+          <span className="shrink-0 text-[10px] uppercase tracking-wide text-[var(--alert)]">{item.status.replace("_", " ")}</span>
+        ) : null}
         {open ? (
           <ChevronDown className="size-3 shrink-0" style={{ color: "var(--terminal-text-muted)" }} />
         ) : (
@@ -171,20 +196,42 @@ function DelegationCard({ item }: { item: Extract<FeedItem, { kind: "delegation"
         )}
       </button>
 
-      {open && item.output && (
+      {open && body && (
         <div
           className="border-t px-3 pb-3 pt-2"
           style={{ borderColor: "var(--border-10)", background: "var(--terminal-bg)" }}
         >
           <p className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: "var(--terminal-text-muted)" }}>
-            Output
+            {item.summary ? (item.consult ? "Answer" : "Handoff") : "Output"}
           </p>
           <pre className="whitespace-pre-wrap break-all text-[11px]" style={{ color: "var(--terminal-text)" }}>
-            {item.output.slice(0, 600)}
-            {item.output.length > 600 ? "\n…" : ""}
+            {body.slice(0, 600)}
+            {body.length > 600 ? "\n…" : ""}
           </pre>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Question to the founder ───────────────────────────────────────────────────
+
+function QuestionCard({ item }: { item: Extract<FeedItem, { kind: "question" }> }) {
+  const answered = item.status !== undefined;
+  return (
+    <div
+      className="mb-2 rounded-[6px] border px-3 py-2"
+      style={{ background: "var(--foreground-3)", borderColor: answered ? "var(--border-10)" : "var(--alert)" }}
+    >
+      <div className="flex items-center gap-2 text-xs font-medium" style={{ color: "var(--terminal-text-bright)" }}>
+        <HelpCircle className="size-3.5 shrink-0 text-[var(--alert)]" />
+        <span className="flex-1">Asked you: {item.question}</span>
+      </div>
+      {answered ? (
+        <p className="mt-1 text-[11px]" style={{ color: "var(--terminal-text-muted)" }}>
+          {item.answer ? `You answered: ${item.answer}` : "No answer in time; the agent carried on."}
+        </p>
+      ) : null}
     </div>
   );
 }

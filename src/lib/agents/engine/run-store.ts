@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db/client";
 import { listen, notify as pgNotify } from "@/lib/db/notify";
 import type { AgentEvent } from "../events";
 import { isForwardedEvent } from "../events";
-import { defaultLimits, RunBudget, type RunLimits } from "../policy/limits";
+import { defaultLimits, LimitExceededError, RunBudget, type RunLimits } from "../policy/limits";
 import { ACTIVE_STATUSES, isTerminalStatus, type RunState } from "./types";
 
 export type { Run } from "@prisma/client";
@@ -112,6 +112,43 @@ export async function flushBudget(rootRunId: string, budget: RunBudget) {
       toolCalls: { increment: d.toolCalls }
     }
   });
+}
+
+/** Charge a model turn's cost to the run and every run above it, so each run knows what its subtree cost. */
+export async function addRunCost(run: Pick<Run, "id">, cents: number): Promise<void> {
+  if (!(cents > 0)) return;
+  let id: string | null = run.id;
+  for (let hops = 0; id && hops < 12; hops++) {
+    const row: { parentRunId: string | null } = await prisma.run.update({
+      where: { id },
+      data: { costCents: { increment: cents } },
+      select: { parentRunId: true }
+    });
+    id = row.parentRunId;
+  }
+}
+
+/**
+ * Throw when this run or a run above it has used up the budget share its parent gave it. A parent splits its
+ * remaining budget among the teammates it delegates to, so one delegate cannot starve the others.
+ */
+export async function assertWithinBudgetCaps(run: Pick<Run, "id" | "parentRunId" | "costCents" | "budgetCapCents">): Promise<void> {
+  let current: Pick<Run, "id" | "parentRunId" | "costCents" | "budgetCapCents"> | null = run;
+  for (let hops = 0; current && hops < 12; hops++) {
+    if (current.budgetCapCents !== null && current.costCents >= current.budgetCapCents) {
+      const whose = current.id === run.id ? "This delegated work" : "The delegated work this run belongs to";
+      throw new LimitExceededError(
+        "budget",
+        `${whose} used its budget share (~${current.costCents.toFixed(1)}¢ of ${current.budgetCapCents.toFixed(1)}¢). It was stopped.`
+      );
+    }
+    current = current.parentRunId
+      ? await prisma.run.findUnique({
+          where: { id: current.parentRunId },
+          select: { id: true, parentRunId: true, costCents: true, budgetCapCents: true }
+        })
+      : null;
+  }
 }
 
 export function parseGrants(root: Pick<Run, "grantsJson">): Set<string> {

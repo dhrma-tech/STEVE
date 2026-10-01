@@ -4,7 +4,8 @@ import { readFileTool, writeFileTool, listFilesTool, deleteFileTool } from "./fi
 import { githubListReposTool, githubReadFileTool, githubCreateBranchTool, githubPushFileTool, githubCreatePrTool } from "./github";
 import { vercelListDeploymentsTool, vercelGetDeploymentTool, vercelTriggerDeployTool } from "./vercel";
 import { postizCreatePostTool, postizSchedulePostTool, postizListPostsTool } from "./postiz";
-import { delegateAgentTool } from "./delegate-agent";
+import { askAgentTool, askUserTool, delegateAgentTool, delegateManyTool, finishRunTool } from "./delegate-agent";
+import { classifyToolCall } from "../policy/risk";
 import { memoryStoreTool, memoryRetrieveTool, memoryListTool } from "./memory";
 import { createTaskTool, updateTaskTool, assignTaskTool } from "./create-task";
 import { emailSendTool, emailListSentTool } from "./email";
@@ -14,12 +15,23 @@ import { posthogGetEventsTool, sentryListIssuesTool } from "./monitoring";
 import { supabaseListTablesTool, supabaseRunQueryTool, supabaseCreateBucketTool } from "./supabase";
 import { supportListThreadsTool, supportCreateThreadTool, supportReplyToThreadTool } from "./support";
 
+export type ToolsetOptions = {
+  /** A consult (an `ask_agent` question) gets read-only tools only: no changes, no delegation, no questions to people. */
+  kind?: string;
+};
+
 /**
  * Builds the toolset for an agent based on its skill keys.
  * Always-on tools are included unconditionally; integration tools
  * are gated behind the corresponding skill key.
  */
-export function buildToolset(skillKeys: string[]): AgentTool[] {
+export function buildToolset(skillKeys: string[], options: ToolsetOptions = {}): AgentTool[] {
+  const all = buildFullToolset(skillKeys);
+  if (options.kind === "consult") return all.filter((tool) => classifyToolCall(tool.definition.name) === "read" && tool !== askUserTool && tool !== finishRunTool);
+  return all;
+}
+
+function buildFullToolset(skillKeys: string[]): AgentTool[] {
   const tools: AgentTool[] = [
     // Always available
     webSearchTool,
@@ -28,6 +40,10 @@ export function buildToolset(skillKeys: string[]): AgentTool[] {
     listFilesTool,
     deleteFileTool,
     delegateAgentTool,
+    delegateManyTool,
+    askAgentTool,
+    askUserTool,
+    finishRunTool,
     memoryStoreTool,
     memoryRetrieveTool,
     memoryListTool,

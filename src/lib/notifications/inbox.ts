@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/db/client";
+import { listOpenQuestions } from "@/lib/agents/policy/approvals";
 
 export type InboxItem = {
   id: string;
-  kind: "onboarding" | "roadmap" | "task" | "file" | "integration" | "billing";
+  kind: "onboarding" | "roadmap" | "task" | "file" | "integration" | "billing" | "agent_question";
   title: string;
   description: string;
   href: string;
@@ -24,7 +25,7 @@ export async function getInboxItemsForUser({
   orgId: string;
   userId: string;
 }): Promise<InboxState> {
-  const [organization, roadmapItems, tasks, files, integrations, billing, readLogs] = await Promise.all([
+  const [organization, roadmapItems, tasks, files, integrations, billing, readLogs, questions] = await Promise.all([
     prisma.organization.findUniqueOrThrow({ where: { id: orgId } }),
     prisma.roadmapItem.findMany({
       where: { organizationId: orgId, status: { in: ["available", "complete"] } },
@@ -61,7 +62,8 @@ export async function getInboxItemsForUser({
         targetType: "notification"
       },
       select: { targetId: true }
-    })
+    }),
+    listOpenQuestions(orgId)
   ]);
 
   const readIds = new Set(readLogs.map((log) => log.targetId).filter(Boolean));
@@ -101,6 +103,19 @@ export async function getInboxItemsForUser({
       href: `/org/${orgId}/canvas?file=${file.id}`,
       status: file.visibility,
       createdAt: file.updatedAt.toISOString()
+    });
+  }
+
+  // An agent is paused waiting on the founder: these stay at the top until answered.
+  for (const question of questions) {
+    items.push({
+      id: `agent-question:${question.id}`,
+      kind: "agent_question",
+      title: `${question.agent?.name ?? "An agent"} asks: ${question.question}`.slice(0, 200),
+      description: question.context ?? "Answer to let the agent continue.",
+      href: `/org/${orgId}/canvas?session=${question.sessionId ?? ""}`,
+      status: "waiting",
+      createdAt: new Date().toISOString()
     });
   }
 

@@ -66,8 +66,13 @@ export const TOOL_RISK: Record<string, ToolRisk> = {
   stripe_create_payment_link: "spend",
   vercel_trigger_deploy: "spend",
 
-  // Orchestration
-  delegate_agent: "delegate"
+  // Orchestration (carried out by the run engine, bounded by the run tree's limits)
+  delegate_agent: "delegate",
+  delegate_many: "delegate",
+  ask_agent: "delegate",
+  // Pausing to ask the founder and handing back a result have no effect outside the run.
+  ask_user: "read",
+  finish_run: "read"
 };
 
 /** Risks that can never be pre-approved for a run or an agent: every use needs a fresh human decision. */

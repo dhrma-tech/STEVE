@@ -5,8 +5,9 @@
  *   vi.mock("@anthropic-ai/sdk", async () => (await import("@/lib/agents/testing/scripted-anthropic")).anthropicModuleMock);
  *   scriptedModel.load([{ toolCalls: [{ name: "delegate_agent", input: {...} }] }, { text: "done" }]);
  *
- * Turns are consumed in the order the runner asks for them, across every agent in
- * the run tree. That is deterministic because the runner is sequential today.
+ * Turns are consumed in the order the runner asks for them, across every agent in the run tree. When agents run
+ * in parallel the order is not fixed, so give each agent its own script with `route("Marketing Agent", turns)`: a
+ * call whose system prompt starts with "You are Marketing Agent" takes its turns from that script.
  */
 
 export type ScriptedToolCall = { name: string; input: Record<string, unknown> };
@@ -17,6 +18,8 @@ export type ScriptedTurn = {
   usage?: { input: number; output: number };
   /** Make this turn fail like a provider error (for example { status: 503 }) instead of answering. */
   error?: { status?: number; message: string };
+  /** Hold the answer this long, so calls from agents running in parallel overlap. */
+  delayMs?: number;
 };
 
 export type RecordedCall = {
@@ -28,13 +31,30 @@ export type RecordedCall = {
 
 class ScriptedModel {
   private turns: ScriptedTurn[] = [];
+  private routes = new Map<string, ScriptedTurn[]>();
   calls: RecordedCall[] = [];
   private toolSeq = 0;
+  /** Model calls in progress right now, and the most there ever were at once. */
+  inFlight = 0;
+  maxInFlight = 0;
 
   load(turns: ScriptedTurn[]) {
     this.turns = [...turns];
+    this.routes.clear();
     this.calls = [];
     this.toolSeq = 0;
+    this.inFlight = 0;
+    this.maxInFlight = 0;
+  }
+
+  /** Give the agent whose system prompt starts with "You are <agentName>" its own script. */
+  route(agentName: string, turns: ScriptedTurn[]) {
+    this.routes.set(agentName, [...turns]);
+  }
+
+  private queueFor(system: string): ScriptedTurn[] {
+    for (const [name, turns] of this.routes) if (system.startsWith(`You are ${name},`)) return turns;
+    return this.turns;
   }
 
   get remaining() {
@@ -43,7 +63,7 @@ class ScriptedModel {
 
   next(call: RecordedCall) {
     this.calls.push(call);
-    const turn = this.turns.shift();
+    const turn = this.queueFor(call.system).shift();
     if (!turn) throw new Error("ScriptedModel: script exhausted (the runner asked for more turns than scripted)");
     if (turn.error) throw Object.assign(new Error(turn.error.message), { status: turn.error.status });
     const content: Array<Record<string, unknown>> = [];
@@ -78,6 +98,15 @@ class ScriptedAnthropic {
             messages: structuredClone(params.messages),
             toolNames: (params.tools ?? []).map((t) => t.name)
           });
+          if (turn.delayMs) {
+            scriptedModel.inFlight += 1;
+            scriptedModel.maxInFlight = Math.max(scriptedModel.maxInFlight, scriptedModel.inFlight);
+            try {
+              await new Promise((resolve) => setTimeout(resolve, turn.delayMs));
+            } finally {
+              scriptedModel.inFlight -= 1;
+            }
+          }
           if (turn.text) for (const cb of handlers.text ?? []) cb(turn.text);
           return { content, stop_reason, usage };
         }

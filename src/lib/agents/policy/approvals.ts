@@ -87,7 +87,7 @@ export async function resolveApproval(params: {
   note?: string;
 }): Promise<ResolveResult> {
   const approval = await prisma.approval.findFirst({ where: { id: params.approvalId, organizationId: params.orgId } });
-  if (!approval || !approval.sessionId || !(await sessionBelongsTo(approval.sessionId, params.sessionId))) {
+  if (!approval || approval.kind !== "tool" || !approval.sessionId || !(await sessionBelongsTo(approval.sessionId, params.sessionId))) {
     return { kind: "not_found" };
   }
   if (approval.status !== "pending") return { kind: "already_resolved", status: approval.status };
@@ -134,6 +134,96 @@ export async function resolveApproval(params: {
 
   await enqueueAdvance(run.id);
   return { kind: "ok", approved: params.decision === "approve", scopeApplied: applied };
+}
+
+// ── Questions to the founder (ask_user) ──────────────────────────────────────────
+
+/**
+ * An agent's question to the founder. Stored as an `Approval` of kind `question` so it shares the inbox, expiry and
+ * wake-up machinery with tool approvals; the answer is `responseText`.
+ */
+export async function createQuestion(params: {
+  orgId: string;
+  sessionId: string;
+  agentId: string;
+  question: string;
+  context?: string | null;
+  options?: string[];
+  timeoutMs: number;
+}) {
+  return prisma.approval.create({
+    data: {
+      organizationId: params.orgId,
+      kind: "question",
+      requestedByAgentId: params.agentId,
+      sessionId: params.sessionId,
+      toolName: "ask_user",
+      payloadJson: redactSecrets(JSON.stringify({ question: params.question, context: params.context ?? null, options: params.options ?? [] })),
+      title: params.question.slice(0, 200),
+      description: params.context ?? null,
+      riskLevel: "question",
+      status: "pending",
+      expiresAt: new Date(Date.now() + params.timeoutMs)
+    }
+  });
+}
+
+export type AnswerResult =
+  | { kind: "not_found" }
+  | { kind: "already_resolved"; status: string }
+  | { kind: "stale" }
+  | { kind: "ok" };
+
+/** Record the founder's answer and wake the run that asked. */
+export async function answerQuestion(params: { orgId: string; approvalId: string; userId: string; answer: string }): Promise<AnswerResult> {
+  const question = await prisma.approval.findFirst({ where: { id: params.approvalId, organizationId: params.orgId, kind: "question" } });
+  if (!question || !question.sessionId) return { kind: "not_found" };
+  if (question.status !== "pending") return { kind: "already_resolved", status: question.status };
+
+  const run = await getRunBySession(question.sessionId);
+  if (!run || isTerminalStatus(run.status)) {
+    await prisma.approval.updateMany({ where: { id: question.id, status: "pending" }, data: { status: "expired", reviewedAt: new Date() } });
+    return { kind: "stale" };
+  }
+
+  const updated = await prisma.approval.updateMany({
+    where: { id: question.id, status: "pending" },
+    data: { status: "approved", responseText: params.answer, reviewedByUserId: params.userId, reviewedAt: new Date() }
+  });
+  if (updated.count === 0) {
+    const current = await prisma.approval.findUnique({ where: { id: question.id } });
+    return { kind: "already_resolved", status: current?.status ?? "resolved" };
+  }
+  await enqueueAdvance(run.id);
+  return { kind: "ok" };
+}
+
+/** Open questions for the founder, newest first. */
+export async function listOpenQuestions(orgId: string) {
+  const rows = await prisma.approval.findMany({
+    where: { organizationId: orgId, kind: "question", status: "pending" },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    include: { requestedByAgent: { select: { id: true, name: true, slug: true } } }
+  });
+  return rows.map((row) => {
+    let payload: { question?: string; context?: string | null; options?: string[] } = {};
+    try {
+      payload = JSON.parse(row.payloadJson ?? "{}") as typeof payload;
+    } catch {
+      /* keep empty */
+    }
+    return {
+      id: row.id,
+      sessionId: row.sessionId,
+      agent: row.requestedByAgent,
+      question: payload.question ?? row.title,
+      context: payload.context ?? null,
+      options: payload.options ?? [],
+      createdAt: row.createdAt,
+      expiresAt: row.expiresAt
+    };
+  });
 }
 
 /** Mark approvals nobody answered in time as expired and wake their runs so they can carry on without them. */

@@ -44,6 +44,8 @@ const delegate = (agentSlug: string, task = "Write the launch copy"): ScriptedTu
   toolCalls: [{ name: "delegate_agent", input: { agentSlug, task } }]
 });
 const call = (name: string, input: Record<string, unknown> = {}): ScriptedTurn => ({ toolCalls: [{ name, input }] });
+/** A delegated agent ending its work with a structured handoff. */
+const finish = (summary: string, status = "done"): ScriptedTurn => call("finish_run", { status, summary });
 
 async function setup(mode: PermissionMode = "review_required") {
   const parent = await seedAgent({ slug: "engineering-default", name: "Engineering Agent", departmentSlug: "engineering", permissionMode: mode });
@@ -140,14 +142,15 @@ describe("a single agent", () => {
 describe("delegation", () => {
   it("runs the child as its own run, links it to the parent and feeds its result back", async () => {
     const { start } = await setup("review_required");
-    scriptedModel.load([delegate("marketing-default"), { text: "Launch copy drafted." }, { text: "Landing page is ready." }]);
+    scriptedModel.load([delegate("marketing-default"), finish("Launch copy drafted."), { text: "Landing page is ready." }]);
     const { session, run } = await start();
 
     await drainAll();
 
     expect((await getRun(run.id))?.status).toBe("completed");
     const child = (await prisma.run.findFirstOrThrow({ where: { parentRunId: run.id } }))!;
-    expect(child).toMatchObject({ status: "completed", depth: 1, rootRunId: run.id, outputText: "Launch copy drafted." });
+    expect(child).toMatchObject({ status: "completed", depth: 1, rootRunId: run.id, kind: "delegation" });
+    expect(child.outputText).toContain("Launch copy drafted.");
     expect((await prisma.taskSession.findUniqueOrThrow({ where: { id: child.sessionId } })).parentSessionId).toBe(session.id);
 
     // The parent's next model call carries the child's output as the tool result.
@@ -168,8 +171,8 @@ describe("delegation", () => {
         { name: "delegate_agent", input: { agentSlug: "marketing-default", task: "copy" } },
         { name: "delegate_agent", input: { agentSlug: "sales-default", task: "outreach" } }
       ] },
-      { text: "copy done" },
-      { text: "outreach done" },
+      finish("copy done"),
+      finish("outreach done"),
       { text: "All delegated work is done." }
     ]);
     const { run } = await start();
@@ -215,7 +218,7 @@ describe("delegation", () => {
   it("refuses a delegation loop back to an agent already in the chain", async () => {
     const { start } = await setup();
     // Engineering -> Marketing -> Engineering (blocked) -> Marketing finishes -> Engineering finishes
-    scriptedModel.load([delegate("marketing-default"), delegate("engineering-default"), { text: "Marketing done." }, { text: "All done." }]);
+    scriptedModel.load([delegate("marketing-default"), delegate("engineering-default"), finish("Marketing done."), { text: "All done." }]);
     const { run } = await start();
     await drainAll();
 
@@ -228,7 +231,7 @@ describe("delegation", () => {
     vi.stubEnv("AGENT_MAX_DEPTH", "1");
     const { start } = await setup();
     await seedAgent({ slug: "sales-default", name: "Sales Agent", departmentSlug: "sales" });
-    scriptedModel.load([delegate("marketing-default"), delegate("sales-default"), { text: "Did it myself." }, { text: "Done." }]);
+    scriptedModel.load([delegate("marketing-default"), delegate("sales-default"), finish("Did it myself."), { text: "Done." }]);
     const { run } = await start();
     await drainAll();
 
@@ -240,7 +243,7 @@ describe("delegation", () => {
   it("never lets a delegated agent be less restricted than its caller, and surfaces its approval on the root run", async () => {
     const { start } = await setup("review_required");
     // The child is configured 'trusted' but inherits review_required, so its push asks first.
-    scriptedModel.load([delegate("marketing-default"), call("github_push_file", { path: "a.ts" }), { text: "Pushed." }, { text: "Done." }]);
+    scriptedModel.load([delegate("marketing-default"), call("github_push_file", { path: "a.ts" }), finish("Pushed."), { text: "Done." }]);
     const { session, run } = await start();
 
     await drainAll();

@@ -168,7 +168,9 @@ export class Worker {
     const runId = job.runId ?? payload?.runId;
     if (!runId) return;
 
-    const result = await advanceRun(runId, { workerId: this.id, leaseMs: this.leaseMs });
+    // The lease holder is this job, not this worker: a worker handles several jobs at once, and two jobs for the
+    // same run must not both get in (a holder may re-take its own lease).
+    const result = await advanceRun(runId, { workerId: `${this.id}/${job.id}`, leaseMs: this.leaseMs });
     if (result === "more") await enqueueAdvance(runId);
     // Another worker is on it. Look again shortly so a wake-up that arrived meanwhile is not lost.
     else if (result === "busy") await enqueueAdvance(runId, { delayMs: 1000 });
