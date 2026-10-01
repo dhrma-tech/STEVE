@@ -360,7 +360,8 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
 | 3b — Postgres + pg-boss | **done 2026-09-30** (see notes below) |
 | 4 — Team awareness and delegation protocol | **done 2026-10-01** (see notes below) |
 | 5 — Orchestrator and planning | **done 2026-10-01** (see notes below) |
-| 6–10 | not started |
+| 6 — Shared memory and knowledge | **done 2026-10-01** (see notes below) |
+| 7–10 | not started |
 
 **Phase 0 notes**
 - Delivered: Vitest with a scripted Anthropic provider and in-memory DB (`src/lib/agents/testing/`), 16 passing tests (single run, delegation, approval approve/deny, kill switch, auth secret, flags) plus 6 `it.todo` markers for Phase 2–4 requirements; CI workflow (`.github/workflows/ci.yml`); `AUTH_SECRET` now required (32+ chars) in production; `/api/ai/chat` requires login; `/test` returns 404 in production; `ORCHESTRATOR_V2` flag and `AGENTS_PAUSED` env kill switch (enforced in `runAgent`).
@@ -427,6 +428,13 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
 - Exit criterion met with mocked models (`plans.test.ts`): the goal "Launch our landing page and announce it" gives a 6-step plan across 4 departments. It waits for approval, runs brand and copy in parallel, starts every step after its dependencies, has the copy and build reviewed, replans after an injected deploy failure, and ends with the report.
 - Decisions: plan steps are root runs (each has its own tree limits and budget), not children of the Chief of Staff's run, so a long plan never holds one run open and each step is visible and cancellable on its own. The Chief of Staff does not do work and cannot delegate; it plans, and the scheduler executes. A revision after a failure goes ahead without a second founder review: the founder approved the goal, and replans are capped. Rejected reviews get one more attempt before replanning. If the Reviewer itself fails, the step is accepted as "not reviewed" rather than blocking the plan.
 - Deviation: plan nodes are not assignable to people yet (decision 5 in §11 is still open). The Chief of Staff uses the department agents' model until Phase 8 adds tiers (`Agent.modelTier = planner` is recorded). Mission Control's delegation tree and the morning briefing are Phase 7.
+- Not run against a real model.
+
+**Phase 6 notes (shared memory and knowledge)**
+- Delivered: `OrgMemory` with company, department and agent scopes, confidence, review status and revision history (newer wins, old kept). `AgentMemory` is migrated into it and dropped. Scoped `memory_store`, `memory_retrieve` and `memory_list`. Bounded, relevance-ranked memory in every prompt. Run results are indexed, and handoff findings become proposed memories. Full-text knowledge search over files, chat, run summaries and memory, with a `search_knowledge` tool and a command-palette group. Settings → Memory to review, edit, delete, teach and search. Code in `src/lib/memory/` and `src/lib/knowledge/`.
+- Exit criterion met with mocked models (`memory.test.ts`): a brand voice taught to Marketing appears in Sales' next run, and the founder can view, edit (history kept) and delete it, with the change reflected in the next run.
+- Decisions: findings from runs are only ever *proposed* (founder review), because memory reaches every later prompt and a run can be prompt-injected. An agent's own `memory_store` is trusted unless it reports confidence below 0.6. A proposal never overwrites an established fact. Values that look like secrets are refused.
+- Deviation: full-text search instead of embeddings and pgvector (not available in the embedded Postgres, and no embedding key). Add embeddings behind `searchKnowledge` when the deployment is on Supabase with pgvector; Phase 8's model configuration is the natural place for the embedding model.
 - Not run against a real model.
 
 Existing code to build on rather than rewrite: `src/lib/agents/engine/*` (step machine, queue interface, worker), `tools/*` (tool implementations), `TaskSession.parentSessionId` and `Approval` (schema), `execution-feed.tsx` and `agent-workspace-dialog.tsx` (UI), `model-router.ts` (extend to tiers).

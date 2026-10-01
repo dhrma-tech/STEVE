@@ -15,6 +15,8 @@ import { recordProposedPlan } from "../plans/proposal";
 import { planRunSystemPrompt, PLAN_PROMPT_KINDS } from "../plans/prompts";
 import { isSystemAgentSlug } from "../plans/system-agents";
 import { enqueuePlanAdvance } from "../plans/wake";
+import { captureRunLearning } from "@/lib/memory/learning";
+import { rankMemories, renderMemorySection, scopesFor, visibleMemories } from "@/lib/memory/store";
 import type { AgentTool, ToolContext } from "../tools/types";
 import { finalizeRunRecords, recordTreeUsage, usageNote } from "./finalize";
 import {
@@ -198,10 +200,11 @@ async function prepareState(run: Run, agent: NonNullable<Awaited<ReturnType<type
   });
   const task = session?.task ?? null;
 
+  const memoryScopes = scopesFor({ id: agent.id, departmentSlug: agent.department.slug });
   const [org, orgContext, memories, directory] = await Promise.all([
     prisma.organization.findUnique({ where: { id: orgId } }),
     loadOrgContext(orgId),
-    prisma.agentMemory.findMany({ where: { agentId: agent.id }, orderBy: { updatedAt: "desc" } }),
+    visibleMemories(orgId, memoryScopes),
     loadDirectory(orgId)
   ]);
 
@@ -219,7 +222,11 @@ async function prepareState(run: Run, agent: NonNullable<Awaited<ReturnType<type
 
   const request = run.requestText;
   const model = resolveModel(agent.model);
-  const memorySection = memories.length > 0 ? `## Your Memory\n${memories.map((m) => `- ${m.key}: ${m.value}`).join("\n")}` : "";
+  // Only the memories that matter for this request, bounded in count and size (company, department, own notes).
+  const memorySection = renderMemorySection(rankMemories(memories, `${task?.title ?? ""}\n${request}`, memoryScopes), {
+    departmentName: agent.department.name,
+    scopes: memoryScopes
+  });
 
   // The Chief of Staff and the Reviewer steer the team instead of doing department work: their own prompts.
   if (PLAN_PROMPT_KINDS.has(run.kind)) {
@@ -995,6 +1002,8 @@ async function closeOut(run: Run, root: Run, result: { outcome: "completed" | "f
     usage: isRoot ? usageNote(totals) : null
   });
   if (isRoot) await recordTreeUsage(rootFresh, totals);
+  // What the run produced becomes searchable, and its findings are proposed to memory. Never fails the run.
+  await captureRunLearning(fresh);
   if (run.parentRunId) await enqueueAdvance(run.parentRunId);
   await markClosedOut(run.id);
   // After the close-out: the plan reads the step's task and result, which the close-out writes.

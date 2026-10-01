@@ -23,6 +23,7 @@ export const TOOL_RISK: Record<string, ToolRisk> = {
   list_files: "read",
   memory_retrieve: "read",
   memory_list: "read",
+  search_knowledge: "read",
   github_list_repos: "read",
   github_read_file: "read",
   vercel_list_deployments: "read",

@@ -83,6 +83,8 @@ model Organization {
   policies                Policy[]
   runs                    Run[]
   plans                   Plan[]
+  memories                OrgMemory[]
+  knowledgeChunks         KnowledgeChunk[]
 
   @@index([status])
   @@index([currentPlan])
@@ -179,7 +181,6 @@ model Agent {
   auditLogs        AuditLog[]
   chatMessages     ChatMessage[]
   chatThreads      ChatThread[]
-  memories         AgentMemory[]
   policies         Policy[]
   tasks            Task[]
   sessions         TaskSession[]
@@ -650,16 +651,65 @@ model CanvasViewState {
   @@unique([userId, organizationId])
 }
 
-model AgentMemory {
-  id        String   @id @default(cuid())
-  agentId   String
-  key       String
-  value     String
-  updatedAt DateTime @updatedAt
-  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+/// A durable fact the team knows: brand voice, ICP, pricing, decisions, pointers to where credentials live (never
+/// the secrets). Shared by scope: the whole company, one department, or one agent's own notes (see src/lib/memory).
+model OrgMemory {
+  id               String              @id @default(cuid())
+  organizationId   String
+  /// org | department:<slug> | agent:<agentId>
+  scope            String
+  key              String
+  value            String
+  /// active (agents see it) | proposed (waiting for the founder's review; agents do not see it)
+  status           String              @default("active")
+  /// 0..1 as reported by whoever stated it; null when a person wrote it.
+  confidence       Float?
+  /// founder | agent:<slug> | run:<runId> (a finding from a run's handoff) | migrated
+  source           String
+  sourceRunId      String?
+  updatedByUserId  String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  revisions        OrgMemoryRevision[]
 
-  @@unique([agentId, key])
-  @@index([agentId])
+  @@unique([organizationId, scope, key])
+  @@index([organizationId, status])
+}
+
+/// Earlier values of a memory: a newer value wins, the previous one is kept here.
+model OrgMemoryRevision {
+  id         String    @id @default(cuid())
+  memoryId   String
+  value      String
+  confidence Float?
+  source     String
+  createdAt  DateTime  @default(now())
+  memory     OrgMemory @relation(fields: [memoryId], references: [id], onDelete: Cascade)
+
+  @@index([memoryId, createdAt])
+}
+
+/// Searchable text from the company's files, chat, run summaries and memory (Postgres full-text search).
+model KnowledgeChunk {
+  id              String       @id @default(cuid())
+  organizationId  String
+  /// file | chat | run_summary
+  sourceType      String
+  sourceId        String
+  chunkIndex      Int          @default(0)
+  title           String
+  content         String
+  departmentSlug  String?
+  /// Where the founder can open the source.
+  href            String?
+  /// The source's own last change, to know when it must be indexed again.
+  sourceUpdatedAt DateTime
+  createdAt       DateTime     @default(now())
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceType, sourceId, chunkIndex])
+  @@index([organizationId, sourceType])
 }
 
 model AuditLog {

@@ -1,6 +1,7 @@
 import {
   Bell,
   Bot,
+  Brain,
   Building2,
   CreditCard,
   Inbox,
@@ -14,6 +15,7 @@ import {
 export const settingsNavItems = [
   { section: "preferences", label: "Preferences", icon: Settings },
   { section: "ai", label: "AI Settings", icon: Bot },
+  { section: "memory", label: "Memory", icon: Brain },
   { section: "env-files", label: "Env & Secrets", icon: KeyRound },
   { section: "notifications", label: "Notifications", icon: Bell },
   { section: "organization", label: "Organization", icon: Building2 },

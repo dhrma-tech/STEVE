@@ -7,7 +7,7 @@ import { postizCreatePostTool, postizSchedulePostTool, postizListPostsTool } fro
 import { askAgentTool, askUserTool, delegateAgentTool, delegateManyTool, finishRunTool } from "./delegate-agent";
 import { proposePlanTool } from "./plan-tools";
 import { classifyToolCall } from "../policy/risk";
-import { memoryStoreTool, memoryRetrieveTool, memoryListTool } from "./memory";
+import { memoryStoreTool, memoryRetrieveTool, memoryListTool, searchKnowledgeTool } from "./memory";
 import { createTaskTool, updateTaskTool, assignTaskTool } from "./create-task";
 import { emailSendTool, emailListSentTool } from "./email";
 import { stripeListProductsTool, stripeCreateProductTool, stripeCreatePriceTool, stripeCreatePaymentLinkTool } from "./stripe";
@@ -64,6 +64,7 @@ function buildFullToolset(skillKeys: string[]): AgentTool[] {
     memoryStoreTool,
     memoryRetrieveTool,
     memoryListTool,
+    searchKnowledgeTool,
     createTaskTool,
     updateTaskTool,
     assignTaskTool
