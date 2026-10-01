@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/client";
+import { searchKnowledge } from "@/lib/knowledge/search";
 
-export const searchTypes = ["tasks", "agents", "files", "departments", "roadmap"] as const;
+export const searchTypes = ["tasks", "agents", "files", "departments", "roadmap", "knowledge"] as const;
 export type SearchType = (typeof searchTypes)[number];
 
 export type SearchResultItem = {
@@ -22,7 +23,8 @@ const labels: Record<SearchType, string> = {
   agents: "Agents",
   files: "Files",
   departments: "Departments",
-  roadmap: "Roadmap"
+  roadmap: "Roadmap",
+  knowledge: "Knowledge"
 };
 
 export function parseSearchTypes(value: string | null): SearchType[] {
@@ -209,6 +211,22 @@ export async function groupedSearch({
         subtitle: [item.stage.name, item.department?.name, item.workType].filter(Boolean).join(" - "),
         href: `/org/${orgId}/canvas?open_tech_tree=1&roadmap=${item.id}`,
         status: item.status
+      }))
+    });
+  }
+
+  // Passages from files, chat, past work and memory that match the words (full-text, so it reads inside documents).
+  if (include("knowledge") && query.length >= 3) {
+    const hits = await searchKnowledge({ orgId, query, limit: 5 });
+    groups.push({
+      type: "knowledge",
+      label: labels.knowledge,
+      items: hits.map((hit) => ({
+        id: hit.id,
+        title: hit.title,
+        subtitle: hit.snippet.replaceAll("**", "").replace(/\s+/g, " ").slice(0, 160),
+        href: hit.href ?? `/org/${orgId}/settings/memory`,
+        status: hit.kind
       }))
     });
   }

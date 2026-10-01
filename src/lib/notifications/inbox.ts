@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/db/client";
+import { listOpenQuestions } from "@/lib/agents/policy/approvals";
 
 export type InboxItem = {
   id: string;
-  kind: "onboarding" | "roadmap" | "task" | "file" | "integration" | "billing";
+  kind: "onboarding" | "roadmap" | "task" | "file" | "integration" | "billing" | "agent_question" | "plan";
   title: string;
   description: string;
   href: string;
@@ -24,7 +25,7 @@ export async function getInboxItemsForUser({
   orgId: string;
   userId: string;
 }): Promise<InboxState> {
-  const [organization, roadmapItems, tasks, files, integrations, billing, readLogs] = await Promise.all([
+  const [organization, roadmapItems, tasks, files, integrations, billing, readLogs, questions, plans] = await Promise.all([
     prisma.organization.findUniqueOrThrow({ where: { id: orgId } }),
     prisma.roadmapItem.findMany({
       where: { organizationId: orgId, status: { in: ["available", "complete"] } },
@@ -43,7 +44,7 @@ export async function getInboxItemsForUser({
       take: 5
     }),
     prisma.file.findMany({
-      where: { organizationId: orgId, archivedAt: null, name: { contains: "Business Plan" } },
+      where: { organizationId: orgId, archivedAt: null, name: { contains: "Business Plan", mode: "insensitive" } },
       orderBy: { updatedAt: "desc" },
       take: 2
     }),
@@ -61,6 +62,19 @@ export async function getInboxItemsForUser({
         targetType: "notification"
       },
       select: { targetId: true }
+    }),
+    listOpenQuestions(orgId),
+    // Plans waiting for the founder's review, and ones that finished in the last week (their report is ready).
+    prisma.plan.findMany({
+      where: {
+        organizationId: orgId,
+        OR: [
+          { status: "proposed" },
+          { status: { in: ["completed", "failed"] }, finishedAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } }
+        ]
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 6
     })
   ]);
 
@@ -101,6 +115,35 @@ export async function getInboxItemsForUser({
       href: `/org/${orgId}/canvas?file=${file.id}`,
       status: file.visibility,
       createdAt: file.updatedAt.toISOString()
+    });
+  }
+
+  // An agent is paused waiting on the founder: these stay at the top until answered.
+  for (const question of questions) {
+    items.push({
+      id: `agent-question:${question.id}`,
+      kind: "agent_question",
+      title: `${question.agent?.name ?? "An agent"} asks: ${question.question}`.slice(0, 200),
+      description: question.context ?? "Answer to let the agent continue.",
+      href: `/org/${orgId}/canvas?session=${question.sessionId ?? ""}`,
+      status: "waiting",
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  for (const plan of plans) {
+    const review = plan.status === "proposed";
+    items.push({
+      id: `plan:${plan.id}:${plan.status}`,
+      kind: "plan",
+      title: (review ? `Review plan: ${plan.goal}` : `${plan.status === "completed" ? "Done" : "Stopped"}: ${plan.goal}`).slice(0, 200),
+      description: review
+        ? plan.summary ?? "The Chief of Staff has a plan ready. Review and approve it to start."
+        : (plan.reportText ?? plan.errorMessage ?? "The Chief of Staff's report is ready.").slice(0, 280),
+      href: `/org/${orgId}/canvas?plan=${plan.id}`,
+      status: plan.status,
+      // Plans to review stay at the top until approved, like agent questions.
+      createdAt: (review ? new Date() : plan.updatedAt).toISOString()
     });
   }
 

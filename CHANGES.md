@@ -984,3 +984,130 @@ Verification: `pnpm typecheck` → exit 0. Zero `var(--app-|var(--brand-|rgba(` 
 - Fixed during the live check: standalone `pnpm worker` exited when idle (`keepProcessAlive` option); blank `AGENT_WORKER_CONCURRENCY` / `MODEL_RETRY_BASE_MS` now fall back to defaults instead of 0.
 - `.env.example`: `APPROVAL_TIMEOUT_MINUTES` default is now 1440; added `AGENT_WORKER`, `AGENT_WORKER_CONCURRENCY`, `WORKER_TICK_SECRET`, `AGENT_TOOL_TIMEOUT_MS`, `MODEL_RETRY_BASE_MS`.
 - Verified: tests 194 passed (15 files), typecheck 0, lint 0 errors (54 pre-existing warnings, none in Phase 3 files), build passes, live check on a copy of the dev db (inline worker, hot reload, standalone worker, tick route, stream resume, 20-run burst with two workers).
+
+## Orchestration Phase 3b — Postgres, pg-boss, cross-process wake-ups (2026-09-30)
+- Database is Postgres everywhere (Prisma `postgresql` provider, `@prisma/adapter-pg`). The four SQLite migrations are replaced by one Postgres baseline `20261001000000_postgres_baseline`; `pnpm db:migrate` is now `prisma migrate deploy` (custom `apply-migration.ts` deleted).
+- Local development: `pnpm db:local` runs a private Postgres in `.pgdata/` (port 54320, `steve`/`steve`); `pnpm db:import-sqlite` copies an old `prisma/dev.db` into an empty Postgres (dev data imported: 4086 rows). `DATABASE_URL` blank in development means the local cluster; a leftover `file:` URL fails with instructions.
+- Queue: the `Job`-table queue claims with `FOR UPDATE SKIP LOCKED` and dedupes under a per-key advisory lock. New `PgBossJobQueue` (`AGENT_QUEUE=pg-boss`) behind the same interface; default stays `db`.
+- Postgres LISTEN/NOTIFY (`src/lib/db/notify.ts`, `PG_NOTIFY`): queued jobs wake workers in other processes and logged events wake live streams on other servers at once (polling remains as a fallback).
+- Bugs found by the move (SQLite had serialized all writers): concurrent run-scoped approvals could lose a grant (row lock added); event sequence numbers could become visible out of order to a streaming reader (increment + insert now one transaction). New `Run.closedOutAt`: the sweeper finishes close-out (session, task, chat, parent wake) for runs whose worker stopped between the final status and the close-out.
+- Case-insensitive search kept: 19 `contains` filters now use `mode: "insensitive"`.
+- Tests: one embedded Postgres per test run (or `TEST_DATABASE_URL`), migrated template database cloned per test file. CI runs a Postgres 17 service.
+- Verified: tests 206 passed (17 files) twice, typecheck 0, lint 0 errors (54 pre-existing warnings), build passes. Live on the imported data: pages and APIs, case-insensitive agent search, launch → job → worker → event log → stream and `Last-Event-ID` resume, 10 simultaneous launches with the inline worker and a standalone `pnpm worker` (11 runs, 11 jobs, each claimed once on the first attempt).
+
+## Orchestration Phase 4 — team awareness and typed delegation (2026-10-01)
+- Agent directory (`src/lib/agents/directory.ts`): every agent's system prompt lists the team (name, slug, department, role, capabilities, extra tools, runs in progress). New `Agent.role`, `Agent.capabilitiesJson`, `Agent.modelTier` (tier is used in Phase 8).
+- Typed handoff protocol: `delegate_agent` takes a brief (`agentSlug, objective, context, constraints, acceptanceCriteria, deadline?, budgetCents?`; the old `task` field still works). New `delegate_many` fans out up to 8 briefs in parallel. Delegation is non-blocking: children are their own runs and the parent waits as `waiting_children`, resuming with every handoff (no separate `await_children` tool is needed).
+- `finish_run` ends a run with the §7 handoff (validated by Zod in `engine/handoff.ts`; the engine fills in the real cost). An invalid handoff is sent back to the model; a delegated run that ends in plain text is asked once, then its text is wrapped as the handoff. Stored on `Run.resultJson`.
+- `ask_agent`: a read-only consult with a teammate (read-only tools, no delegation, no questions to people, small fixed budget, no visible task). `Run.kind` = `task` | `consult`.
+- `ask_user`: pauses the run with a question (an `Approval` with `kind: "question"`, answer in `responseText`), shown in the inbox and in the agent workspace dialog. `GET /api/orgs/:orgId/agent-questions` and `POST .../agent-questions/:approvalId/answer`. An unanswered question expires and the run carries on without it.
+- Budgets: the parent's remaining budget is split equally among the children it starts in one turn (an explicit `budgetCents` can only lower a share); `Run.budgetCapCents` / `Run.costCents` track each run's cap and its own spend plus everything under it. A child that exceeds its share returns a `failed` handoff.
+- UI: the execution feed shows concurrent delegations with their status and handoff summary, and questions with an answer box.
+- Migration `20261001100000_team_delegation_protocol`.
+- Verified: tests 219 passed (18 files), including the exit scenario (Engineering, Marketing and Sales run concurrently with mocked models and return three structured handoffs); typecheck 0, lint 0 errors (54 pre-existing warnings), build passes. Live (dev server, local Postgres): question list returns 200, answer endpoint returns 404 for unknown ids, 422 for an empty answer, 401 without login. Not run against a real model.
+
+## Orchestration Phase 5 — Chief of Staff, plans and review (2026-10-01)
+- New `Plan` and `PlanNode` tables (migration `20261001200000_plans_orchestrator`) and `Run.planId` / `Run.planNodeId`. New run kinds: `plan` (planning and replanning), `plan_node` (one step), `review`, `plan_report`.
+- System agents, created per org on first use (`plans/system-agents.ts`): **Chief of Staff** (plans, assigns, replans, reports) and **Reviewer**. Both are left out of the team directory and refuse delegated work. Neither is a department's default agent.
+- Planning: `createGoalPlan` starts the Chief of Staff on the goal. It sees the team and has read-only tools, `ask_agent`, `ask_user` and the new `propose_plan`. The proposal is validated (Zod shape, unique keys, known dependencies, no loops, owners that exist and are not system agents); problems go back to the model to fix. A planning run that ends without a plan is reminded once, then the plan fails with the reason.
+- Founder review: a proposed plan shows steps, owners, dependencies, acceptance criteria, estimated cost and critical-path time, and risk hotspots (the Chief of Staff's notes plus what each owner's tools can do, flagging the always-ask ones). The founder can retitle, rebrief, reassign, change criteria or dependencies, and remove steps (removed steps drop out of others' dependencies; loops are refused), then approve or cancel. A manager's (owner/admin) auto-approve starts the plan at once only when its estimate fits the rest of today's budget.
+- Scheduler (`plans/scheduler.ts`, job `plan.advance`): starts every step whose dependencies are done, in parallel, each as a visible Task linked to the plan (and to its roadmap item). Each step's brief carries the results and artifacts of the steps before it. A run counts as finished for the plan only after its close-out, so plan updates are not overwritten. Runs wake their plan when they close out; the worker's sweeper re-checks quiet plans. A plan lease keeps two workers off the same plan, and a step is claimed before its run starts. If a step cannot start (agents paused, daily budget used), the plan retries it a minute later.
+- Reviewer pass: steps marked `review` are checked against their acceptance criteria by the Reviewer (read-only tools plus `finish_run`). A rejection gives the step one more attempt with the feedback; a second rejection fails it. If the Reviewer itself cannot run, the step is marked done as "not reviewed".
+- Monitor and replan: a failed, blocked or needs-input step sends the Chief of Staff the plan state and the reasons. It revises with `propose_plan` (finished and running steps stay; failed ones are retried, reassigned or replaced; steps left out are skipped) or asks the founder. Replans are capped at 2 per plan. After that, or when replanning finds no way forward, running work finishes and the plan stops with a report.
+- Report: the Chief of Staff writes the founder report at the end. If that run fails, a report is built from the plan's records instead. A completed plan completes its roadmap item and unlocks what depends on it (new `roadmap/progress.ts`, shared with the roadmap API).
+- Roadmap: launching an agent item without choosing an agent now creates a plan (`plan_created`). Choosing an agent still runs it directly. While a plan for the item is live, launching again returns `existing_plan`; after a plan fails or is cancelled, the item can be launched again.
+- API: `GET/POST /api/orgs/:orgId/plans`, `GET/PATCH /plans/:planId`, `POST /plans/:planId/approve`, `POST /plans/:planId/cancel`.
+- UI: a **Plans** tab in the canvas side panel (goal box, recent plans, review and edit, approve or cancel, live step status, review verdicts, report, links into each session). Inbox items for plans awaiting review and plans finished in the last week; `?plan=<id>` opens the tab.
+- Tests: 22 new (DAG validation; the exit scenario; review edits and their validation; auto-approve within and over budget; invalid proposals; system agents; review retry with feedback; replan cap; escalation; cancel; roadmap completion; roadmap launch and relaunch). The parallel-overlap window in the Phase 4 and Phase 5 scenario tests is widened to 1.5 s: under a full-suite load, 400 ms sometimes failed to show three runs overlapping.
+- Verified: tests 241 passed (21 files), three full runs in a row; typecheck 0; lint 0 errors (53 warnings); build passes. Live (dev server, local Postgres, no model key): creating a plan returns 201 and the planning run fails with the API-key message, so the plan ends `failed` with that reason. Also checked: list, 404 for an unknown plan, 409 for approve, edit and cancel on a finished plan, 422 for an empty goal, 401 without login, the inbox item, the canvas `?plan=` page, roadmap launch → `plan_created`, and relaunch after a failed plan. These live-check records were deleted afterwards. Not run against a real model.
+
+## Orchestration Phase 6 — shared memory and knowledge (2026-10-01)
+- New `OrgMemory` (scopes `org`, `department:<slug>`, `agent:<id>`; status `active` or `proposed`; confidence; source), `OrgMemoryRevision` (history) and `KnowledgeChunk`. Migration `20261001300000_shared_memory_knowledge` copies every `AgentMemory` row into `OrgMemory` as that agent's own notes, then drops `AgentMemory`. Old keys are normalized the new way; if two collide, the newest wins (checked against sample rows; the dev database had none).
+- Memory (`src/lib/memory/store.ts`): a newer value replaces the old one and the old one is kept as a revision. A proposal never overwrites an established (active) fact. `memory_store` takes `scope` (`org`, `department` or `self`) and `confidence`; below 0.6 the fact is proposed for review instead of shared. Values that look like secrets (Stripe or GitHub keys, private keys) are refused. `memory_retrieve` and `memory_list` cover the company, the department and the agent's own notes.
+- Prompt hygiene: at step start an agent gets its visible memories ranked by relevance to the request (shared words), then scope, confidence and recency. At most 15 are included, within 3,000 characters. They are labelled as information, not instructions. This replaces "dump all of this agent's memory".
+- Run learning (`memory/learning.ts`, at close-out): a completed run's result is indexed for search. The `findings` in its handoff become **proposed** department memories for the founder to review; they are never shared automatically, because a run can be misled by what it read. Review, plan, report and consult runs are skipped.
+- Knowledge (`src/lib/knowledge/`): Postgres full-text search over files (their stored text, including the business plan; files without text are searchable by name), chat (founder messages and Cofounder replies; agent run outputs are indexed once, as run summaries) and run summaries, plus active memory. Search tries all terms first, then any term, so plain-language questions work. File names count as words. Indexing is incremental: a cheap check (latest timestamps and counts) skips the sync when nothing changed, and archived or deleted files leave the index. New `search_knowledge` tool (read risk) for every agent; an agent only sees memory from its own scopes.
+- Command palette: a new "Knowledge" group shows matching passages from inside documents (needs 3+ characters).
+- API: `GET/POST /api/orgs/:orgId/memory`, `PATCH/DELETE /memory/:memoryId` (edit, approve, delete), `GET /knowledge/search?q=`.
+- UI: Settings → **Memory** has knowledge search, a "Needs your review" list (approve, edit and approve, reject), "What the team knows" grouped by scope (edit, history, delete) and "Teach the team a fact".
+- Deviation: no embeddings or pgvector yet. The embedded Postgres has no pgvector and there is no embedding key; full-text search needs neither. The search module is the only place to change when embeddings are added. There is no GIN index either: queries filter by organization first, which is fine at current volumes.
+- Tests: 18 new. The exit scenario: Marketing saves the brand voice for the company and Sales' next run has it in its prompt; after the founder edits it Sales sees the new value with the old one in history, and after deletion Sales no longer sees it. Also: scope isolation, review of unsure facts, findings as proposals, proposal vs established fact, refused secrets, bounded injection, chunking, file, chat and run indexing, re-indexing and archived files, the any-word fallback, file-name words, agent search with scopes, sync skipping, and the palette group.
+- Verified: tests 259 passed (23 files); typecheck 0; lint 0 errors (53 warnings); build passes. Live (dev server, local Postgres): teach (201), bad scope or missing value (422), edit with history (200), empty edit (422), list with scope labels, knowledge search finds the business plan, short query (422), palette Knowledge group, delete (200, then 404), 401 without login, and the settings page (200). The live-check memory was deleted. The search index built for the dev org stays; it is derived data. Not run against a real model.
+- Found live: the palette query "plan" missed `Business Plan.md` because Postgres reads `Plan.md` as one token. Fixed (file names are split into words), with a test.
+- Suite time: a full run took about 160 s, against about 51 s this morning. Running the Phase 5 commit on the same machine at the same time gave the same per-test times, so the machine is slower now, not the code.
+
+## Orchestration Phase 7 — founder and manager experience (2026-10-01)
+- **Mission Control** (`/org/:orgId/mission`, new nav item): header with work in progress, what waits for you, spend today against the daily budget, plans to review, and pause/resume all agents (managers). The goal box sits on top. Tabs:
+  - Live: plans with progress, and run trees for the last 24 hours (who started whom, kind, status, cost, elapsed time, pending approvals per node with a roll-up on the root).
+  - Approvals.
+  - Briefings.
+  Run detail: the event timeline (tool calls with inputs and outputs, delegations, approvals, questions, errors) with a replay scrubber and play button, teammates, approvals, and actions: open session, cancel run, retry or fork with an edited instruction (task runs), and comment (posted to the task chat). Data in `src/lib/mission/data.ts`; it refreshes every 4 s.
+- **Approvals inbox:** every pending tool call across runs, showing the risk chip, summary, agent and department, task, exact arguments, run spend against budget, and expiry.
+  - Decisions: approve once, approve for this run, always for this agent (managers; not offered for comms or spend), **Edit & approve**, deny.
+  - **Edit & approve:** the call runs with exactly the edited arguments (new `Approval.editedPayloadJson`, applied by the engine). An edit that keeps a `[REDACTED]` placeholder or raises the call's risk (a read query edited into a write) is refused.
+  - **Batch approve:** only low-risk calls; comms, spend and destructive calls are always skipped.
+  - Keyboard: j/k move, a approve, r approve for this run, e edit, d deny.
+  - Agents' open questions can be answered from the same tab.
+- **One-tap email approvals:** when email is set up (`RESEND_API_KEY` or the email integration), owners and admins get an email for each approval with Approve and Deny links (`src/lib/agents/policy/one-tap.ts`). Each token is HMAC-signed with a key derived from `AUTH_SECRET` for this use only. It names the approval, the decision and the recipient, expires in 24 h, and works once. The link opens a confirmation page (`/approve/<token>`); only its button acts (`POST /api/approvals/one-tap`), so mail scanners that follow links approve nothing. The recipient must still be a member who may act. The email preference is in Settings → Notifications.
+- **Goal box** on the canvas Home tab and in Mission Control: a goal goes to the Chief of Staff (Phase 5); the Plans tab and the planning session open.
+- **Briefings** (`src/lib/briefings/`, new `Briefing` table): facts from the records (what shipped, what is blocked, what needs you, spend). The Chief of Staff writes them up (new run kind `briefing`, read-only tools); if it cannot, a briefing is built from the facts. A daily briefing is made once per active org after `BRIEFING_HOUR` (default 8, server time) by the worker's sweep; turn it off with `DAILY_BRIEFINGS=off`. Briefings still being written after 20 minutes get the records-only version. "Brief me now" makes one on demand. They are emailed when email is set up (preference in Settings → Notifications).
+- **Agent controls** (Settings → Agent controls): pause or resume all agents; org daily and per-run budgets; **department daily budgets** (new `Department.dailyBudgetCents`); **agent daily budgets** (now allowed on agent policies) and per-run budgets; each agent's permission mode, with what each mode does; today's spend at every level. Department and agent caps count each run's own spend (its cost minus its children's), so delegated work counts against the agent and department that did it (`policy/spend.ts`). Caps are checked when a run starts, with a clear 429 message.
+- **Manager tools:**
+  - Retry or fork a finished task run.
+  - Cancel a run tree.
+  - Comment on a run.
+  - **Retry a failed plan step:** a stopped plan reopens and carries on.
+  - **Reassign** a plan step that has not started or has failed.
+- **Viewer role:** `viewer` members can see everything but act on nothing. `requireOrgWriter` now guards agent launch, task changes, chat sends (including `/run`), roadmap launch and complete, plans, memory, approvals and questions, briefings and the Phase 7 actions. Owners and admins remain the managers (budgets, policy, always-approve).
+- **Canvas:** department nodes show "N waiting" when their agents wait on you, and a pulsing "N running".
+- Tests: 13 new.
+  - Inbox list and resume; Edit & approve runs the edited arguments; redacted and riskier edits are refused; batch approve skips comms.
+  - One-tap: approve once, then reuse, tampering, expiry and viewers are refused; email with links goes to the owner and not the viewer.
+  - Spend attribution, and agent and department caps.
+  - Mission trees with roll-up, run detail and cancel; retry or fork, and comments.
+  - Plan step reassign and retry, including reopening a stopped plan.
+  - A briefing written by the Chief of Staff; the records fallback; the daily schedule (hour, once per day).
+- Verified: tests 272 passed (24 files, 57 s); typecheck 0; lint 0 errors (53 warnings); build passes.
+- Live (dev server, local Postgres, no model key):
+  - Pages: Mission Control (both tabs), Agent controls, Notifications and canvas return 200. Mission, approvals and controls APIs return data. Without login: 401.
+  - Budgets: a department budget set and cleared (200); a department change with a non-budget field (422).
+  - Briefings: "Brief me now" (201) fell back to the records-only briefing because there is no key. The dev server's own worker also made the scheduled daily briefing.
+  - One-tap: the page for a bad link (200, with an explanation); the API (422).
+  - Viewer: a temporary viewer could read Mission Control and approvals but got 403 on plan, memory, briefing and policy changes.
+  - The live-check user, briefings and their runs were deleted afterwards. Not run against a real model.
+- Not done (Phase 7 items left for later): diffs for file and code changes in the run detail; Slack or mobile push; "retry from step N" (a run can be retried or forked whole, not resumed from a middle step: runs keep no per-step history snapshots); plan steps assigned to people; a spend sparkline on canvas nodes; a role editor (set `viewer` on the membership for now). The golden-scenario exit test ("a non-technical founder completes it using only the UI in under five minutes of attention") needs a real model and a person; it has not been run.
+
+## Orchestration Phase 8 — model tiers, evals, observability, red-team (2026-10-01)
+- **Model tiers** (`src/lib/ai/model-tiers.ts`, `model-router.ts`):
+  - Planner (Chief of Staff: plans, reports, briefings) uses `claude-opus-5-5` at effort high, workers use `claude-sonnet-5-5` at effort medium, and consults use `claude-haiku-4-5`.
+  - Each tier can be overridden with environment variables. An agent can be pinned to a model; the picker now offers "Claude (automatic)", Opus 5.5, Sonnet 5.5 and Haiku 4.5.
+  - The old `anthropic-client.ts` / `openai-client.ts` and the unused `callModel` were removed.
+- **Model calls** (`engine/models.ts`):
+  - Calls now go through the beta Messages stream with prompt caching (tools, system prompt, conversation), `output_config.effort`, adaptive thinking with `block_binding: drop_block`, server-side tool-result clearing (instead of client-side trimming, which would break preserved thinking), and the server-side refusal fallback.
+  - When a model is down, a turn runs on the tier's fallback model. A final refusal fails the run with its category (`ModelRefusalError`). `max_tokens` went from 4096 to 16000.
+- **Cost:** prices are now current first-party rates including cache reads and writes. A `model_usage` event per turn records the model that answered, tier, tokens, cache tokens, cost, tool calls and latency. Budgets count cached tokens at their cached price.
+- **Tool input validation** (`tools/validate.ts`): every call is checked with Zod schemas built from the tool's JSON Schema, before policy runs. Problems go back to the model as a failed tool result.
+- **Prompt injection** (`policy/injection.ts`):
+  - Output from tools that return outside content (web, files, GitHub, support, email, analytics, Apify, SQL) is screened.
+  - On a hit, the output reaches the model wrapped as `<untrusted_content>`, and an `injection_suspected` event is recorded.
+  - From then on, the run (and anything it delegates to) gets no pre-approved outside actions: run grants, always-approve rules and trusted mode stop applying, and approval cards say why.
+  - A "Tool output is data" rule was added to every agent's system prompt.
+- **Observability:**
+  - `observability/log.ts` writes structured logs (JSON in production, `LOG_LEVEL`, `LOG_FORMAT`) with run, session, org and job ids.
+  - `reportError` sends unexpected run failures and jobs that run out of attempts to Sentry when `SENTRY_DSN` is set (no SDK; uses the envelope API, never throws).
+  - Mission Control has a new **Health** tab (24h / 7d / 30d) showing:
+    - success rate and p50/p95 run time;
+    - cost per run, cost by model and cache hit rate;
+    - approval wait time and replan rate;
+    - suspected injections, fallback turns and limit stops;
+    - a recent runs table that opens run detail.
+- **Evals** (`src/lib/agents/evals`):
+  - 20 scenarios cover engineering, marketing, sales, finance, support, design and cross-department work (delegation, consult, read-only mode, malformed input, outage fallback, refusal, secret redaction).
+  - They run against the real engine and Postgres with outside services stubbed, and are part of `pnpm test`.
+  - `pnpm eval` runs only the evals. `pnpm eval:live` runs them against the real model, and `.github/workflows/evals-nightly.yml` runs that nightly when the `ANTHROPIC_API_KEY` secret is set.
+  - Scripted run: 20/20 pass, 9 unsafe attempts, 0 executed.
+- **Red-team tests** (`engine/safety.test.ts`): planted instructions in a web page or support thread cannot get `email_send`, `delete_file`, a deploy or a push to run without a person. This holds in trusted, review and read-only modes and through a delegated teammate.
+- Verification:
+  - `pnpm typecheck` clean, `pnpm lint:ci` 0 errors (53 existing warnings), `pnpm build` OK.
+  - `pnpm test`: 30 files, 348 tests (was 282).
+  - Not checked live: no model API key here, so neither live evals nor real-model runs have been done; the Health tab was not opened in a browser.

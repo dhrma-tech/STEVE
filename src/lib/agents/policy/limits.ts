@@ -108,11 +108,19 @@ export class RunBudget {
     this.delta.toolCalls += 1;
   }
 
-  /** Record one finished model turn. Cost is charged after the fact, so a turn can overshoot by one call. */
-  recordModelTurn(params: { modelId: string; provider: string; inputTokens?: number; outputTokens?: number }): void {
-    const inputTokens = params.inputTokens ?? 0;
+  /** Record one finished model turn and return its estimated cost in cents. Cost is charged after the fact, so a turn can overshoot by one call. */
+  recordModelTurn(params: {
+    modelId: string;
+    provider: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    cacheReadTokens?: number;
+    cacheWriteTokens?: number;
+  }): number {
+    // Every input token the model read counts toward the token totals; cached ones are just cheaper.
+    const inputTokens = (params.inputTokens ?? 0) + (params.cacheReadTokens ?? 0) + (params.cacheWriteTokens ?? 0);
     const outputTokens = params.outputTokens ?? 0;
-    const cost = estimateCostCents({ ...params, inputTokens, outputTokens });
+    const cost = estimateCostCents({ ...params, inputTokens: params.inputTokens ?? 0, outputTokens });
     this.steps += 1;
     this.tokensIn += inputTokens;
     this.tokensOut += outputTokens;
@@ -121,6 +129,7 @@ export class RunBudget {
     this.delta.tokensIn += inputTokens;
     this.delta.tokensOut += outputTokens;
     this.delta.spentCents += cost;
+    return cost;
   }
 
   get totalTokens(): number {

@@ -1,9 +1,16 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db/client";
 import { expireDueApprovals } from "../policy/approvals";
-import { advanceRun, failRunById } from "./advance";
+import { advanceRun, failRunById, repairUnclosedRuns } from "./advance";
 import { getQueue, type ClaimedJob, type JobQueue } from "./queue";
 import { ADVANCE_JOB, enqueueAdvance, onWake } from "./wake";
+import { advancePlan } from "../plans/scheduler";
+import { enqueuePlanAdvance, PLAN_JOB } from "../plans/wake";
+import { ensureDailyBriefings } from "@/lib/briefings/briefings";
+import { reportError } from "@/lib/observability/log";
+
+/** Plans that are moving (or waiting on a run) and could miss a wake-up. */
+const LIVE_PLAN_STATUSES = ["drafting", "running", "replanning", "reporting"];
 
 export type WorkerOptions = {
   queue?: JobQueue;
@@ -27,7 +34,14 @@ export type WorkerOptions = {
   log?: (message: string) => void;
 };
 
-export type SweepStats = { requeuedJobs: number; failedJobs: number; expiredApprovals: number; reawakenedRuns: number };
+export type SweepStats = {
+  requeuedJobs: number;
+  failedJobs: number;
+  expiredApprovals: number;
+  reawakenedRuns: number;
+  closedOutRuns: number;
+  reawakenedPlans: number;
+};
 
 /** AGENT_WORKER_CONCURRENCY, or 4. Blank or invalid falls back to the default instead of a worker that never claims a job. */
 export function workerConcurrency(env: NodeJS.ProcessEnv = process.env): number {
@@ -146,14 +160,16 @@ export class Worker {
     const beat = setInterval(() => void this.queue.extendLease(job.id, this.id, this.leaseMs), Math.max(1000, this.leaseMs / 3));
     beat.unref?.();
     try {
-      if (job.type !== ADVANCE_JOB) throw new Error(`Unknown job type: ${job.type}`);
-      await this.handleAdvance(job);
+      if (job.type === ADVANCE_JOB) await this.handleAdvance(job);
+      else if (job.type === PLAN_JOB) await this.handlePlan(job);
+      else throw new Error(`Unknown job type: ${job.type}`);
       await this.queue.complete(job.id);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.log(`job ${job.id} (${job.type}) failed on attempt ${job.attempts}: ${message}`);
       if (job.attempts >= job.maxAttempts) {
         await this.queue.fail(job.id, message);
+        await reportError(error, { jobId: job.id, jobType: job.type, runId: job.runId ?? undefined, attempts: job.attempts, workerId: this.id });
         if (job.runId) await failRunById(job.runId, `The run stopped after ${job.attempts} failed attempts: ${message}`).catch(() => undefined);
       } else {
         await this.queue.retry(job.id, message, backoffMs(job.attempts));
@@ -168,10 +184,20 @@ export class Worker {
     const runId = job.runId ?? payload?.runId;
     if (!runId) return;
 
-    const result = await advanceRun(runId, { workerId: this.id, leaseMs: this.leaseMs });
+    // The lease holder is this job, not this worker: a worker handles several jobs at once, and two jobs for the
+    // same run must not both get in (a holder may re-take its own lease).
+    const result = await advanceRun(runId, { workerId: `${this.id}/${job.id}`, leaseMs: this.leaseMs });
     if (result === "more") await enqueueAdvance(runId);
     // Another worker is on it. Look again shortly so a wake-up that arrived meanwhile is not lost.
     else if (result === "busy") await enqueueAdvance(runId, { delayMs: 1000 });
+  }
+
+  private async handlePlan(job: ClaimedJob): Promise<void> {
+    const planId = (job.payload as { planId?: string } | null)?.planId;
+    if (!planId) return;
+    const result = await advancePlan(planId, { workerId: `${this.id}/${job.id}` });
+    // Another worker is on it; look again shortly so this wake-up is not lost.
+    if (result === "busy") await enqueuePlanAdvance(planId, { delayMs: 1000 });
   }
 
   // ── Recovery ────────────────────────────────────────────────────────────────
@@ -206,8 +232,28 @@ export class Worker {
       reawakened += 1;
     }
 
-    const stats = { requeuedJobs: requeued, failedJobs: failed, expiredApprovals, reawakenedRuns: reawakened };
-    if (requeued || failed || expiredApprovals || reawakened) this.log(`sweep: ${JSON.stringify(stats)}`);
+    const closedOutRuns = await repairUnclosedRuns(this.runningStaleMs);
+
+    // A plan normally moves when one of its runs finishes. Look again at any that has been still for a while.
+    const stalePlans = await prisma.plan.findMany({
+      where: { status: { in: LIVE_PLAN_STATUSES }, updatedAt: { lt: new Date(now - this.waitingStaleMs) } },
+      select: { id: true },
+      take: 100
+    });
+    for (const plan of stalePlans) await enqueuePlanAdvance(plan.id);
+
+    // Daily briefings once the briefing hour has passed, and finishing any whose writer never came back.
+    await ensureDailyBriefings().catch((error) => this.log(`briefings failed: ${String(error)}`));
+
+    const stats = {
+      requeuedJobs: requeued,
+      failedJobs: failed,
+      expiredApprovals,
+      reawakenedRuns: reawakened,
+      closedOutRuns,
+      reawakenedPlans: stalePlans.length
+    };
+    if (requeued || failed || expiredApprovals || reawakened || closedOutRuns || stalePlans.length) this.log(`sweep: ${JSON.stringify(stats)}`);
     return stats;
   }
 }

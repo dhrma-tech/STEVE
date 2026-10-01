@@ -43,3 +43,6 @@ prisma/*.db-wal
 prisma/*.db-shm
 dev.db-wal
 dev.db-shm
+
+# Local Postgres for development (pnpm db:local)
+.pgdata/

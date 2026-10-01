@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BillingDashboard } from "@/components/billing/billing-dashboard";
+import { MemoryManager } from "@/components/memory/memory-manager";
+import { AgentControls } from "@/components/mission/agent-controls";
 import {
   AdvancedSettingsPanel,
   AiSettingsForm,
@@ -44,6 +46,14 @@ const sectionCopy: Record<SettingsSection, { title: string; description: string 
   ai: {
     title: "AI Settings",
     description: "Cofounder Review Bot, suggested tasks, queue messages, prompt personalization, model choice, and usage visibility."
+  },
+  "agent-controls": {
+    title: "Agent controls",
+    description: "Pause all agents, set budgets for the company, each department and each agent, and choose how much each agent may do without asking."
+  },
+  memory: {
+    title: "Memory & Knowledge",
+    description: "What the team knows: review what agents learned, edit or delete facts, teach new ones, and search the company's files, chat and past work."
   },
   "env-files": {
     title: "Env Files & Secrets",
@@ -94,6 +104,8 @@ export default async function SettingsSectionPage({ params }: SettingsSectionPag
 async function renderSection(orgId: string, section: SettingsSection) {
   if (section === "preferences") return <PreferencesSettingsForm orgId={orgId} initialData={await getPreferencesSettings(orgId)} />;
   if (section === "ai") return <AiSettingsForm orgId={orgId} initialData={await getAiSettings(orgId)} />;
+  if (section === "memory") return <MemoryManager orgId={orgId} />;
+  if (section === "agent-controls") return <AgentControls orgId={orgId} />;
   if (section === "env-files") return <EnvFilesSettingsPanel orgId={orgId} initialData={await getEnvFilesSettings(orgId)} />;
   if (section === "notifications") return <NotificationSettingsForm orgId={orgId} initialData={await getNotificationSettings(orgId)} />;
   if (section === "organization") return <OrganizationSettingsForm orgId={orgId} initialData={await getOrganizationSettings(orgId)} />;

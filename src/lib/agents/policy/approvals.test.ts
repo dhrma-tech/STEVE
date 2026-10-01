@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db/client";
 import { cancelPendingApprovals, createApproval, expireDueApprovals, resolveApproval } from "@/lib/agents/policy/approvals";
 import { createRun, getRun, parseGrants } from "@/lib/agents/engine/run-store";
 import { getQueue } from "@/lib/agents/engine/queue";
-import { ORG, rawExec, resetDb, seedAgent, seedSession, USER } from "@/lib/agents/testing/test-db";
+import { ago, ORG, resetDb, seedAgent, seedSession, USER } from "@/lib/agents/testing/test-db";
 
 async function pendingApproval(
   toolName = "github_push_file",
@@ -146,7 +146,7 @@ describe("expiry and cancellation", () => {
     const { approval, run } = await pendingApproval();
     expect(await expireDueApprovals()).toBe(0); // not due yet
 
-    rawExec("UPDATE Approval SET expiresAt = ? WHERE id = ?", Date.now() - 1000, approval.id);
+    await prisma.approval.update({ where: { id: approval.id }, data: { expiresAt: ago(1000) } });
     expect(await expireDueApprovals()).toBe(1);
     expect(await statusOf(approval.id)).toBe("expired");
     expect(await getQueue().hasPending(run.id)).toBe(true);

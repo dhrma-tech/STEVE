@@ -1,13 +1,14 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { resolve } from "node:path";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { databaseUrl } from "./url";
 
-const sqliteFile = process.env.DATABASE_URL?.replace(/^file:/, "") ?? "./dev.db";
-const sqliteUrl = resolve("prisma", sqliteFile);
-// The web server, the agent worker and live event streams all use this file at once. A generous busy
-// timeout lets a writer wait for another writer instead of failing, and WAL (set by the migration script)
-// lets readers proceed while a write is in flight.
-const adapter = new PrismaBetterSqlite3({ url: sqliteUrl, timeout: 15_000 });
+// The web server, the agent worker and live event streams share one Postgres. Each process keeps a small pool;
+// PRISMA_POOL_MAX raises it for a busy worker.
+const poolMax = Math.floor(Number(process.env.PRISMA_POOL_MAX));
+const adapter = new PrismaPg({
+  connectionString: databaseUrl(),
+  max: Number.isFinite(poolMax) && poolMax > 0 ? poolMax : 10
+});
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;

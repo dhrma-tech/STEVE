@@ -1,0 +1,53 @@
+name: Agent evals (live, nightly)
+
+# The eval scenarios against the real model. Outside services are stand-ins, so nothing is sent, deployed or charged
+# except model usage. Needs the ANTHROPIC_API_KEY repository secret; skipped when it is not set.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  live-evals:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: steve
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/steve"
+      TEST_DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
+      AUTH_SECRET: "ci-only-secret-ci-only-secret-ci-only-secret"
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      EVAL_REPORT: evals-live.json
+    steps:
+      - uses: actions/checkout@v4
+        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+      - uses: pnpm/action-setup@v4
+        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+      - uses: actions/setup-node@v4
+        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+      - run: pnpm db:generate
+        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+      - run: pnpm eval:live
+        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && env.ANTHROPIC_API_KEY != '' }}
+        with:
+          name: evals-live
+          path: evals-live.json
+          if-no-files-found: ignore

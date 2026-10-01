@@ -7,12 +7,16 @@ import { approvalTimeoutMs, createApproval } from "./policy/approvals";
 import { getEffectivePolicy } from "./policy/store";
 import { summarizeToolCall, type ToolRisk } from "./policy/risk";
 import { redactSecrets, sanitizeToolOutput } from "./policy/sanitize";
+import { screenToolOutput, wrapUntrusted, type InjectionFinding } from "./policy/injection";
+import { validateToolInput } from "./tools/validate";
 
 export type ToolCallResult = {
   /** Text handed back to the model. Already redacted and length-capped. */
   output: string;
   success: boolean;
   outcome: "completed" | "failed" | "denied";
+  /** The output looked like a prompt injection (it was wrapped as untrusted data before reaching the model). */
+  injection?: InjectionFinding;
 };
 
 export type Emit = (event: AgentEvent) => Promise<void>;
@@ -59,6 +63,8 @@ export async function evaluateToolCall(params: {
   ctx: ToolContext;
   counted: boolean;
   emit: Emit;
+  /** The run has read injection-shaped content: nothing outside STEVE is pre-approved any more. */
+  tainted?: boolean;
 }): Promise<Evaluation> {
   const { toolName, toolInput, toolset, ctx, counted, emit } = params;
   const { orgId, agentId, sessionId, scope } = ctx;
@@ -74,8 +80,17 @@ export async function evaluateToolCall(params: {
     return { kind: "result", result: { output, success: false, outcome: "failed" } };
   }
 
+  // Arguments that do not match the tool's schema go back to the model to fix; nothing is asked or run.
+  const check = validateToolInput(tool.definition, toolInput);
+  if (!check.ok) {
+    await recordAction({ orgId, sessionId, agentId, toolName, status: "failed", payload: { input: toolInput, output: check.error } });
+    await emit({ type: "tool_call", tool: toolName, input: toolInput });
+    await emit({ type: "tool_result", tool: toolName, output: check.error, success: false });
+    return { kind: "result", result: { output: check.error, success: false, outcome: "failed" } };
+  }
+
   const { policy } = await getEffectivePolicy(orgId, agentId);
-  const decision = decide({ toolName, input: toolInput, mode: scope.mode, policy, grants: scope.tree.grants });
+  const decision = decide({ toolName, input: toolInput, mode: scope.mode, policy, grants: scope.tree.grants, tainted: params.tainted });
 
   if (decision.action === "deny") {
     const output = `Blocked by policy: ${decision.reason} This action was not run.`;
@@ -196,13 +211,17 @@ export async function runToolCall(params: {
     success = false;
   }
   output = sanitizeToolOutput(output);
+  // Outside content that reads like instructions to the agent is passed on as marked, untrusted data.
+  const injection = success ? (screenToolOutput(toolName, output) ?? undefined) : undefined;
+  if (injection) output = wrapUntrusted(toolName, output);
 
   await updateAction(actionId, {
     status: success ? "completed" : "failed",
-    payload: { ...startPayload, output: output.slice(0, 2000) }
+    payload: { ...startPayload, output: output.slice(0, 2000), ...(injection ? { injectionSuspected: injection.pattern } : {}) }
   });
   await emit({ type: "tool_result", tool: toolName, output, success });
-  return { output, success, outcome: success ? "completed" : "failed", actionId };
+  if (injection) await emit({ type: "injection_suspected", tool: toolName, excerpt: injection.excerpt });
+  return { output, success, outcome: success ? "completed" : "failed", actionId, ...(injection ? { injection } : {}) };
 }
 
 async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {

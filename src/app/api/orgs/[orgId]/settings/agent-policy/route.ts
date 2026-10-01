@@ -10,6 +10,8 @@ import { prisma } from "@/lib/db/client";
 const policySchema = z.object({
   /** Omit to change the org-wide policy; pass an agent id to change that agent's rules only. */
   agentId: z.string().trim().min(1).nullable().optional(),
+  /** Pass a department id to set that department's daily budget (the only department setting). */
+  departmentId: z.string().trim().min(1).optional(),
   agentsPaused: z.boolean().optional(),
   perRunBudgetCents: z.number().int().min(1).max(100_000).nullable().optional(),
   dailyBudgetCents: z.number().int().min(1).max(1_000_000).nullable().optional(),
@@ -46,13 +48,29 @@ export async function PATCH(request: Request, context: RouteContext) {
       return errorResponse("VALIDATION_ERROR", "Agent policy payload is invalid.", 422, parsed.error.flatten());
     }
 
-    const { agentId, ...patch } = parsed.data;
+    const { agentId, departmentId, ...patch } = parsed.data;
+
+    // A department has one setting here: its daily budget.
+    if (departmentId) {
+      if (agentId || Object.keys(patch).some((key) => key !== "dailyBudgetCents")) {
+        return errorResponse("VALIDATION_ERROR", "A department only has a daily budget.", 422);
+      }
+      const department = await prisma.department.findFirst({ where: { id: departmentId, organizationId: orgId } });
+      if (!department) return errorResponse("NOT_FOUND", "Department not found", 404);
+      const updated = await prisma.department.update({
+        where: { id: department.id },
+        data: { dailyBudgetCents: patch.dailyBudgetCents ?? null },
+        select: { id: true, name: true, dailyBudgetCents: true }
+      });
+      return dataResponse({ department: updated });
+    }
+
     if (agentId) {
       const agent = await prisma.agent.findFirst({ where: { id: agentId, organizationId: orgId, archivedAt: null } });
       if (!agent) return errorResponse("NOT_FOUND", "Agent not found", 404);
     }
-    if (agentId && (patch.agentsPaused !== undefined || patch.dailyBudgetCents !== undefined)) {
-      return errorResponse("VALIDATION_ERROR", "Pause and daily budget are organization-wide settings.", 422);
+    if (agentId && patch.agentsPaused !== undefined) {
+      return errorResponse("VALIDATION_ERROR", "Pausing is an organization-wide setting.", 422);
     }
 
     try {

@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
+  Activity,
   ArrowLeft,
   Bell,
   BookOpen,
@@ -33,6 +34,7 @@ import type { OrgShellData } from "@/lib/orgs/shell";
 
 const navItems = [
   { label: "Canvas", href: "canvas", icon: LayoutDashboard },
+  { label: "Mission Control", href: "mission", icon: Activity },
   { label: "Roadmap", href: "canvas?open_tech_tree=1", icon: Workflow },
   { label: "Tasks", href: "canvas?tab=tasks", icon: ListTodo },
   { label: "Agents", href: "canvas?tab=company", icon: Cpu },

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, Check, CheckCircle2, Copy, Loader2, Paperclip, SendHorizonal, Sparkles, TerminalSquare, X } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, Copy, HelpCircle, Loader2, Paperclip, SendHorizonal, Sparkles, TerminalSquare, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ErrorState } from "@/components/ui/error-state";
@@ -86,6 +86,13 @@ export function AgentWorkspaceDialog({
   } | null>(null);
   const [approvalError, setApprovalError] = React.useState<string | null>(null);
   const [approving, setApproving] = React.useState(false);
+  // An agent asked the founder something (ask_user) and is waiting for the answer.
+  const [pendingQuestion, setPendingQuestion] = React.useState<{
+    approvalId: string; question: string; options: string[]; context: string | null;
+  } | null>(null);
+  const [questionDraft, setQuestionDraft] = React.useState("");
+  const [questionError, setQuestionError] = React.useState<string | null>(null);
+  const [answering, setAnswering] = React.useState(false);
   const sseRef = React.useRef<EventSource | null>(null);
   // Phase 7 — live execution feed
   const [liveItems, setLiveItems] = React.useState<FeedItem[]>([]);
@@ -184,7 +191,9 @@ export function AgentWorkspaceDialog({
           // limit_reached / error
           message?: string;
           // delegate_start / delegate_done
-          childAgentSlug?: string; childSessionId?: string;
+          childAgentSlug?: string; childSessionId?: string; kind?: string; objective?: string; status?: string;
+          // question_asked / question_answered
+          question?: string; options?: string[]; context?: string | null; answer?: string | null;
         };
 
         const nextId = () => `feed-${++feedItemCounter.current}`;
@@ -227,7 +236,14 @@ export function AgentWorkspaceDialog({
           case "delegate_start":
             setLiveItems((prev) => [
               ...prev,
-              { kind: "delegation", agentSlug: event.childAgentSlug ?? "agent", sessionId: event.childSessionId ?? "", id: nextId() }
+              {
+                kind: "delegation",
+                agentSlug: event.childAgentSlug ?? "agent",
+                sessionId: event.childSessionId ?? "",
+                consult: event.kind === "consult",
+                objective: event.objective,
+                id: nextId()
+              }
             ]);
             break;
 
@@ -235,14 +251,36 @@ export function AgentWorkspaceDialog({
             setLiveItems((prev) => {
               for (let i = prev.length - 1; i >= 0; i--) {
                 const item = prev[i];
-                if (item.kind === "delegation" && item.agentSlug === event.childAgentSlug && item.output === undefined) {
+                const same = event.childSessionId
+                  ? item.kind === "delegation" && item.sessionId === event.childSessionId
+                  : item.kind === "delegation" && item.agentSlug === event.childAgentSlug;
+                if (same && item.kind === "delegation" && item.output === undefined) {
                   const next = [...prev];
-                  next[i] = { ...item, output: event.output ?? "" };
+                  next[i] = { ...item, output: event.output ?? "", status: event.status, summary: event.summary };
                   return next;
                 }
               }
               return prev;
             });
+            break;
+
+          case "question_asked":
+            if (event.approvalId && event.question) {
+              setLiveItems((prev) => [...prev, { kind: "question", approvalId: event.approvalId!, question: event.question!, id: nextId() }]);
+              setQuestionError(null);
+              setPendingQuestion({ approvalId: event.approvalId, question: event.question, options: event.options ?? [], context: event.context ?? null });
+            }
+            break;
+
+          case "question_answered":
+            setLiveItems((prev) =>
+              prev.map((item) =>
+                item.kind === "question" && item.approvalId === event.approvalId
+                  ? { ...item, answer: event.answer ?? null, status: event.status ?? "answered" }
+                  : item
+              )
+            );
+            setPendingQuestion((current) => (current?.approvalId === event.approvalId ? null : current));
             break;
 
           case "approval_required":
@@ -273,6 +311,31 @@ export function AgentWorkspaceDialog({
       sseRef.current = null;
     };
   }, [session?.id, session?.agent?.id, session?.status]);
+
+  async function handleAnswer(answer: string) {
+    const text = answer.trim();
+    if (!pendingQuestion || !text || answering) return;
+    setAnswering(true);
+    setQuestionError(null);
+    try {
+      const res = await fetch(`/api/orgs/${orgId}/agent-questions/${pendingQuestion.approvalId}/answer`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ answer: text })
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        setQuestionError(body?.error?.message ?? "Could not send the answer.");
+        return;
+      }
+      setPendingQuestion(null);
+      setQuestionDraft("");
+    } catch {
+      setQuestionError("Could not reach the server.");
+    } finally {
+      setAnswering(false);
+    }
+  }
 
   async function handleApprove(action: "approve" | "deny", scope: "once" | "run" = "once") {
     if (!pendingApproval || !session?.agent?.id || approving) return;
@@ -376,6 +439,61 @@ export function AgentWorkspaceDialog({
 
         {session ? (
           <>
+          {/* An agent is waiting on the founder's answer */}
+          {pendingQuestion && (
+            <form
+              className="flex shrink-0 flex-col gap-2 border-b px-4 py-3 animate-[fade-in_150ms_ease-out_both]"
+              style={{ background: "var(--foreground-3)", borderColor: "var(--border-10)", borderLeft: "3px solid var(--alert)" }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleAnswer(questionDraft);
+              }}
+            >
+              <div className="flex min-w-0 items-start gap-2.5">
+                <HelpCircle className="mt-0.5 size-4 shrink-0 text-[var(--alert)]" aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[var(--foreground-80)]">{pendingQuestion.question}</p>
+                  {pendingQuestion.context ? (
+                    <p className="mt-0.5 text-xs text-[var(--foreground-50)]">{pendingQuestion.context}</p>
+                  ) : null}
+                  {questionError ? <p className="mt-0.5 text-xs text-[var(--destructive)]">{questionError}</p> : null}
+                </div>
+              </div>
+              {pendingQuestion.options.length > 0 ? (
+                <div className="flex flex-wrap gap-2 pl-6">
+                  {pendingQuestion.options.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      disabled={answering}
+                      onClick={() => void handleAnswer(option)}
+                      className="rounded-[8px] border border-[var(--border-10)] px-3 py-1.5 text-xs text-[var(--foreground-80)] transition-colors hover:bg-[var(--foreground-5)] disabled:pointer-events-none disabled:opacity-40"
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <div className="flex gap-2 pl-6">
+                <input
+                  value={questionDraft}
+                  onChange={(e) => setQuestionDraft(e.target.value)}
+                  placeholder="Type your answer"
+                  aria-label="Your answer"
+                  className="min-w-0 flex-1 rounded-[8px] border border-[var(--border-10)] bg-transparent px-3 py-1.5 text-xs text-[var(--foreground-80)] outline-none focus:border-[var(--focused)]"
+                />
+                <button
+                  type="submit"
+                  disabled={answering || !questionDraft.trim()}
+                  className="flex items-center gap-1.5 rounded-[8px] border border-[var(--alert)]/40 bg-[var(--alert)]/10 px-3 py-1.5 text-xs font-medium text-[var(--alert)] transition-colors hover:bg-[var(--alert)]/20 disabled:pointer-events-none disabled:opacity-40"
+                >
+                  {answering ? <Loader2 className="size-3 animate-spin" /> : null}
+                  Answer
+                </button>
+              </div>
+            </form>
+          )}
+
           {/* Phase 5 — approval required banner (blocking) */}
           {pendingApproval && (
             <div

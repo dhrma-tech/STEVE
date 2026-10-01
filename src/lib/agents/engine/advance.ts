@@ -1,21 +1,43 @@
 import { prisma } from "@/lib/db/client";
-import { resolveModel } from "@/lib/ai/model-router";
+import { resolveRunModel } from "@/lib/ai/model-router";
+import { bindsThinkingToConversation } from "@/lib/ai/model-tiers";
+import { log, reportError } from "@/lib/observability/log";
+import { UNTRUSTED_DATA_RULE } from "../policy/injection";
 import { ollamaChatSafe } from "@/lib/ai/ollama";
 import type { AgentEvent } from "../events";
 import { AgentsPausedError, assertAgentsNotPaused } from "../flags";
 import { buildPrompt, loadOrgContext } from "../prompt";
 import { LimitExceededError, type RunBudget } from "../policy/limits";
-import { cancelPendingApprovals } from "../policy/approvals";
+import { approvalTimeoutMs, cancelPendingApprovals, createQuestion } from "../policy/approvals";
+import { collaborationGuide, loadDirectory, renderDirectory } from "../directory";
 import { isOrgPaused } from "../policy/store";
 import { delegationBlockReason, parsePermissionMode, stricterMode, type RunScope } from "../run-scope";
 import { evaluateToolCall, finishUnapprovedCall, requestToolApproval, runToolCall, type Emit } from "../tool-executor";
 import { buildToolset } from "../tools/registry";
+import { recordProposedPlan } from "../plans/proposal";
+import { planRunSystemPrompt, PLAN_PROMPT_KINDS } from "../plans/prompts";
+import { isSystemAgentSlug } from "../plans/system-agents";
+import { enqueuePlanAdvance } from "../plans/wake";
+import { captureRunLearning } from "@/lib/memory/learning";
+import { finishBriefingForRun } from "@/lib/briefings/briefings";
+import { rankMemories, renderMemorySection, scopesFor, visibleMemories } from "@/lib/memory/store";
 import type { AgentTool, ToolContext } from "../tools/types";
 import { finalizeRunRecords, recordTreeUsage, usageNote } from "./finalize";
-import { compactMessages, initialMessages, runModelTurn, toolResultMessages, TransientModelError } from "./models";
+import {
+  handoffForParent,
+  handoffFromText,
+  parseHandoffInput,
+  parseStoredHandoff,
+  renderHandoff,
+  type Handoff,
+  type HandoffInput
+} from "./handoff";
+import { compactMessages, initialMessages, ModelRefusalError, runModelTurn, toolResultMessages, TransientModelError } from "./models";
 import {
   acquireRunLease,
   activeDescendants,
+  addRunCost,
+  assertWithinBudgetCaps,
   budgetFromRoot,
   emitRunEvent,
   extendRunLease,
@@ -28,13 +50,23 @@ import {
   saveState,
   type Run
 } from "./run-store";
-import { ACTIVE_STATUSES, isTerminalStatus, type AdvanceResult, type RunState, type Slot } from "./types";
+import { ACTIVE_STATUSES, isTerminalStatus, type AdvanceResult, type RunState, type Slot, type SlotChild } from "./types";
 import { enqueueAdvance } from "./wake";
 
 /** Hard cap on model turns for one agent, on top of the run tree's step limit. */
 const MAX_TURNS_PER_AGENT = 20;
 const TEXT_FLUSH_MS = 250;
 const LOW_RISK = new Set(["read", "write_internal"]);
+
+/**
+ * Runs that must end with a particular tool call: work handed over by another agent (or by the plan) ends with a
+ * structured handoff, the Reviewer ends with its verdict, and planning ends with a plan.
+ */
+function requiredEnding(kind: string): "finish_run" | "propose_plan" | null {
+  if (kind === "delegation" || kind === "plan_node" || kind === "review") return "finish_run";
+  if (kind === "plan") return "propose_plan";
+  return null;
+}
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
@@ -120,6 +152,7 @@ async function stepInner(run: Run, root: Run, budget: RunBudget): Promise<Advanc
 
   assertAgentsNotPaused();
   budget.check();
+  await assertWithinBudgetCaps(run);
   if (await isOrgPaused(run.organizationId, run.agentId)) {
     throw new AgentsPausedError("Agent execution is paused for this organization.");
   }
@@ -134,6 +167,12 @@ async function stepInner(run: Run, root: Run, budget: RunBudget): Promise<Advanc
   let state = parseState(run);
   if (!state) {
     state = await prepareState(run, agent);
+    // A brief from a run that read injection-shaped content may carry it along: the child starts tainted too.
+    if (run.parentRunId) {
+      const parent = await prisma.run.findUnique({ where: { id: run.parentRunId }, select: { stateJson: true } });
+      const inherited = parent ? parseState(parent)?.injectionSuspected : null;
+      if (inherited) state.injectionSuspected = inherited;
+    }
     await saveState(run.id, state);
   }
 
@@ -148,7 +187,7 @@ async function stepInner(run: Run, root: Run, budget: RunBudget): Promise<Advanc
   };
   const ctx: StepContext = {
     run, root, budget, agent, state, scope, emit,
-    toolset: buildToolset(state.skillKeys),
+    toolset: buildToolset(state.skillKeys, { kind: run.kind }),
     toolCtx: { orgId: run.organizationId, agentId: run.agentId, sessionId: run.sessionId, skillKeys: state.skillKeys, scope }
   };
 
@@ -171,10 +210,12 @@ async function prepareState(run: Run, agent: NonNullable<Awaited<ReturnType<type
   });
   const task = session?.task ?? null;
 
-  const [org, orgContext, memories] = await Promise.all([
+  const memoryScopes = scopesFor({ id: agent.id, departmentSlug: agent.department.slug });
+  const [org, orgContext, memories, directory] = await Promise.all([
     prisma.organization.findUnique({ where: { id: orgId } }),
     loadOrgContext(orgId),
-    prisma.agentMemory.findMany({ where: { agentId: agent.id }, orderBy: { updatedAt: "desc" } })
+    visibleMemories(orgId, memoryScopes),
+    loadDirectory(orgId)
   ]);
 
   let skillKeys: string[] = [];
@@ -190,6 +231,45 @@ async function prepareState(run: Run, agent: NonNullable<Awaited<ReturnType<type
   } catch { /* ignore */ }
 
   const request = run.requestText;
+  const model = resolveRunModel({ agentModel: agent.model, agentTier: agent.modelTier, kind: run.kind });
+  // Only the memories that matter for this request, bounded in count and size (company, department, own notes).
+  const memorySection = renderMemorySection(rankMemories(memories, `${task?.title ?? ""}\n${request}`, memoryScopes), {
+    departmentName: agent.department.name,
+    scopes: memoryScopes
+  });
+
+  // The Chief of Staff and the Reviewer steer the team instead of doing department work: their own prompts.
+  if (PLAN_PROMPT_KINDS.has(run.kind)) {
+    const plan = run.planId ? await prisma.plan.findUnique({ where: { id: run.planId }, select: { status: true } }) : null;
+    const system = [
+      planRunSystemPrompt({
+        kind: run.kind,
+        agentName: agent.name,
+        orgName: org?.name ?? "your company",
+        replanning: plan?.status === "replanning",
+        businessPlan: orgContext.businessPlan,
+        brandKit: orgContext.brandKit,
+        team: renderDirectory(directory, agent.id)
+      }),
+      memorySection,
+      UNTRUSTED_DATA_RULE
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    return {
+      provider: model.provider,
+      modelId: model.modelId,
+      tier: model.tier,
+      effort: model.effort,
+      fallbackModelId: model.fallbackModelId,
+      system,
+      user: request,
+      skillKeys,
+      messages: model.provider === "ollama" ? [] : initialMessages(model.provider, system, request),
+      pending: null
+    };
+  }
+
   const { system: baseSystem, user } = buildPrompt({
     agentName: agent.name,
     orgName: org?.name ?? "your company",
@@ -201,20 +281,35 @@ async function prepareState(run: Run, agent: NonNullable<Awaited<ReturnType<type
     taskDescription: task?.description ?? null,
     subtasks: (task?.subtasks ?? []).map((s) => ({ title: s.title, status: s.status })),
     fileNames: (task?.files ?? []).map((f) => f.name),
-    message: request,
+    // A delegated brief or a question is already the task description; repeating it as a note adds nothing.
+    message: run.kind === "task" ? request : null,
     hasGithub: skillKeys.includes("github-repository"),
     hasVercel: skillKeys.includes("vercel-preview"),
     businessPlan: orgContext.businessPlan,
     brandKit: orgContext.brandKit
   });
-  const system = memories.length > 0
-    ? `${baseSystem}\n\n## Your Memory\n${memories.map((m) => `- ${m.key}: ${m.value}`).join("\n")}`
-    : baseSystem;
+  const sections = [baseSystem];
+  if (memorySection) sections.push(memorySection);
+  if (run.kind === "consult") {
+    sections.push(
+      "## A teammate's question\n" +
+        "Another agent on your team is asking you a question in your area. Answer it directly and concisely from what you " +
+        "know. You have read-only tools only: you cannot change anything, delegate or contact anyone. Say so if you do not know."
+    );
+  } else {
+    const team = renderDirectory(directory, agent.id);
+    if (team) sections.push(team);
+    sections.push(collaborationGuide({ mustHandOff: requiredEnding(run.kind) === "finish_run" }));
+  }
+  sections.push(UNTRUSTED_DATA_RULE);
+  const system = sections.join("\n\n");
 
-  const model = resolveModel(agent.model);
   return {
     provider: model.provider,
     modelId: model.modelId,
+    tier: model.tier,
+    effort: model.effort,
+    fallbackModelId: model.fallbackModelId,
     system,
     user,
     skillKeys,
@@ -261,7 +356,7 @@ async function stepModelTurn(ctx: StepContext): Promise<AdvanceResult> {
 
   if (state.provider === "ollama") {
     const text = await ollamaChatSafe({ system: state.system, user: state.user });
-    budget.recordModelTurn({ modelId: state.modelId, provider: "ollama" });
+    await addRunCost(run, budget.recordModelTurn({ modelId: state.modelId, provider: "ollama" }));
     await prisma.run.update({ where: { id: run.id }, data: { outputText: text, turnCount: { increment: 1 } } });
     return complete(ctx, text);
   }
@@ -275,8 +370,13 @@ async function stepModelTurn(ctx: StepContext): Promise<AdvanceResult> {
     );
   }
 
-  state.messages = compactMessages(state.provider, state.messages);
+  // Models that bind thinking to the conversation need an append-only history: their old tool output is cleared
+  // server-side (see models.ts). Others are trimmed here when the history grows long.
+  if (!(state.provider === "anthropic" && bindsThinkingToConversation(state.modelId))) {
+    state.messages = compactMessages(state.provider, state.messages);
+  }
   const flusher = new TextFlusher(emit);
+  const started = Date.now();
   let turn;
   try {
     turn = await runModelTurn({
@@ -286,16 +386,46 @@ async function stepModelTurn(ctx: StepContext): Promise<AdvanceResult> {
       system: state.system,
       messages: state.messages,
       tools: ctx.toolset,
-      onText: (delta) => flusher.push(delta)
+      onText: (delta) => flusher.push(delta),
+      effort: state.effort ?? null,
+      fallbackModelId: state.fallbackModelId ?? null
     });
   } finally {
     await flusher.flush();
   }
-  budget.recordModelTurn({
-    modelId: state.modelId,
+  // Priced as the model that actually answered (a fallback after an outage or a refusal costs what it costs).
+  const servedModelId = turn.servedModelId ?? state.modelId;
+  const cost = budget.recordModelTurn({
+    modelId: servedModelId,
     provider: state.provider,
     inputTokens: turn.inputTokens,
-    outputTokens: turn.outputTokens
+    outputTokens: turn.outputTokens,
+    cacheReadTokens: turn.cacheReadTokens,
+    cacheWriteTokens: turn.cacheWriteTokens
+  });
+  await addRunCost(run, cost);
+  // One usage record per model turn: cost per run, per agent and (divided by the calls it made) per tool call.
+  await emit({
+    type: "model_usage",
+    modelId: servedModelId,
+    requestedModelId: state.modelId,
+    tier: state.tier ?? null,
+    inputTokens: turn.inputTokens,
+    outputTokens: turn.outputTokens,
+    cacheReadTokens: turn.cacheReadTokens ?? 0,
+    cacheWriteTokens: turn.cacheWriteTokens ?? 0,
+    costCents: Math.round(cost * 10_000) / 10_000,
+    toolCalls: turn.toolCalls.map((call) => call.name),
+    latencyMs: Date.now() - started
+  });
+  log.info("model turn", {
+    runId: run.id,
+    sessionId: run.sessionId,
+    orgId: run.organizationId,
+    model: servedModelId,
+    costCents: cost,
+    toolCalls: turn.toolCalls.length,
+    latencyMs: Date.now() - started
   });
 
   state.messages.push(turn.assistantMessage);
@@ -303,6 +433,23 @@ async function stepModelTurn(ctx: StepContext): Promise<AdvanceResult> {
 
   if (turn.toolCalls.length === 0) {
     state.pending = null;
+    // Delegated work must end with a structured handoff, and planning with a plan. Ask once; after that, delegated
+    // work's text is wrapped so the parent still gets a handoff, and the scheduler reports a plan that never came.
+    const ending = requiredEnding(run.kind);
+    if (ending && !state.nudgedToFinish && run.turnCount + 1 < MAX_TURNS_PER_AGENT) {
+      state.nudgedToFinish = true;
+      state.messages.push({
+        role: "user",
+        content:
+          ending === "propose_plan"
+            ? "You ended without calling propose_plan. Record the plan now with propose_plan (a summary and the steps), " +
+              "or ask the founder with ask_user if the goal is too unclear to plan."
+            : "You ended without calling finish_run. The agent that delegated this work needs a structured handoff: call " +
+              "finish_run now with your status, a short summary, artifacts, findings and next steps."
+      });
+      await saveState(run.id, state, { outputText, turnCount: { increment: 1 } });
+      return "more";
+    }
     await saveState(run.id, state, { outputText, turnCount: { increment: 1 } });
     return complete(ctx, outputText);
   }
@@ -328,6 +475,8 @@ async function stepPending(ctx: StepContext): Promise<AdvanceResult> {
   state.messages.push(...toolResultMessages(state.provider, slots.map((s) => ({ id: s.id, output: s.output ?? "" }))));
   state.pending = null;
   await saveState(run.id, state);
+  // finish_run was called: the run ends here instead of asking the model for another turn.
+  if (state.finish) return complete(ctx, run.outputText);
   return "more";
 }
 
@@ -339,7 +488,7 @@ async function processSlots(ctx: StepContext): Promise<"waiting_approval" | "wai
     if (slot.status === "done") continue;
 
     if (slot.status === "waiting_child") {
-      await pollChild(ctx, slot);
+      await pollChildren(ctx, slot);
       continue;
     }
 
@@ -349,9 +498,27 @@ async function processSlots(ctx: StepContext): Promise<"waiting_approval" | "wai
         waitingApproval = true;
         break;
       }
+      if (approval?.kind === "question") {
+        const answered = approval.status === "approved";
+        settle(slot, {
+          output: answered
+            ? `The founder answered: ${approval.responseText ?? ""}`
+            : "The founder did not answer in time. Continue with your best judgment and say what you assumed, or stop and report that you need this answer.",
+          success: answered
+        });
+        await ctx.emit({ type: "question_answered", approvalId: approval.id, answer: approval.responseText ?? null, status: approval.status });
+        await saveState(ctx.run.id, ctx.state);
+        continue;
+      }
       if (approval && approval.status === "approved") {
         slot.approved = true;
         slot.status = "pending";
+        // Edit & approve: the person approved changed arguments, so the call runs with exactly those.
+        const edited = parseEditedInput(approval.editedPayloadJson);
+        if (edited) {
+          slot.input = edited;
+          await ctx.emit({ type: "tool_call", tool: slot.name, input: edited });
+        }
       } else {
         const status = approval?.status === "denied" ? "denied" : approval?.status === "cancelled" ? "cancelled" : "expired";
         const result = await finishUnapprovedCall({
@@ -379,8 +546,50 @@ async function processSlots(ctx: StepContext): Promise<"waiting_approval" | "wai
       }
     }
 
-    if (slot.name === "delegate_agent") {
-      await startChild(ctx, slot);
+    if (slot.name === "delegate_agent" || slot.name === "delegate_many" || slot.name === "ask_agent") {
+      await startChildren(ctx, slot);
+      await saveState(ctx.run.id, ctx.state);
+      continue;
+    }
+
+    if (slot.name === "ask_user") {
+      const waiting = await askUser(ctx, slot);
+      await saveState(ctx.run.id, ctx.state);
+      if (waiting) {
+        waitingApproval = true;
+        break;
+      }
+      continue;
+    }
+
+    if (slot.name === "propose_plan") {
+      if (!slot.counted) {
+        ctx.scope.tree.budget.recordToolCall();
+        slot.counted = true;
+      }
+      const result =
+        ctx.run.kind === "plan"
+          ? await recordProposedPlan(ctx.run, slot.input)
+          : ({ ok: false, error: "Error: only the Chief of Staff's planning run can propose a plan." } as const);
+      if (result.ok) {
+        // Proposing the plan ends the planning run, like finish_run.
+        ctx.state.finish = { status: "done", summary: result.summary, artifacts: [], findings: [], nextSteps: [], openQuestions: [] };
+        settle(slot, { output: result.message, success: true });
+      } else {
+        settle(slot, { output: result.error, success: false });
+      }
+      await saveState(ctx.run.id, ctx.state);
+      continue;
+    }
+
+    if (slot.name === "finish_run") {
+      const parsed = parseHandoffInput(slot.input);
+      if (parsed.ok) {
+        ctx.state.finish = parsed.handoff;
+        settle(slot, { output: "Handoff recorded. Your run ends after this turn's other calls finish.", success: true });
+      } else {
+        settle(slot, { output: parsed.error, success: false });
+      }
       await saveState(ctx.run.id, ctx.state);
       continue;
     }
@@ -396,6 +605,16 @@ async function processSlots(ctx: StepContext): Promise<"waiting_approval" | "wai
   return "done";
 }
 
+function parseEditedInput(json: string | null): Record<string, unknown> | null {
+  if (!json) return null;
+  try {
+    const value = JSON.parse(json) as unknown;
+    return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
 function settle(slot: Slot, result: { output: string; success: boolean }) {
   slot.status = "done";
   slot.output = result.output;
@@ -408,7 +627,8 @@ async function runSlot(ctx: StepContext, slot: Slot): Promise<boolean> {
 
   if (!slot.approved) {
     const evaluation = await evaluateToolCall({
-      toolName: slot.name, toolInput: slot.input, toolset, ctx: toolCtx, counted: !!slot.counted, emit
+      toolName: slot.name, toolInput: slot.input, toolset, ctx: toolCtx, counted: !!slot.counted, emit,
+      tainted: !!ctx.state.injectionSuspected
     });
     slot.counted = true;
 
@@ -451,117 +671,334 @@ async function runSlot(ctx: StepContext, slot: Slot): Promise<boolean> {
     emit
   });
   slot.actionId = result.actionId;
+  if (result.injection && !ctx.state.injectionSuspected) {
+    // From here on this run gets no pre-approved outside actions (see policy/engine.ts).
+    ctx.state.injectionSuspected = { tool: slot.name, excerpt: result.injection.excerpt };
+    log.warn("prompt injection suspected", { runId: run.id, sessionId: run.sessionId, orgId: run.organizationId, tool: slot.name, pattern: result.injection.pattern });
+  }
   settle(slot, result);
   await saveState(run.id, ctx.state);
   return false;
 }
 
-// ── Delegation ────────────────────────────────────────────────────────────────
+// ── Delegation, consults and questions ────────────────────────────────────────
 
-async function startChild(ctx: StepContext, slot: Slot) {
+type Brief = {
+  agentSlug: string;
+  objective: string;
+  context?: string;
+  constraints?: string;
+  acceptanceCriteria?: string[];
+  deadline?: string;
+  budgetCents?: number;
+};
+
+const str = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+
+function readBrief(input: Record<string, unknown>): Brief | string {
+  const agentSlug = str(input.agentSlug);
+  // `task` is the field name from before the typed protocol.
+  const objective = str(input.objective) || str(input.task);
+  if (!agentSlug || !objective) return "agentSlug and objective are required";
+  const criteria = Array.isArray(input.acceptanceCriteria)
+    ? input.acceptanceCriteria.map(str).filter(Boolean)
+    : str(input.acceptanceCriteria)
+      ? [str(input.acceptanceCriteria)]
+      : [];
+  const budget = Number(input.budgetCents);
+  return {
+    agentSlug,
+    objective,
+    context: str(input.context) || undefined,
+    constraints: str(input.constraints) || undefined,
+    acceptanceCriteria: criteria.length ? criteria : undefined,
+    deadline: str(input.deadline) || undefined,
+    budgetCents: Number.isFinite(budget) && budget > 0 ? budget : undefined
+  };
+}
+
+/** The briefs one call asks for: one for delegate_agent and ask_agent, several for delegate_many. */
+function briefsOf(slot: Slot): Array<Brief | string> {
+  if (slot.name === "ask_agent") {
+    const agentSlug = str(slot.input.agentSlug);
+    const question = str(slot.input.question);
+    return [agentSlug && question ? { agentSlug, objective: question } : "agentSlug and question are required"];
+  }
+  if (slot.name === "delegate_many") {
+    const list = Array.isArray(slot.input.delegations) ? slot.input.delegations : [];
+    if (list.length === 0) return ["delegations must list at least one teammate"];
+    return list
+      .slice(0, 8)
+      .map((item) => (item && typeof item === "object" ? readBrief(item as Record<string, unknown>) : "each delegation must be an object"));
+  }
+  return [readBrief(slot.input)];
+}
+
+function briefText(brief: Brief, fromAgent: string): string {
+  return [
+    `Objective: ${brief.objective}`,
+    brief.context ? `\nContext:\n${brief.context}` : "",
+    brief.constraints ? `\nConstraints:\n${brief.constraints}` : "",
+    brief.acceptanceCriteria?.length ? `\nAcceptance criteria:\n${brief.acceptanceCriteria.map((c) => `- ${c}`).join("\n")}` : "",
+    brief.deadline ? `\nDeadline: ${brief.deadline}` : "",
+    `\nDelegated by: ${fromAgent}`
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** A consult is a small, read-only exchange; it never gets more than this, whatever the parent's budget. */
+const CONSULT_CAP_CENTS = 25;
+const CHILD_TOOLS = new Set(["delegate_agent", "delegate_many", "ask_agent"]);
+
+/**
+ * What each new child of this turn may spend. The parent's remaining budget (its own share, or the whole tree's)
+ * is split equally among every teammate it starts in this turn; an explicit request can only lower a share.
+ */
+function childBudgetCaps(ctx: StepContext, briefs: Brief[], consult: boolean): number[] {
+  const { run, budget } = ctx;
+  const remaining =
+    run.budgetCapCents !== null
+      ? Math.max(0, run.budgetCapCents - run.costCents)
+      : Math.max(0, budget.limits.budgetCents - budget.spentCents);
+  const childrenInTurn = (ctx.state.pending ?? []).reduce((count, slot) => {
+    if (!CHILD_TOOLS.has(slot.name)) return count;
+    const many = slot.name === "delegate_many" && Array.isArray(slot.input.delegations);
+    return count + (many ? Math.min(8, (slot.input.delegations as unknown[]).length) : 1);
+  }, 0);
+  const share = remaining / Math.max(1, childrenInTurn, briefs.length);
+  return briefs.map((brief) => {
+    const cap = brief.budgetCents !== undefined ? Math.min(brief.budgetCents, share) : share;
+    return consult ? Math.min(cap, CONSULT_CAP_CENTS) : cap;
+  });
+}
+
+async function startChildren(ctx: StepContext, slot: Slot) {
   const { run, scope, emit } = ctx;
   if (!slot.counted) {
     scope.tree.budget.recordToolCall(); // throws LimitExceededError at the limit
     slot.counted = true;
   }
 
-  const agentSlug = typeof slot.input.agentSlug === "string" ? slot.input.agentSlug : "";
-  const task = typeof slot.input.task === "string" ? slot.input.task : "";
-  if (!agentSlug || !task) return settle(slot, { output: "Error: agentSlug and task are required", success: false });
+  const consult = slot.name === "ask_agent";
+  const parsed = briefsOf(slot);
+  const caps = childBudgetCaps(ctx, parsed.filter((b): b is Brief => typeof b !== "string"), consult);
+  const self = ctx.agent;
+  const children: SlotChild[] = [];
+  let validIndex = 0;
 
-  const child = await prisma.agent.findFirst({ where: { organizationId: run.organizationId, slug: agentSlug, archivedAt: null } });
-  if (!child) return settle(slot, { output: `Error: no agent with slug "${agentSlug}" found in this org`, success: false });
+  for (let i = 0; i < parsed.length; i++) {
+    const brief = parsed[i];
+    if (typeof brief === "string") {
+      children.push({ agentSlug: "?", result: `Error: ${brief}`, success: false });
+      continue;
+    }
+    const cap = caps[validIndex++];
+    const refuse = (reason: string) => children.push({ agentSlug: brief.agentSlug, result: `Error: ${reason}`, success: false });
 
-  // Loops and runaway depth are refused before anything is created; the reason goes back to the model.
-  const blocked = delegationBlockReason(scope, child.id);
-  if (blocked) return settle(slot, { output: `Error: cannot delegate to "${agentSlug}". ${blocked}`, success: false });
+    const child = await prisma.agent.findFirst({ where: { organizationId: run.organizationId, slug: brief.agentSlug, archivedAt: null } });
+    if (!child) {
+      refuse(`no agent with slug "${brief.agentSlug}" in this organization. Check Your team for the right slug.`);
+      continue;
+    }
+    if (isSystemAgentSlug(child.slug)) {
+      refuse(`"${brief.agentSlug}" coordinates the team and does not take delegated work. Pick a teammate from Your team.`);
+      continue;
+    }
+    // Loops and runaway depth are refused before anything is created; the reason goes back to the model.
+    const blocked = delegationBlockReason(scope, child.id);
+    if (blocked) {
+      refuse(`cannot ${consult ? "ask" : "delegate to"} "${brief.agentSlug}". ${blocked}`);
+      continue;
+    }
 
-  let childRun = await prisma.run.findUnique({ where: { parentRunId_parentSlotId: { parentRunId: run.id, parentSlotId: slot.id } } });
-  let created = false;
-  if (!childRun) {
-    let childOwnMode = parsePermissionMode(undefined);
-    try {
-      childOwnMode = parsePermissionMode((JSON.parse(child.permissionsJson ?? "{}") as { mode?: unknown }).mode);
-    } catch { /* ignore */ }
-    const mode = stricterMode(scope.mode, childOwnMode);
-    const now = new Date();
+    // One child per (parent run, call, position): a retried step finds the child it already created.
+    const parentSlotId = parsed.length === 1 ? slot.id : `${slot.id}#${i}`;
+    let childRun = await prisma.run.findUnique({ where: { parentRunId_parentSlotId: { parentRunId: run.id, parentSlotId } } });
+    let created = false;
+    if (!childRun) {
+      if (cap <= 0) {
+        refuse("there is no budget left to hand out. Finish this part yourself.");
+        continue;
+      }
+      let childOwnMode = parsePermissionMode(undefined);
+      try {
+        childOwnMode = parsePermissionMode((JSON.parse(child.permissionsJson ?? "{}") as { mode?: unknown }).mode);
+      } catch {
+        /* ignore */
+      }
+      const mode = stricterMode(scope.mode, childOwnMode);
+      const now = new Date();
+      const request = consult ? `Question from ${self.name}: ${brief.objective}` : briefText(brief, self.name);
+      const due = brief.deadline && !Number.isNaN(Date.parse(brief.deadline)) ? new Date(brief.deadline) : null;
 
-    childRun = await prisma.$transaction(async (tx) => {
-      const childTask = await tx.task.create({
-        data: {
-          organizationId: run.organizationId,
-          departmentId: child.departmentId,
-          agentId: child.id,
-          title: task.split(/\r?\n/)[0]?.slice(0, 80) ?? task.slice(0, 80),
-          description: task,
-          type: "agent_task",
-          status: "running",
-          priority: 1,
-          startedAt: now
-        }
+      childRun = await prisma.$transaction(async (tx) => {
+        const childTask = await tx.task.create({
+          data: {
+            organizationId: run.organizationId,
+            departmentId: child.departmentId,
+            agentId: child.id,
+            title: (consult ? `Question from ${self.name}` : (brief.objective.split(/\r?\n/)[0] ?? brief.objective)).slice(0, 80),
+            description: request,
+            type: consult ? "agent_consult" : "agent_task",
+            status: "running",
+            priority: 1,
+            startedAt: now,
+            dueAt: due,
+            // A consult is a conversation between agents, not work anyone needs in the task list.
+            archivedAt: consult ? now : null
+          }
+        });
+        const childSession = await tx.taskSession.create({
+          data: {
+            organizationId: run.organizationId,
+            taskId: childTask.id,
+            agentId: child.id,
+            parentSessionId: run.sessionId,
+            status: "running",
+            startedAt: now,
+            scratchpad: `# ${child.name} — Running\n\n**${consult ? "Asked" : "Delegated"} by:** ${self.name} (session ${run.sessionId})`
+          }
+        });
+        return tx.run.create({
+          data: {
+            id: crypto.randomUUID(),
+            organizationId: run.organizationId,
+            sessionId: childSession.id,
+            taskId: childTask.id,
+            agentId: child.id,
+            parentRunId: run.id,
+            parentSlotId,
+            rootRunId: run.rootRunId,
+            depth: run.depth + 1,
+            callChainJson: JSON.stringify([...scope.callChain, child.id]),
+            mode,
+            kind: consult ? "consult" : "delegation",
+            budgetCapCents: cap,
+            requestText: request
+          }
+        });
       });
-      const childSession = await tx.taskSession.create({
-        data: {
-          organizationId: run.organizationId,
-          taskId: childTask.id,
-          agentId: child.id,
-          parentSessionId: run.sessionId,
-          status: "running",
-          startedAt: now,
-          scratchpad: `# ${child.name} — Running\n\n**Delegated from session:** ${run.sessionId}`
-        }
+      created = true;
+      await prisma.agent.updateMany({ where: { id: child.id }, data: { status: "running" } });
+    }
+
+    children.push({ agentSlug: brief.agentSlug, runId: childRun.id });
+    if (created) {
+      await emit({
+        type: "delegate_start",
+        childAgentSlug: brief.agentSlug,
+        childSessionId: childRun.sessionId,
+        kind: consult ? "consult" : "delegation",
+        objective: brief.objective.slice(0, 300)
       });
-      const id = crypto.randomUUID();
-      return tx.run.create({
-        data: {
-          id,
-          organizationId: run.organizationId,
-          sessionId: childSession.id,
-          taskId: childTask.id,
-          agentId: child.id,
-          parentRunId: run.id,
-          parentSlotId: slot.id,
-          rootRunId: run.rootRunId,
-          depth: run.depth + 1,
-          callChainJson: JSON.stringify([...scope.callChain, child.id]),
-          mode,
-          requestText: task
-        }
-      });
-    });
-    created = true;
-    await prisma.agent.updateMany({ where: { id: child.id }, data: { status: "running" } });
+    }
+    await enqueueAdvance(childRun.id);
   }
 
-  slot.status = "waiting_child";
-  slot.childRunId = childRun.id;
-  slot.childAgentSlug = agentSlug;
-  if (created) {
-    await emit({ type: "delegate_start", childAgentSlug: agentSlug, childSessionId: childRun.sessionId });
+  slot.children = children;
+  if (children.some((c) => c.runId && c.result === undefined)) {
+    slot.status = "waiting_child";
+  } else {
+    settleChildren(slot);
   }
-  await enqueueAdvance(childRun.id);
 }
 
-async function pollChild(ctx: StepContext, slot: Slot) {
-  const child = slot.childRunId ? await getRun(slot.childRunId) : null;
-  const slug = slot.childAgentSlug ?? "agent";
-  if (!child) return settle(slot, { output: `Agent "${slug}" could not be found.`, success: false });
-  if (!isTerminalStatus(child.status)) return;
-
-  let output: string;
-  let success = false;
-  if (child.status === "completed") {
-    output = child.outputText || `Agent "${slug}" completed with no output.`;
-    success = true;
-  } else if (child.status === "cancelled") {
-    output = `Agent "${slug}" was cancelled.`;
-  } else {
-    output = `Agent "${slug}" did not finish: ${child.errorMessage ?? "unknown error"}${child.outputText ? `\nPartial output:\n${child.outputText}` : ""}`;
+/** What a finished child hands back to the model: its handoff (delegation) or its answer (consult). */
+function childResult(child: Run, slug: string): { result: string; success: boolean; status: string; summary: string } {
+  if (child.kind === "consult") {
+    if (child.status === "completed") {
+      const answer = child.outputText.trim() || "(no answer)";
+      return { result: JSON.stringify({ agent: slug, answer }), success: true, status: "done", summary: answer.slice(0, 300) };
+    }
+    const why = child.status === "cancelled" ? "was cancelled" : `could not answer: ${child.errorMessage ?? "unknown error"}`;
+    return { result: JSON.stringify({ agent: slug, answer: null, error: `${slug} ${why}` }), success: false, status: child.status, summary: why };
   }
-  settle(slot, { output, success });
-  await ctx.emit({ type: "delegate_done", childAgentSlug: slug, output: child.outputText });
+
+  const stored = parseStoredHandoff(child.resultJson);
+  let handoff: Handoff;
+  if (stored && child.status === "completed") {
+    handoff = { ...stored, costCents: child.costCents };
+  } else if (child.status === "completed") {
+    handoff = { ...handoffFromText(child.outputText), costCents: child.costCents };
+  } else {
+    const reason = child.status === "cancelled" ? "The work was cancelled." : `The agent did not finish: ${child.errorMessage ?? "unknown error"}`;
+    const text = child.outputText ? `${reason}\nPartial output:\n${child.outputText}` : reason;
+    handoff = { ...handoffFromText(text, "failed"), costCents: child.costCents };
+  }
+  return { result: handoffForParent(slug, handoff), success: handoff.status === "done", status: handoff.status, summary: handoff.summary.slice(0, 300) };
+}
+
+async function pollChildren(ctx: StepContext, slot: Slot) {
+  // Runs saved before delegate_many kept a single child on the slot.
+  if (!slot.children && slot.childRunId) slot.children = [{ agentSlug: slot.childAgentSlug ?? "agent", runId: slot.childRunId }];
+
+  for (const entry of slot.children ?? []) {
+    if (entry.result !== undefined || !entry.runId) continue;
+    const child = await getRun(entry.runId);
+    if (!child) {
+      entry.result = `Error: agent "${entry.agentSlug}" could not be found.`;
+      entry.success = false;
+      continue;
+    }
+    if (!isTerminalStatus(child.status)) continue;
+    const outcome = childResult(child, entry.agentSlug);
+    entry.result = outcome.result;
+    entry.success = outcome.success;
+    await ctx.emit({
+      type: "delegate_done",
+      childAgentSlug: entry.agentSlug,
+      childSessionId: child.sessionId,
+      output: child.outputText,
+      status: outcome.status,
+      summary: outcome.summary,
+      costCents: Math.round(child.costCents * 100) / 100
+    });
+  }
+
+  if ((slot.children ?? []).every((c) => c.result !== undefined)) settleChildren(slot);
   await saveState(ctx.run.id, ctx.state);
 }
+
+function settleChildren(slot: Slot) {
+  const children = slot.children ?? [];
+  if (slot.name === "delegate_many") {
+    settle(slot, { output: `[${children.map((c) => c.result ?? "null").join(",\n")}]`, success: children.some((c) => c.success) });
+  } else {
+    const only = children[0];
+    settle(slot, { output: only?.result ?? "Error: nothing was delegated.", success: !!only?.success });
+  }
+}
+
+/** Ask the founder. Returns true when the run now waits for the answer. */
+async function askUser(ctx: StepContext, slot: Slot): Promise<boolean> {
+  if (!slot.counted) {
+    ctx.scope.tree.budget.recordToolCall();
+    slot.counted = true;
+  }
+  const question = str(slot.input.question);
+  if (!question) {
+    settle(slot, { output: "Error: question is required", success: false });
+    return false;
+  }
+  const options = Array.isArray(slot.input.options) ? slot.input.options.map(str).filter(Boolean).slice(0, 8) : [];
+  const context = str(slot.input.context) || null;
+
+  const row = await createQuestion({
+    orgId: ctx.run.organizationId,
+    sessionId: ctx.run.sessionId,
+    agentId: ctx.run.agentId,
+    question: question.slice(0, 2000),
+    context,
+    options,
+    timeoutMs: approvalTimeoutMs()
+  });
+  slot.status = "waiting_approval";
+  slot.approvalId = row.id;
+  await ctx.emit({ type: "question_asked", approvalId: row.id, question, context, options });
+  return true;
+}
+
 
 // ── Finishing ─────────────────────────────────────────────────────────────────
 
@@ -579,10 +1016,31 @@ async function agentName(agentId: string): Promise<string> {
   return agent?.name ?? "Agent";
 }
 
-async function complete(ctx: StepContext, output: string): Promise<AdvanceResult> {
+/**
+ * The structured result of a finished run: what it gave `finish_run`, or, for delegated work that only answered in
+ * text, that text wrapped as a handoff. Task runs and consults that did not call finish_run have none.
+ */
+function finalHandoff(ctx: StepContext, output: string): HandoffInput | null {
+  if (ctx.state.finish) return ctx.state.finish;
+  if (requiredEnding(ctx.run.kind) === "finish_run") return handoffFromText(output);
+  return null;
+}
+
+async function complete(ctx: StepContext, text: string): Promise<AdvanceResult> {
   const { run, root, budget, emit } = ctx;
   await flushBudget(root.id, budget);
-  if (!(await setStatus(run.id, "completed", { finishedAt: new Date() }))) return "finished";
+  const handoffInput = finalHandoff(ctx, text);
+  let output = text;
+  let resultJson: string | null = null;
+  if (handoffInput) {
+    const costCents = (await getRun(run.id))?.costCents ?? run.costCents;
+    const handoff: Handoff = { ...handoffInput, costCents };
+    resultJson = JSON.stringify(handoff);
+    const rendered = renderHandoff(handoff);
+    output = ctx.state.finish ? (text.trim() ? `${text.trim()}\n\n---\n\n${rendered}` : rendered) : text;
+  }
+  const extra = resultJson ? { finishedAt: new Date(), resultJson, outputText: output } : { finishedAt: new Date() };
+  if (!(await setStatus(run.id, "completed", extra))) return "finished";
   await emit({ type: "done", output });
   await closeOut(run, root, { outcome: "completed", output, errorMessage: null });
   return "finished";
@@ -596,6 +1054,10 @@ async function failRun(run: Run, root: Run, error: unknown): Promise<AdvanceResu
     await emitRunEvent(current, { type: "limit_reached", limit: error.limit, message: error.message });
   }
   await emitRunEvent(current, { type: "error", message: `Agent run failed: ${message}` });
+  // Expected stops (limits, pauses, a declined request, a missing key) are logged; anything else is a bug worth reporting.
+  const expected = error instanceof LimitExceededError || error instanceof AgentsPausedError || error instanceof ModelRefusalError || /API_KEY is not set/.test(message);
+  if (expected) log.warn("run failed", { runId: run.id, sessionId: run.sessionId, orgId: run.organizationId, reason: message });
+  else await reportError(error, { runId: run.id, sessionId: run.sessionId, orgId: run.organizationId, kind: run.kind });
   // Nothing under a failed run should keep going.
   await cancelDescendants(run);
   await closeOut(current, root, { outcome: "failed", output: current.outputText, errorMessage: message });
@@ -618,7 +1080,51 @@ async function closeOut(run: Run, root: Run, result: { outcome: "completed" | "f
     usage: isRoot ? usageNote(totals) : null
   });
   if (isRoot) await recordTreeUsage(rootFresh, totals);
+  // What the run produced becomes searchable, and its findings are proposed to memory. Never fails the run.
+  await captureRunLearning(fresh);
+  // A briefing run hands its text (or, if it failed, the records-only version) to its briefing.
+  await finishBriefingForRun(fresh).catch((error) => console.error(`[briefings] run ${run.id}:`, error));
   if (run.parentRunId) await enqueueAdvance(run.parentRunId);
+  await markClosedOut(run.id);
+  // After the close-out: the plan reads the step's task and result, which the close-out writes.
+  if (run.planId) await enqueuePlanAdvance(run.planId);
+}
+
+async function markClosedOut(runId: string) {
+  await prisma.run.updateMany({ where: { id: runId, closedOutAt: null }, data: { closedOutAt: new Date() } });
+}
+
+/**
+ * Finish the close-out of runs that reached a final state but whose worker stopped before updating the session,
+ * task and parent (the status change and the close-out are separate writes). Each run is claimed first, so two
+ * sweepers never both repair it. Returns how many were repaired.
+ */
+export async function repairUnclosedRuns(olderThanMs: number): Promise<number> {
+  const stale = await prisma.run.findMany({
+    where: { status: { in: ["completed", "failed", "cancelled"] }, closedOutAt: null, finishedAt: { lt: new Date(Date.now() - olderThanMs) } },
+    take: 50
+  });
+  let repaired = 0;
+  for (const run of stale) {
+    const claimed = await prisma.run.updateMany({ where: { id: run.id, closedOutAt: null }, data: { closedOutAt: new Date() } });
+    if (claimed.count !== 1) continue;
+    const outcome = run.status as "completed" | "failed" | "cancelled";
+    const isRoot = run.id === run.rootRunId;
+    const root = isRoot ? run : ((await getRun(run.rootRunId)) ?? run);
+    await finalizeRunRecords({
+      run,
+      agentName: await agentName(run.agentId),
+      outcome,
+      output: run.outputText,
+      errorMessage: outcome === "completed" ? null : run.errorMessage,
+      usage: isRoot && outcome !== "cancelled" ? usageNote(budgetFromRoot(root)) : null
+    });
+    if (isRoot && outcome !== "cancelled") await recordTreeUsage(root, budgetFromRoot(root));
+    if (run.parentRunId) await enqueueAdvance(run.parentRunId);
+    if (run.planId) await enqueuePlanAdvance(run.planId);
+    repaired += 1;
+  }
+  return repaired;
 }
 
 /** Cancel a run and everything it delegated to. Safe to call more than once. */
@@ -638,6 +1144,9 @@ export async function cancelRun(runId: string, reason = "Cancelled by a user."):
     usage: null
   });
   if (run.parentRunId) await enqueueAdvance(run.parentRunId);
+  await markClosedOut(run.id);
+  // After the close-out: the plan reads the step's task and result, which the close-out writes.
+  if (run.planId) await enqueuePlanAdvance(run.planId);
 }
 
 async function cancelDescendants(run: Run) {

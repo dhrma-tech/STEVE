@@ -12,7 +12,11 @@ export function DepartmentNode({ data, selected }: NodeProps) {
     availability: string;
     agents: number;
     tasks: number;
+    waitingForYou?: number;
+    runningRuns?: number;
   };
+  const waiting = nodeData.waitingForYou ?? 0;
+  const running = nodeData.runningRuns ?? 0;
 
   const isActive = nodeData.availability === "active";
 
@@ -50,9 +54,16 @@ export function DepartmentNode({ data, selected }: NodeProps) {
           >
             {nodeData.name.slice(0, 1)}
           </span>
-          <Badge variant={isActive ? "success" : "warning"} className="mt-0.5 shrink-0 text-[10px]">
-            {nodeData.availability.replace("_", " ")}
-          </Badge>
+          {waiting > 0 ? (
+            // Something here is waiting on the founder: that matters more than availability.
+            <Badge variant="warning" className="mt-0.5 shrink-0 text-[10px]" title={`${waiting} approval${waiting === 1 ? "" : "s"} or question${waiting === 1 ? "" : "s"} waiting for you`}>
+              {waiting} waiting
+            </Badge>
+          ) : (
+            <Badge variant={isActive ? "success" : "warning"} className="mt-0.5 shrink-0 text-[10px]">
+              {nodeData.availability.replace("_", " ")}
+            </Badge>
+          )}
         </div>
 
         {/* Name + description */}
@@ -75,6 +86,12 @@ export function DepartmentNode({ data, selected }: NodeProps) {
             <span className="size-1.5 rounded-full bg-[var(--foreground-20)]" />
             {nodeData.tasks} {nodeData.tasks === 1 ? "task" : "tasks"}
           </span>
+          {running > 0 ? (
+            <span className="flex items-center gap-1.5 text-[var(--running)]">
+              <span className="animate-agent-pulse size-1.5 rounded-full bg-[var(--running)]" />
+              {running} running
+            </span>
+          ) : null}
         </div>
       </div>
 

@@ -15,9 +15,48 @@ export type AgentEvent =
       /** Why the policy is asking. */
       reason?: string;
     }
-  | { type: "delegate_start"; childAgentSlug: string; childSessionId: string }
-  | { type: "delegate_done"; childAgentSlug: string; output: string }
+  | {
+      type: "delegate_start";
+      childAgentSlug: string;
+      childSessionId: string;
+      /** delegation (handed work) or consult (asked a read-only question). */
+      kind?: string;
+      objective?: string;
+    }
+  | {
+      type: "delegate_done";
+      childAgentSlug: string;
+      output: string;
+      childSessionId?: string;
+      /** Handoff status: done | blocked | failed | needs_input (or failed/cancelled when the child did not finish). */
+      status?: string;
+      summary?: string;
+      costCents?: number;
+    }
+  | { type: "question_asked"; approvalId: string; question: string; context?: string | null; options?: string[] }
+  | { type: "question_answered"; approvalId: string; answer: string | null; status: string }
   | { type: "limit_reached"; limit: string; message: string }
+  | {
+      type: "model_usage";
+      /** The model that answered; differs from requestedModelId after an outage or refusal fallback. */
+      modelId: string;
+      requestedModelId: string;
+      tier: string | null;
+      inputTokens: number;
+      outputTokens: number;
+      cacheReadTokens: number;
+      cacheWriteTokens: number;
+      costCents: number;
+      /** Tools the model called in this turn (the turn's cost is shared among them). */
+      toolCalls: string[];
+      latencyMs: number;
+    }
+  | {
+      /** Content a tool returned looks like instructions aimed at the agent (prompt injection). */
+      type: "injection_suspected";
+      tool: string;
+      excerpt: string;
+    }
   | { type: "done"; output: string }
   | { type: "error"; message: string };
 
@@ -30,5 +69,5 @@ export function isTerminalEvent(event: { type: string }): boolean {
 
 /** Events a person watching an ancestor run needs to see even though a delegated agent raised them. */
 export function isForwardedEvent(event: { type: string }): boolean {
-  return event.type === "approval_required" || event.type === "limit_reached";
+  return event.type === "approval_required" || event.type === "limit_reached" || event.type === "question_asked";
 }

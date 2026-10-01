@@ -3,7 +3,7 @@ import type { AgentTool, ToolContext } from "./types";
 
 interface EmailConfig { apiKey: string; fromAddress: string }
 
-async function getConfig(orgId: string): Promise<EmailConfig | null> {
+export async function getEmailConfig(orgId: string): Promise<EmailConfig | null> {
   try {
     const integration = await prisma.integration.findFirst({
       where: { organizationId: orgId, provider: "email" }
@@ -40,7 +40,7 @@ export const emailSendTool: AgentTool = {
     }
   },
   async execute(input, ctx: ToolContext) {
-    const config = await getConfig(ctx.orgId);
+    const config = await getEmailConfig(ctx.orgId);
     if (!config) return noConfig();
     const to = typeof input.to === "string" ? input.to.trim() : "";
     const subject = typeof input.subject === "string" ? input.subject.trim() : "";
@@ -75,7 +75,7 @@ export const emailListSentTool: AgentTool = {
     }
   },
   async execute(input, ctx: ToolContext) {
-    const config = await getConfig(ctx.orgId);
+    const config = await getEmailConfig(ctx.orgId);
     if (!config) return noConfig();
     const limit = typeof input.limit === "number" ? Math.min(50, Math.max(1, input.limit)) : 10;
     try {

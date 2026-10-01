@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { errorResponse } from "@/lib/api/responses";
-import { requireOrgMember } from "@/lib/auth/session";
+import { requireOrgMember, requireOrgWriter } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { startAgentRun } from "@/lib/agents/run-service";
 import { cancelRunsForTask } from "@/lib/agents/engine/advance";
@@ -215,7 +215,7 @@ export async function createTask({
   attachmentNames?: string[];
   source?: string | null;
 }) {
-  const { user } = await requireOrgMember(orgId);
+  const { user } = await requireOrgWriter(orgId);
   const assignment = await resolveAssignment({ orgId, departmentId, agentId, assignedUserId, type, autoAssign });
   const normalizedTitle = title.trim() || firstLine(description) || "Untitled task";
   const normalizedDescription = description?.trim() || null;
@@ -306,7 +306,7 @@ export async function updateTask({
   priority?: number | null;
   dueAt?: string | null;
 }) {
-  await requireOrgMember(orgId);
+  await requireOrgWriter(orgId);
   const existing = await prisma.task.findFirst({ where: { id: taskId, organizationId: orgId, archivedAt: null } });
   if (!existing) return null;
 
@@ -341,7 +341,7 @@ export async function updateTask({
 }
 
 export async function createSubtask({ orgId, taskId, title }: { orgId: string; taskId: string; title: string }) {
-  await requireOrgMember(orgId);
+  await requireOrgWriter(orgId);
   const task = await prisma.task.findFirst({
     where: { id: taskId, organizationId: orgId, archivedAt: null },
     include: { _count: { select: { subtasks: true } } }
@@ -373,7 +373,7 @@ export async function updateSubtask({
   title?: string | null;
   status?: string | null;
 }) {
-  await requireOrgMember(orgId);
+  await requireOrgWriter(orgId);
   const subtask = await prisma.subtask.findFirst({ where: { id: subtaskId, task: { id: taskId, organizationId: orgId, archivedAt: null } } });
   if (!subtask) return null;
 
@@ -399,7 +399,7 @@ export async function addTaskComment({
   body: string;
   fileIds?: string[];
 }) {
-  const { user } = await requireOrgMember(orgId);
+  const { user } = await requireOrgWriter(orgId);
   const task = await prisma.task.findFirst({ where: { id: taskId, organizationId: orgId, archivedAt: null } });
   if (!task) return null;
 
@@ -436,7 +436,7 @@ export async function addTaskAttachments({
   fileIds?: string[];
   attachmentNames?: string[];
 }) {
-  const { user } = await requireOrgMember(orgId);
+  const { user } = await requireOrgWriter(orgId);
   const task = await prisma.task.findFirst({ where: { id: taskId, organizationId: orgId, archivedAt: null } });
   if (!task) return null;
 
@@ -453,7 +453,7 @@ export async function addTaskAttachments({
 }
 
 export async function startTask({ orgId, taskId }: { orgId: string; taskId: string }) {
-  await requireOrgMember(orgId);
+  await requireOrgWriter(orgId);
   const task = await prisma.task.findFirst({
     where: { id: taskId, organizationId: orgId, archivedAt: null },
     include: { approvals: true }
@@ -473,7 +473,7 @@ export async function startTask({ orgId, taskId }: { orgId: string; taskId: stri
 }
 
 export async function cancelTask({ orgId, taskId }: { orgId: string; taskId: string }) {
-  await requireOrgMember(orgId);
+  await requireOrgWriter(orgId);
   const task = await prisma.task.findFirst({ where: { id: taskId, organizationId: orgId, archivedAt: null } });
   if (!task) return null;
 
@@ -506,7 +506,7 @@ export async function createTaskApproval({
   description?: string | null;
   riskLevel?: string | null;
 }) {
-  await requireOrgMember(orgId);
+  await requireOrgWriter(orgId);
   const task = await prisma.task.findFirst({ where: { id: taskId, organizationId: orgId, archivedAt: null } });
   if (!task) return null;
 
@@ -542,7 +542,7 @@ export async function reviewTaskApproval({
   approvalId: string;
   status: "approved" | "rejected";
 }) {
-  const { user } = await requireOrgMember(orgId);
+  const { user } = await requireOrgWriter(orgId);
   const approval = await prisma.approval.findFirst({
     where: { id: approvalId, organizationId: orgId, taskId }
   });
@@ -634,10 +634,10 @@ function taskWhere(orgId: string, filters: ReturnType<typeof normalizeTaskFilter
     ...(filters.q
       ? {
           OR: [
-            { title: { contains: filters.q } },
-            { description: { contains: filters.q } },
-            { department: { name: { contains: filters.q } } },
-            { agent: { name: { contains: filters.q } } }
+            { title: { contains: filters.q, mode: "insensitive" } },
+            { description: { contains: filters.q, mode: "insensitive" } },
+            { department: { name: { contains: filters.q, mode: "insensitive" } } },
+            { agent: { name: { contains: filters.q, mode: "insensitive" } } }
           ]
         }
       : {})

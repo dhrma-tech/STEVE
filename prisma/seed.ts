@@ -1,12 +1,10 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { resolve } from "node:path";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { getDepartmentVisual, initialDepartmentContext } from "../src/data/departments";
 import { roadmapDependencyPairs } from "../src/data/roadmap";
+import { databaseUrl } from "../src/lib/db/url";
 
-const sqliteFile = process.env.DATABASE_URL?.replace(/^file:/, "") ?? "./dev.db";
-const sqliteUrl = resolve("prisma", sqliteFile);
-const adapter = new PrismaBetterSqlite3({ url: sqliteUrl });
+const adapter = new PrismaPg({ connectionString: databaseUrl() });
 const prisma = new PrismaClient({ adapter });
 
 const json = (value: unknown) => JSON.stringify(value);

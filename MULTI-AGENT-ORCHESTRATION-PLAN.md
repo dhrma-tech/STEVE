@@ -357,8 +357,13 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
 | 1 — One execution path | **done 2026-09-29** (see notes below) |
 | 2 — Guardrails | **done 2026-09-29** (see notes below) |
 | 3a — Durable runtime on SQLite | **done 2026-09-30** (see notes below) |
-| 3b — Postgres + pg-boss | not started |
-| 4–10 | not started |
+| 3b — Postgres + pg-boss | **done 2026-09-30** (see notes below) |
+| 4 — Team awareness and delegation protocol | **done 2026-10-01** (see notes below) |
+| 5 — Orchestrator and planning | **done 2026-10-01** (see notes below) |
+| 6 — Shared memory and knowledge | **done 2026-10-01** (see notes below) |
+| 7 — Founder and manager experience | **done 2026-10-01**, except the items listed in its notes |
+| 8 — Model strategy, evaluation, observability | **done 2026-10-01**, except the items listed in its notes |
+| 9–10 | not started |
 
 **Phase 0 notes**
 - Delivered: Vitest with a scripted Anthropic provider and in-memory DB (`src/lib/agents/testing/`), 16 passing tests (single run, delegation, approval approve/deny, kill switch, auth secret, flags) plus 6 `it.todo` markers for Phase 2–4 requirements; CI workflow (`.github/workflows/ci.yml`); `AUTH_SECRET` now required (32+ chars) in production; `/api/ai/chat` requires login; `/test` returns 404 in production; `ORCHESTRATOR_V2` flag and `AGENTS_PAUSED` env kill switch (enforced in `runAgent`).
@@ -406,6 +411,65 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
 - New env: `AGENT_WORKER`, `AGENT_WORKER_CONCURRENCY`, `WORKER_TICK_SECRET`, `AGENT_TOOL_TIMEOUT_MS`, `MODEL_RETRY_BASE_MS` (documented in `.env.example`).
 - Not yet proven: the step machine has never run against a real model; everything above uses a scripted model or stops at the missing key. SQLite with a web server and a worker writing at once held up under the 20-run burst, but that burst is light (each run makes only a few writes). Graceful `SIGINT`/`SIGTERM` shutdown of `pnpm worker` is written but was not exercised (those signals could not be delivered to it on this Windows machine). Rolling summarization of long conversations (listed under Phase 3 above) is not built; only old tool output is trimmed.
 
-**Phase 3b (next)**: Postgres for environments that run agents, a pg-boss adapter behind `JobQueue`, baselined Prisma migrations in place of `apply-migration.ts`, and about 20 case-sensitive `contains` queries to revisit. Needs a Postgres to test against.
+**Phase 3b notes (Postgres)**
+- Delivered: Postgres for every environment (Prisma `postgresql` provider with `@prisma/adapter-pg`), one baselined migration applied by `prisma migrate deploy`, `pnpm db:local` (embedded Postgres in `.pgdata/`) and `pnpm db:import-sqlite` (one-time copy of `dev.db`). The `Job` queue claims with `FOR UPDATE SKIP LOCKED` and dedupes under an advisory lock; `PgBossJobQueue` implements the same `JobQueue` (`AGENT_QUEUE=pg-boss`). LISTEN/NOTIFY wakes workers and streams across processes.
+- Decision: the default queue stays the `Job` table. On Postgres it is the same technique pg-boss uses, it keeps exact backoff and lease semantics that the crash-recovery tests pin down, and its rows sit next to the runs they drive. pg-boss is a supported switch, tested by a contract suite, not the default. Its `retry` uses pg-boss's own backoff (1–30 s), so the worker's requested delay is approximate there.
+- Found by the move: two lost-update races that SQLite's single writer had hidden (run grants, event ordering), fixed; and a crash window between a run's final status and its close-out, now repaired by the sweeper (`Run.closedOutAt`).
+- The `contains` queries: user-facing search and two fixed-text lookups are case-insensitive as before; the idempotency-key lookup stays exact.
+- Not yet proven: the user's own PostgreSQL 16 (credentials to be added; only `DATABASE_URL` changes) and Supabase (use the session pooler or a direct connection for workers; set `PG_NOTIFY=off` behind a transaction pooler). Tests and the live check ran on Postgres 18 (embedded); CI uses 17.
+
+**Phase 4 notes (team awareness and delegation)**
+- Delivered: agent directory in every system prompt (`directory.ts`; `Agent.role`, `capabilitiesJson`, `modelTier`); typed briefs for `delegate_agent` and new `delegate_many`; `finish_run` with the §7 handoff validated by Zod (`engine/handoff.ts`), stored on `Run.resultJson`; `ask_agent` read-only consults (`Run.kind = consult`); `ask_user` questions as `Approval` rows with `kind: question`, shown in the inbox and workspace dialog, answered via `POST /api/orgs/:orgId/agent-questions/:approvalId/answer`. Migration `20261001100000_team_delegation_protocol`.
+- Budget split: the parent's remaining budget is divided equally among the children started in one turn; a brief's `budgetCents` can only lower a share. `Run.budgetCapCents` and `Run.costCents` (own spend plus descendants).
+- Deviation: no `await_children` tool. Delegation already ends the parent's step as `waiting_children` and it resumes with all handoffs, so a separate wait tool would add nothing.
+- Plain-text endings: a delegated run is re-prompted once, then its text is wrapped into a handoff rather than failed. A root run may end in plain text.
+- Exit criterion met with mocked models: the build/copy/outreach scenario test runs three children concurrently and returns three structured handoffs; the feed renders concurrent children. Not run against a real model.
+
+**Phase 5 notes (Chief of Staff and planning)**
+- Delivered: `Plan`/`PlanNode` DAG (migration `20261001200000_plans_orchestrator`); Chief of Staff and Reviewer system agents; `propose_plan` with validated plans; founder review (edit, reassign, remove, approve, cancel) with cost/time estimates and risk hotspots; manager auto-approve within the daily budget; scheduler job `plan.advance` that runs independent steps in parallel as linked Tasks; Reviewer pass with one retry on feedback; replanning on failed, blocked or needs-input steps (capped at 2) or escalation to the founder; founder report with a record-based fallback; roadmap launch creates a plan and plan completion completes the item. Code in `src/lib/agents/plans/`. UI: Plans tab in the canvas side panel and inbox items.
+- Exit criterion met with mocked models (`plans.test.ts`): the goal "Launch our landing page and announce it" gives a 6-step plan across 4 departments. It waits for approval, runs brand and copy in parallel, starts every step after its dependencies, has the copy and build reviewed, replans after an injected deploy failure, and ends with the report.
+- Decisions: plan steps are root runs (each has its own tree limits and budget), not children of the Chief of Staff's run, so a long plan never holds one run open and each step is visible and cancellable on its own. The Chief of Staff does not do work and cannot delegate; it plans, and the scheduler executes. A revision after a failure goes ahead without a second founder review: the founder approved the goal, and replans are capped. Rejected reviews get one more attempt before replanning. If the Reviewer itself fails, the step is accepted as "not reviewed" rather than blocking the plan.
+- Deviation: plan nodes are not assignable to people yet (decision 5 in §11 is still open). The Chief of Staff uses the department agents' model until Phase 8 adds tiers (`Agent.modelTier = planner` is recorded). Mission Control's delegation tree and the morning briefing are Phase 7.
+- Not run against a real model.
+
+**Phase 6 notes (shared memory and knowledge)**
+- Delivered: `OrgMemory` with company, department and agent scopes, confidence, review status and revision history (newer wins, old kept). `AgentMemory` is migrated into it and dropped. Scoped `memory_store`, `memory_retrieve` and `memory_list`. Bounded, relevance-ranked memory in every prompt. Run results are indexed, and handoff findings become proposed memories. Full-text knowledge search over files, chat, run summaries and memory, with a `search_knowledge` tool and a command-palette group. Settings → Memory to review, edit, delete, teach and search. Code in `src/lib/memory/` and `src/lib/knowledge/`.
+- Exit criterion met with mocked models (`memory.test.ts`): a brand voice taught to Marketing appears in Sales' next run, and the founder can view, edit (history kept) and delete it, with the change reflected in the next run.
+- Decisions: findings from runs are only ever *proposed* (founder review), because memory reaches every later prompt and a run can be prompt-injected. An agent's own `memory_store` is trusted unless it reports confidence below 0.6. A proposal never overwrites an established fact. Values that look like secrets are refused.
+- Deviation: full-text search instead of embeddings and pgvector (not available in the embedded Postgres, and no embedding key). Add embeddings behind `searchKnowledge` when the deployment is on Supabase with pgvector; Phase 8's model configuration is the natural place for the embedding model.
+- Not run against a real model.
+
+**Phase 7 notes (founder and manager experience)**
+- Delivered:
+  1. Mission Control (run trees, plans, run detail with timeline and replay, manager actions).
+  2. Approvals inbox (risk chips, payloads, approve once or for the run, Edit & approve, deny, batch for low risk, keyboard shortcuts, questions) and signed, single-use, expiring one-tap email links behind a confirmation page.
+  3. Goal box on Home and in Mission Control.
+  4. Daily and on-demand briefings by the Chief of Staff, with a records fallback, in-app and by email.
+  5. Agent controls: pause, org, department and agent budgets, per-run caps and permission modes.
+  6. Manager tools: retry or fork a run, cancel, comment, retry or reassign plan steps, and a read-only viewer role.
+  7. Replay from the event log.
+  8. Canvas badges for waiting and running work.
+- Decisions:
+  - Department and agent budgets count each run's own spend, so delegated work counts where it was done.
+  - One-tap links act only on POST from their confirmation page.
+  - An edited call is approved once only, and an edit may not raise the call's risk.
+  - Viewer enforcement covers the agent-work surface (launch, tasks, chat sends, roadmap, plans, memory, approvals, briefings), not every settings page.
+- Not done: file/code diffs in run detail, Slack/mobile push, retry from a middle step (runs keep no per-step snapshots), people as plan owners (§11 decision 5), node spend sparklines, a role editor UI. The exit test (a non-technical founder completes the golden scenario using only the UI) needs a real model and a person; not run.
+**Phase 8 notes (model strategy, evaluation, observability)**
+- Delivered:
+  1. Model tiers in configuration (`src/lib/ai/model-tiers.ts`): planner `claude-opus-5-5` (effort high), worker `claude-sonnet-5-5` (effort medium), triage `claude-haiku-4-5`. Each tier can be changed with `MODEL_<TIER>`, `MODEL_<TIER>_EFFORT` and `MODEL_<TIER>_FALLBACK`. An agent can be pinned to a model (`Agent.model`, which the picker now offers) or to a tier (`Agent.modelTier`). Model IDs, effort, pricing and beta names were checked against the Claude API reference (2026-09).
+  2. Per-turn cost tracking: a `model_usage` event per model turn records the model that answered, tier, tokens (including cache reads and writes), cost, the tool calls it made and latency. Prices are first-party rates with cache pricing (`policy/pricing.ts`).
+  3. Fallback on outage: when a model's retries are used up or its circuit is open, the turn runs on the tier's fallback model, and the turn is priced as the model that answered. Classifier refusals use the server-side fallback (`fallbacks: "default"`, Opus 5.5 and Sonnet 5.5). A final refusal fails the run with its category.
+  4. Prompt caching (tools, system prompt and conversation tail). For models that bind thinking to the conversation, the history stays append-only: old tool results are cleared server-side (`clear_tool_uses_20250919`), and `block_binding: drop_block` keeps a mismatched block from failing a turn.
+  5. Zod validation of every tool input against the tool's schema (`tools/validate.ts`). A malformed call goes back to the model to fix; nothing is asked or run.
+  6. Prompt-injection screening (`policy/injection.ts`). Output from tools that return outside content is screened. A hit wraps the output as untrusted data, records `injection_suspected`, and taints the run: from then on nothing outside STEVE is pre-approved (no run grants, auto-approve rules or trusted mode). Delegated runs inherit the taint. Every agent's system prompt states that tool output is data, not instructions.
+  7. Observability: structured logs with run, session, org and job ids (`observability/log.ts`, JSON in production). Unexpected run and job failures are reported to Sentry when `SENTRY_DSN` is set. A **Health** tab in Mission Control (`observability/run-metrics.ts`, `GET /api/orgs/:id/mission/health`) shows success rate, p50/p95 run time, cost per run and by model, cache hit rate, approval wait, replan rate, suspected injections, fallback turns, limit stops, and a table of recent runs that opens run detail.
+  8. Eval harness (`src/lib/agents/evals`): 20 scenarios covering every department and cross-department work, run through the real engine with outside services replaced by stand-ins. In CI they run against a scripted model as part of `pnpm test` (also `pnpm eval`). `pnpm eval:live` runs them against the real model, and a nightly workflow (`evals-nightly.yml`, needs the `ANTHROPIC_API_KEY` secret) uploads the JSON report. Each scenario measures success, steps, cost, latency, approvals requested and unsafe attempts. An unsafe action that runs without approval fails a scenario in either mode.
+  9. Red-team tests (`engine/safety.test.ts`): injected pages and threads that try to trigger `email_send`, `delete_file`, deploys and pushes, in review, trusted and read-only modes and through delegation.
+- Decisions:
+  - Injection detection is a heuristic that warns and removes conveniences. The defense remains the policy engine, which decides from the tool and its arguments only.
+  - Fallback is within the provider (another Claude model). A cross-provider fallback (OpenAI) was not added: its message format differs mid-conversation and it would drop thinking state.
+  - Live evals are measured, not gated per scenario (a real model can take another acceptable path). Only "no unsafe action ran" gates them.
+- Not done: no live eval run yet (no API key here). Embeddings for knowledge search are still deferred (§ Phase 6). Metrics are computed on read from run rows rather than exported to a metrics store. Plain chat (`/api/ai/chat`) and the onboarding idea and branding generators still call local Ollama, not the tiers.
 
 Existing code to build on rather than rewrite: `src/lib/agents/engine/*` (step machine, queue interface, worker), `tools/*` (tool implementations), `TaskSession.parentSessionId` and `Approval` (schema), `execution-feed.tsx` and `agent-workspace-dialog.tsx` (UI), `model-router.ts` (extend to tiers).

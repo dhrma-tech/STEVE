@@ -1,22 +1,40 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterAll } from "vitest";
-import { applyMigrations } from "../prisma/migrate-lib";
+import { randomUUID } from "node:crypto";
+import pg from "pg";
+import { afterAll, inject } from "vitest";
 
-// Every test file gets its own real SQLite database with the real migrations applied, so queue, lease and
-// atomic-update behavior is exercised against real SQL. It is deleted when the file's tests finish.
-const dir = mkdtempSync(join(tmpdir(), "steve-test-"));
-const databasePath = join(dir, "test.db").split("\\").join("/");
+// Every test file gets its own real Postgres database, cloned from the migrated template made by
+// tests/global-setup.ts, so queue, lease and atomic-update behavior is exercised against real SQL.
+// The databases are dropped together when the run ends (tests/global-setup.ts).
+const TEMPLATE_DB = "steve_test_template";
+const adminUrl = inject("pgAdminUrl");
+const database = `steve_test_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
 
-applyMigrations({ databasePath, backup: false });
-process.env.DATABASE_URL = `file:${databasePath}`;
-process.env.STEVE_TEST_DB_PATH = databasePath;
-
-afterAll(() => {
+async function adminQuery(sql: string): Promise<void> {
+  const client = new pg.Client({ connectionString: adminUrl });
+  await client.connect();
   try {
-    rmSync(dir, { recursive: true, force: true });
-  } catch {
-    /* Windows may still hold the file for a moment; the OS temp cleaner will get it */
+    await client.query(sql);
+  } finally {
+    await client.end();
   }
+}
+
+// Several files clone the template at once; Postgres refuses a clone while another is reading the template.
+for (let attempt = 0; ; attempt++) {
+  try {
+    await adminQuery(`CREATE DATABASE ${database} TEMPLATE ${TEMPLATE_DB}`);
+    break;
+  } catch (error) {
+    if (attempt >= 30 || !/being accessed by other users/.test(String(error))) throw error;
+    await new Promise((r) => setTimeout(r, 100 + Math.random() * 200));
+  }
+}
+
+const url = new URL(adminUrl);
+url.pathname = `/${database}`;
+process.env.DATABASE_URL = url.toString();
+
+afterAll(async () => {
+  const { prisma } = await import("@/lib/db/client");
+  await prisma.$disconnect();
 });

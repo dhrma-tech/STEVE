@@ -15,7 +15,10 @@ const ALL_SKILLS = [
 ];
 
 describe("tool risk table", () => {
-  const registered = buildToolset(ALL_SKILLS).map((tool) => tool.definition.name);
+  // Every tool any kind of run can be given (planning runs get propose_plan, which task runs do not).
+  const registered = [
+    ...new Set(["task", "plan", "review", "consult"].flatMap((kind) => buildToolset(ALL_SKILLS, { kind }).map((tool) => tool.definition.name)))
+  ];
 
   it("classifies every tool an agent can be given", () => {
     const unclassified = registered.filter((name) => !isClassified(name));

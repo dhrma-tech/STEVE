@@ -5,8 +5,9 @@
  *   vi.mock("@anthropic-ai/sdk", async () => (await import("@/lib/agents/testing/scripted-anthropic")).anthropicModuleMock);
  *   scriptedModel.load([{ toolCalls: [{ name: "delegate_agent", input: {...} }] }, { text: "done" }]);
  *
- * Turns are consumed in the order the runner asks for them, across every agent in
- * the run tree. That is deterministic because the runner is sequential today.
+ * Turns are consumed in the order the runner asks for them, across every agent in the run tree. When agents run
+ * in parallel the order is not fixed, so give each agent its own script with `route("Marketing Agent", turns)`: a
+ * call whose system prompt starts with "You are Marketing Agent" takes its turns from that script.
  */
 
 export type ScriptedToolCall = { name: string; input: Record<string, unknown> };
@@ -17,24 +18,51 @@ export type ScriptedTurn = {
   usage?: { input: number; output: number };
   /** Make this turn fail like a provider error (for example { status: 503 }) instead of answering. */
   error?: { status?: number; message: string };
+  /** Hold the answer this long, so calls from agents running in parallel overlap. */
+  delayMs?: number;
+  /** End the turn as a classifier refusal (`stop_reason: "refusal"`). */
+  refusal?: { category?: string | null; explanation?: string | null };
+  /** The model that answered (as after a server-side fallback). Defaults to the requested model. */
+  servedModel?: string;
+  cache?: { read?: number; write?: number };
 };
 
 export type RecordedCall = {
   model: string;
+  /** The system prompt as text (a cached system prompt arrives as text blocks). */
   system: string;
   messages: unknown[];
   toolNames: string[];
+  /** The whole request body, for assertions on betas, caching, effort and thinking settings. */
+  params: Record<string, unknown>;
 };
 
 class ScriptedModel {
   private turns: ScriptedTurn[] = [];
+  private routes = new Map<string, ScriptedTurn[]>();
   calls: RecordedCall[] = [];
   private toolSeq = 0;
+  /** Model calls in progress right now, and the most there ever were at once. */
+  inFlight = 0;
+  maxInFlight = 0;
 
   load(turns: ScriptedTurn[]) {
     this.turns = [...turns];
+    this.routes.clear();
     this.calls = [];
     this.toolSeq = 0;
+    this.inFlight = 0;
+    this.maxInFlight = 0;
+  }
+
+  /** Give the agent whose system prompt starts with "You are <agentName>" its own script. */
+  route(agentName: string, turns: ScriptedTurn[]) {
+    this.routes.set(agentName, [...turns]);
+  }
+
+  private queueFor(system: string): ScriptedTurn[] {
+    for (const [name, turns] of this.routes) if (system.startsWith(`You are ${name},`)) return turns;
+    return this.turns;
   }
 
   get remaining() {
@@ -43,7 +71,7 @@ class ScriptedModel {
 
   next(call: RecordedCall) {
     this.calls.push(call);
-    const turn = this.turns.shift();
+    const turn = this.queueFor(call.system).shift();
     if (!turn) throw new Error("ScriptedModel: script exhausted (the runner asked for more turns than scripted)");
     if (turn.error) throw Object.assign(new Error(turn.error.message), { status: turn.error.status });
     const content: Array<Record<string, unknown>> = [];
@@ -54,17 +82,37 @@ class ScriptedModel {
     return {
       turn,
       content,
-      stop_reason: turn.toolCalls?.length ? "tool_use" : "end_turn",
-      usage: { input_tokens: turn.usage?.input ?? 100, output_tokens: turn.usage?.output ?? 50 }
+      stop_reason: turn.refusal ? "refusal" : turn.toolCalls?.length ? "tool_use" : "end_turn",
+      stop_details: turn.refusal ? { type: "refusal", category: turn.refusal.category ?? null, explanation: turn.refusal.explanation ?? null } : null,
+      model: turn.servedModel ?? call.model,
+      usage: {
+        input_tokens: turn.usage?.input ?? 100,
+        output_tokens: turn.usage?.output ?? 50,
+        cache_read_input_tokens: turn.cache?.read ?? 0,
+        cache_creation_input_tokens: turn.cache?.write ?? 0
+      }
     };
   }
 }
 
 export const scriptedModel = new ScriptedModel();
 
+type StreamParams = {
+  model: string;
+  system: string | Array<{ type: string; text?: string }>;
+  messages: unknown[];
+  tools?: Array<{ name: string }>;
+};
+
+const systemText = (system: StreamParams["system"]) =>
+  typeof system === "string" ? system : system.map((block) => block.text ?? "").join("\n");
+
 class ScriptedAnthropic {
-  messages = {
-    stream: (params: { model: string; system: string; messages: unknown[]; tools?: Array<{ name: string }> }) => {
+  messages = { stream: (params: StreamParams) => scriptedStream(params) };
+  beta = { messages: { stream: (params: StreamParams) => scriptedStream(params) } };
+}
+
+function scriptedStream(params: StreamParams) {
       const handlers: Record<string, Array<(text: string) => void>> = {};
       return {
         on(event: string, cb: (text: string) => void) {
@@ -72,18 +120,26 @@ class ScriptedAnthropic {
           return this;
         },
         async finalMessage() {
-          const { turn, content, stop_reason, usage } = scriptedModel.next({
+          const { turn, content, stop_reason, stop_details, model, usage } = scriptedModel.next({
             model: params.model,
-            system: params.system,
+            system: systemText(params.system),
             messages: structuredClone(params.messages),
-            toolNames: (params.tools ?? []).map((t) => t.name)
+            toolNames: (params.tools ?? []).map((t) => t.name),
+            params: structuredClone(params) as unknown as Record<string, unknown>
           });
+          if (turn.delayMs) {
+            scriptedModel.inFlight += 1;
+            scriptedModel.maxInFlight = Math.max(scriptedModel.maxInFlight, scriptedModel.inFlight);
+            try {
+              await new Promise((resolve) => setTimeout(resolve, turn.delayMs));
+            } finally {
+              scriptedModel.inFlight -= 1;
+            }
+          }
           if (turn.text) for (const cb of handlers.text ?? []) cb(turn.text);
-          return { content, stop_reason, usage };
+          return { content, stop_reason, stop_details, model, usage };
         }
       };
-    }
-  };
 }
 
 /** Return value for `vi.mock("@anthropic-ai/sdk", ...)`. */

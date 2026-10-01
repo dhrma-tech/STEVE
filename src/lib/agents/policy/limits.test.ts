@@ -61,7 +61,10 @@ describe("RunBudget", () => {
 
 describe("pricing", () => {
   it("prices known model families and falls back to the most expensive tier", () => {
-    expect(priceFor("claude-sonnet-4-6", "anthropic")).toEqual({ inputPerMTok: 3, outputPerMTok: 15 });
+    expect(priceFor("claude-sonnet-4-6", "anthropic")).toMatchObject({ inputPerMTok: 3, outputPerMTok: 15 });
+    expect(priceFor("claude-opus-5-5", "anthropic")).toMatchObject({ inputPerMTok: 4, outputPerMTok: 20, cacheReadPerMTok: 0.2 });
+    expect(priceFor("claude-sonnet-5-5", "anthropic")).toMatchObject({ inputPerMTok: 2, outputPerMTok: 10, cacheReadPerMTok: 0.2 });
+    expect(priceFor("claude-haiku-4-5", "anthropic")).toMatchObject({ inputPerMTok: 1, outputPerMTok: 5 });
     expect(priceFor("gpt-4o-mini", "openai").inputPerMTok).toBeLessThan(priceFor("gpt-4o", "openai").inputPerMTok);
     expect(priceFor("some-new-model", "anthropic")).toEqual(priceFor("claude-opus-9", "anthropic"));
   });
@@ -69,6 +72,13 @@ describe("pricing", () => {
   it("converts tokens to cents", () => {
     const cents = estimateCostCents({ modelId: "claude-sonnet-4-6", provider: "anthropic", inputTokens: 1_000_000, outputTokens: 0 });
     expect(cents).toBeCloseTo(300);
+  });
+
+  it("prices cache reads and writes apart from fresh input", () => {
+    const cached = estimateCostCents({ modelId: "claude-sonnet-5-5", provider: "anthropic", inputTokens: 0, outputTokens: 0, cacheReadTokens: 1_000_000 });
+    const written = estimateCostCents({ modelId: "claude-sonnet-5-5", provider: "anthropic", inputTokens: 0, outputTokens: 0, cacheWriteTokens: 1_000_000 });
+    expect(cached).toBeCloseTo(20); // $0.20 per MTok
+    expect(written).toBeCloseTo(250); // 1.25 x $2
   });
 });
 

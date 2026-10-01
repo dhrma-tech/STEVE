@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
+import { bindsThinkingToConversation, supportsEffort, supportsServerFallback, type Effort } from "@/lib/ai/model-tiers";
 import type { AgentTool } from "../tools/types";
 import type { ProviderId } from "./types";
 
@@ -18,6 +19,11 @@ export type ModelTurn = {
   toolCalls: ModelToolCall[];
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
+  /** The model that actually answered (a fallback model after an outage or a refusal). */
+  servedModelId?: string;
+  stopReason?: string | null;
   /** Provider-native message to append to the history. */
   assistantMessage: unknown;
 };
@@ -149,6 +155,14 @@ export async function withRetry<T>(
 
 // ── One model turn ────────────────────────────────────────────────────────────
 
+/** The model declined the request (`stop_reason: "refusal"`), after any server-side fallback also declined. */
+export class ModelRefusalError extends Error {
+  constructor(public readonly category: string | null, explanation: string | null) {
+    super(`The model declined this request${category ? ` (${category})` : ""}.${explanation ? ` ${explanation}` : ""}`);
+    this.name = "ModelRefusalError";
+  }
+}
+
 export async function runModelTurn(params: {
   provider: Exclude<ProviderId, "ollama">;
   modelId: string;
@@ -157,14 +171,35 @@ export async function runModelTurn(params: {
   messages: unknown[];
   tools: AgentTool[];
   onText: (delta: string) => void;
+  effort?: Effort | null;
+  /** Tried when the model is unavailable (retries exhausted or its circuit open). Same provider and message format. */
+  fallbackModelId?: string | null;
 }): Promise<ModelTurn> {
   const { provider, modelId, apiKey, system, messages, tools, onText } = params;
-  return withRetry(provider, () =>
-    provider === "anthropic"
-      ? anthropicTurn({ modelId, apiKey, system, messages, tools, onText })
-      : openaiTurn({ modelId, apiKey, messages, tools, onText })
-  );
+  const call = (model: string) =>
+    withRetry(`${provider}:${model}`, () =>
+      provider === "anthropic"
+        ? anthropicTurn({ modelId: model, apiKey, system, messages, tools, onText, effort: params.effort ?? null })
+        : openaiTurn({ modelId: model, apiKey, messages, tools, onText })
+    );
+  try {
+    return await call(modelId);
+  } catch (error) {
+    // An outage of one model: carry on with the tier's fallback model. Thinking blocks it cannot read are dropped by
+    // the API (they are tied to the model that wrote them), so the history stays valid.
+    if (error instanceof TransientModelError && params.fallbackModelId && params.fallbackModelId !== modelId) {
+      return call(params.fallbackModelId);
+    }
+    throw error;
+  }
 }
+
+type AnthropicUsage = {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_read_input_tokens?: number | null;
+  cache_creation_input_tokens?: number | null;
+};
 
 async function anthropicTurn(p: {
   modelId: string;
@@ -173,33 +208,65 @@ async function anthropicTurn(p: {
   messages: unknown[];
   tools: AgentTool[];
   onText: (delta: string) => void;
+  effort: Effort | null;
 }): Promise<ModelTurn> {
   const client = new Anthropic({ apiKey: p.apiKey });
-  const tools = p.tools.map((t) => ({
+  // Prompt caching: the tool list and the system prompt are the same on every turn of a run, so they are cached
+  // (render order is tools, then system, then messages), and the conversation so far is cached at its tail.
+  const tools = p.tools.map((t, index) => ({
     name: t.definition.name,
     description: t.definition.description,
-    input_schema: t.definition.input_schema
-  })) as Anthropic.Tool[];
+    input_schema: t.definition.input_schema,
+    ...(index === p.tools.length - 1 ? { cache_control: { type: "ephemeral" } } : {})
+  }));
+
+  const betas: string[] = [];
+  const body: Record<string, unknown> = {
+    model: p.modelId,
+    max_tokens: 16000,
+    system: [{ type: "text", text: p.system, cache_control: { type: "ephemeral" } }],
+    messages: p.messages,
+    tools,
+    cache_control: { type: "ephemeral" }
+  };
+  if (p.effort && supportsEffort(p.modelId)) body.output_config = { effort: p.effort };
+  if (bindsThinkingToConversation(p.modelId)) {
+    // The history stays append-only (old tool output is cleared server-side, which does not count as an edit), and
+    // if a block still fails the conversation check it is dropped instead of failing the turn.
+    betas.push("thinking-binding-controls-2026-08-01", "context-management-2025-06-27");
+    body.thinking = { type: "adaptive", block_binding: { prefix_mismatch_behavior: "drop_block" } };
+    body.context_management = { edits: [{ type: "clear_tool_uses_20250919" }] };
+  }
+  if (supportsServerFallback(p.modelId)) {
+    // A classifier refusal is retried on a model the API picks for that category, inside the same call.
+    betas.push("server-side-fallback-2026-07-01");
+    body.fallbacks = "default";
+  }
+  if (betas.length) body.betas = betas;
 
   let text = "";
-  const stream = client.messages.stream({
-    model: p.modelId,
-    max_tokens: 4096,
-    system: p.system,
-    messages: p.messages as Anthropic.MessageParam[],
-    tools
-  });
+  const stream = client.beta.messages.stream(body as unknown as Parameters<typeof client.beta.messages.stream>[0]);
   stream.on("text", (delta: string) => {
     text += delta;
     p.onText(delta);
   });
-  const message = await stream.finalMessage();
+  const message = (await stream.finalMessage()) as unknown as {
+    model?: string;
+    content: Array<{ type: string; id?: string; name?: string; input?: unknown }>;
+    stop_reason: string | null;
+    stop_details?: { category?: string | null; explanation?: string | null } | null;
+    usage?: AnthropicUsage;
+  };
+
+  if (message.stop_reason === "refusal") {
+    throw new ModelRefusalError(message.stop_details?.category ?? null, message.stop_details?.explanation ?? null);
+  }
 
   const toolCalls: ModelToolCall[] =
     message.stop_reason === "tool_use"
       ? message.content
-          .filter((block): block is Anthropic.ToolUseBlock => block.type === "tool_use")
-          .map((block) => ({ id: block.id, name: block.name, input: (block.input ?? {}) as Record<string, unknown> }))
+          .filter((block) => block.type === "tool_use")
+          .map((block) => ({ id: block.id!, name: block.name!, input: (block.input ?? {}) as Record<string, unknown> }))
       : [];
 
   return {
@@ -207,6 +274,11 @@ async function anthropicTurn(p: {
     toolCalls,
     inputTokens: message.usage?.input_tokens ?? 0,
     outputTokens: message.usage?.output_tokens ?? 0,
+    cacheReadTokens: message.usage?.cache_read_input_tokens ?? 0,
+    cacheWriteTokens: message.usage?.cache_creation_input_tokens ?? 0,
+    servedModelId: message.model ?? p.modelId,
+    stopReason: message.stop_reason,
+    // The whole content goes back unchanged, thinking and fallback blocks included.
     assistantMessage: { role: "assistant", content: message.content }
   };
 }

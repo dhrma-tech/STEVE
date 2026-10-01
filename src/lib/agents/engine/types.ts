@@ -1,4 +1,5 @@
 import type { ToolRisk } from "../policy/risk";
+import type { HandoffInput } from "./handoff";
 
 export type RunStatus =
   | "queued"
@@ -38,9 +39,21 @@ export interface Slot {
   approved?: boolean;
   actionId?: string;
   idempotencyKey?: string | null;
+  /** Older single-child form (runs started before delegate_many); read, never written. */
   childRunId?: string;
   childAgentSlug?: string;
+  /** Teammates this call handed work to (delegate_agent, delegate_many, ask_agent), and what came back. */
+  children?: SlotChild[];
   output?: string;
+  success?: boolean;
+}
+
+export interface SlotChild {
+  agentSlug: string;
+  /** Missing when the delegation was refused (the reason is in `result`). */
+  runId?: string;
+  /** What goes back to the model once the child is finished. */
+  result?: string;
   success?: boolean;
 }
 
@@ -48,6 +61,14 @@ export interface Slot {
 export interface RunState {
   provider: ProviderId;
   modelId: string;
+  /** The tier the model came from (null when the agent is pinned to a model). Older runs have none. */
+  tier?: string | null;
+  /** `output_config.effort` for models that take it. */
+  effort?: "low" | "medium" | "high" | "xhigh" | "max" | null;
+  /** Used for a turn when `modelId` is unavailable. */
+  fallbackModelId?: string | null;
+  /** Something the run read looked like a prompt injection; approvals it asks for afterwards say so. */
+  injectionSuspected?: { tool: string; excerpt: string } | null;
   system: string;
   user: string;
   skillKeys: string[];
@@ -55,6 +76,10 @@ export interface RunState {
   messages: unknown[];
   /** Tool calls of the current turn, or null when the run is between turns. */
   pending: Slot[] | null;
+  /** The handoff given to `finish_run`; the run completes once the rest of that turn's calls are done. */
+  finish?: HandoffInput | null;
+  /** A delegated run that ended with plain text has been asked once to call finish_run. */
+  nudgedToFinish?: boolean;
 }
 
 export type AdvanceResult =

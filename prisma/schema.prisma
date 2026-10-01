@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model User {
@@ -82,6 +82,10 @@ model Organization {
   usageRecords            UsageRecord[]
   policies                Policy[]
   runs                    Run[]
+  plans                   Plan[]
+  memories                OrgMemory[]
+  knowledgeChunks         KnowledgeChunk[]
+  briefings               Briefing[]
 
   @@index([status])
   @@index([currentPlan])
@@ -133,6 +137,8 @@ model Department {
   coverAsset     String?
   availability   String        @default("active")
   contextJson    String?
+  /// Most this department's agents may spend per day, in cents (their own runs' spend). Null: no department cap.
+  dailyBudgetCents Int?
   sortOrder      Int
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
@@ -148,34 +154,39 @@ model Department {
 }
 
 model Agent {
-  id              String        @id @default(cuid())
-  organizationId  String
-  departmentId    String
-  name            String
-  slug            String
-  description     String?
-  isDefault       Boolean       @default(false)
-  status          String        @default("idle")
-  model           String?
-  prompt          String?
-  toolsJson       String?
-  permissionsJson String?
-  inboxAddress    String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  archivedAt      DateTime?
-  department      Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  actions         AgentAction[]
-  inboxes         AgentInbox[]
-  approvals       Approval[]
-  auditLogs       AuditLog[]
-  chatMessages    ChatMessage[]
-  chatThreads     ChatThread[]
-  memories        AgentMemory[]
-  policies        Policy[]
-  tasks           Task[]
-  sessions        TaskSession[]
+  id               String        @id @default(cuid())
+  organizationId   String
+  departmentId     String
+  name             String
+  slug             String
+  description      String?
+  isDefault        Boolean       @default(false)
+  status           String        @default("idle")
+  model            String?
+  prompt           String?
+  toolsJson        String?
+  permissionsJson  String?
+  inboxAddress     String?
+  /// One line on what this agent is for, shown to teammates in the agent directory.
+  role             String?
+  /// JSON array of short capability phrases ("landing pages", "cold outreach") for the agent directory.
+  capabilitiesJson String?
+  /// triage | worker | planner. Null means the tier of the agent's model.
+  modelTier        String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  archivedAt       DateTime?
+  department       Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  organization     Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actions          AgentAction[]
+  inboxes          AgentInbox[]
+  approvals        Approval[]
+  auditLogs        AuditLog[]
+  chatMessages     ChatMessage[]
+  chatThreads      ChatThread[]
+  policies         Policy[]
+  tasks            Task[]
+  sessions         TaskSession[]
 
   @@unique([organizationId, slug])
   @@index([departmentId, status])
@@ -459,6 +470,11 @@ model Approval {
   toolName           String?
   payloadJson        String?
   decisionScope      String?
+  /// tool (approve a tool call) | question (an agent asked the founder something; the answer is responseText)
+  kind               String       @default("tool")
+  responseText       String?
+  /// The arguments a person changed before approving (Edit & approve). The call runs with these instead.
+  editedPayloadJson  String?
   createdAt          DateTime     @default(now())
   reviewedAt         DateTime?
   expiresAt          DateTime?
@@ -566,6 +582,10 @@ model NotificationPreference {
   desktopAlerts    Boolean      @default(false)
   emailTaskUpdates Boolean      @default(true)
   emailBilling     Boolean      @default(true)
+  /// Email when an agent needs an approval, with one-tap approve/deny links.
+  emailApprovals   Boolean      @default(true)
+  /// Email the daily briefing.
+  emailBriefings   Boolean      @default(true)
   inAppMentions    Boolean      @default(true)
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
@@ -640,16 +660,65 @@ model CanvasViewState {
   @@unique([userId, organizationId])
 }
 
-model AgentMemory {
-  id        String   @id @default(cuid())
-  agentId   String
-  key       String
-  value     String
-  updatedAt DateTime @updatedAt
-  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+/// A durable fact the team knows: brand voice, ICP, pricing, decisions, pointers to where credentials live (never
+/// the secrets). Shared by scope: the whole company, one department, or one agent's own notes (see src/lib/memory).
+model OrgMemory {
+  id               String              @id @default(cuid())
+  organizationId   String
+  /// org | department:<slug> | agent:<agentId>
+  scope            String
+  key              String
+  value            String
+  /// active (agents see it) | proposed (waiting for the founder's review; agents do not see it)
+  status           String              @default("active")
+  /// 0..1 as reported by whoever stated it; null when a person wrote it.
+  confidence       Float?
+  /// founder | agent:<slug> | run:<runId> (a finding from a run's handoff) | migrated
+  source           String
+  sourceRunId      String?
+  updatedByUserId  String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  revisions        OrgMemoryRevision[]
 
-  @@unique([agentId, key])
-  @@index([agentId])
+  @@unique([organizationId, scope, key])
+  @@index([organizationId, status])
+}
+
+/// Earlier values of a memory: a newer value wins, the previous one is kept here.
+model OrgMemoryRevision {
+  id         String    @id @default(cuid())
+  memoryId   String
+  value      String
+  confidence Float?
+  source     String
+  createdAt  DateTime  @default(now())
+  memory     OrgMemory @relation(fields: [memoryId], references: [id], onDelete: Cascade)
+
+  @@index([memoryId, createdAt])
+}
+
+/// Searchable text from the company's files, chat, run summaries and memory (Postgres full-text search).
+model KnowledgeChunk {
+  id              String       @id @default(cuid())
+  organizationId  String
+  /// file | chat | run_summary
+  sourceType      String
+  sourceId        String
+  chunkIndex      Int          @default(0)
+  title           String
+  content         String
+  departmentSlug  String?
+  /// Where the founder can open the source.
+  href            String?
+  /// The source's own last change, to know when it must be indexed again.
+  sourceUpdatedAt DateTime
+  createdAt       DateTime     @default(now())
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceType, sourceId, chunkIndex])
+  @@index([organizationId, sourceType])
 }
 
 model AuditLog {
@@ -692,42 +761,58 @@ model Policy {
 /// One agent execution (root or delegated). The unit of durable work: its state is persisted between steps,
 /// so a run survives restarts, waits for approvals and children, and can be resumed by any worker.
 model Run {
-  id             String    @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
-  sessionId      String    @unique
+  sessionId      String       @unique
   taskId         String?
   agentId        String
   parentRunId    String?
   /// Tool-call id in the parent that started this run; makes child creation idempotent.
   parentSlotId   String?
   rootRunId      String
-  depth          Int       @default(0)
-  callChainJson  String    @default("[]")
-  mode           String    @default("review_required")
+  depth          Int          @default(0)
+  callChainJson  String       @default("[]")
+  mode           String       @default("review_required")
+  /// task (a person started it) | delegation (another agent handed it work) | consult (a read-only question from another agent)
+  /// | plan (the Chief of Staff planning or replanning a goal) | plan_node (one step of an approved plan)
+  /// | review (the Reviewer checking a step against its acceptance criteria) | plan_report (the founder report at the end)
+  kind           String       @default("task")
+  /// The plan this run belongs to, and the plan step it works on or reviews.
+  planId         String?
+  planNodeId     String?
   /// queued | running | waiting_approval | waiting_children | completed | failed | cancelled
-  status         String    @default("queued")
+  status         String       @default("queued")
   requestText    String
-  outputText     String    @default("")
+  outputText     String       @default("")
   errorMessage   String?
+  /// Structured handoff (see engine/handoff.ts) the run finished with, for its parent and the UI.
+  resultJson     String?
+  /// Estimated model spend of this run and everything under it, in cents.
+  costCents      Float        @default(0)
+  /// Spending cap for this run's subtree, set when a parent splits its budget among delegates.
+  budgetCapCents Float?
   /// Provider-native message history and the current turn's tool-call slots.
   stateJson      String?
   /// Root run only: limits for the whole tree, run-scoped approvals, and tree totals.
   limitsJson     String?
-  grantsJson     String    @default("[]")
-  spentCents     Float     @default(0)
-  tokensIn       Int       @default(0)
-  tokensOut      Int       @default(0)
-  steps          Int       @default(0)
-  toolCalls      Int       @default(0)
+  grantsJson     String       @default("[]")
+  spentCents     Float        @default(0)
+  tokensIn       Int          @default(0)
+  tokensOut      Int          @default(0)
+  steps          Int          @default(0)
+  toolCalls      Int          @default(0)
   /// This agent's own model turns.
-  turnCount      Int       @default(0)
-  eventSeq       Int       @default(0)
+  turnCount      Int          @default(0)
+  eventSeq       Int          @default(0)
   lockedBy       String?
   lockedUntil    DateTime?
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime     @default(now())
   startedAt      DateTime?
   finishedAt     DateTime?
-  updatedAt      DateTime  @updatedAt
+  /// Set once the session, task, chat and parent have been updated for the final state. A final run without it
+  /// was interrupted between its status change and its close-out; the sweeper finishes the job.
+  closedOutAt    DateTime?
+  updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   session        TaskSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   events         RunEvent[]
@@ -735,6 +820,7 @@ model Run {
   @@unique([parentRunId, parentSlotId])
   @@index([organizationId, status])
   @@index([rootRunId])
+  @@index([planId])
   @@index([status, updatedAt])
 }
 
@@ -774,4 +860,107 @@ model Job {
   @@index([status, runAt])
   @@index([runId, status])
   @@index([dedupeKey, status])
+}
+
+/// A goal the Chief of Staff turned into a dependency graph of work (see src/lib/agents/plans).
+model Plan {
+  id                  String       @id @default(cuid())
+  organizationId      String
+  goal                String
+  /// drafting | proposed | running | replanning | reporting | completed | failed | cancelled
+  status              String       @default("drafting")
+  /// What the plan does, in the Chief of Staff's words.
+  summary             String?
+  version             Int          @default(1)
+  replanCount         Int          @default(0)
+  maxReplans          Int          @default(2)
+  /// A manager asked for the plan to start without review when it fits the budget.
+  autoApprove         Boolean      @default(false)
+  roadmapItemId       String?
+  createdByUserId     String?
+  approvedByUserId    String?
+  orchestratorAgentId String
+  /// The Chief of Staff's task for this goal: planning, replanning and the report run on it.
+  taskId              String?
+  estimatedCostCents  Float        @default(0)
+  estimatedMinutes    Int          @default(0)
+  /// completed | failed, decided when the last step settles; the plan takes it once the report is written.
+  outcome             String?
+  reportText          String?
+  errorMessage        String?
+  lockedBy            String?
+  lockedUntil         DateTime?
+  createdAt           DateTime     @default(now())
+  approvedAt          DateTime?
+  finishedAt          DateTime?
+  updatedAt           DateTime     @updatedAt
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  nodes               PlanNode[]
+
+  @@index([organizationId, status])
+  @@index([status, updatedAt])
+}
+
+/// One step of a plan: an owner agent, acceptance criteria and the steps it waits for.
+model PlanNode {
+  id                     String    @id @default(cuid())
+  planId                 String
+  /// Short stable id the Chief of Staff uses for dependencies ("build-page").
+  key                    String
+  title                  String
+  description            String
+  agentId                String?
+  departmentId           String?
+  /// The visible task for this step (created when it first starts).
+  taskId                 String?
+  /// The current execution run, and the Reviewer's run while one is checking it.
+  runId                  String?
+  reviewRunId            String?
+  /// pending | starting | running | reviewing | done | failed | skipped
+  status                 String    @default("pending")
+  dependsOnJson          String    @default("[]")
+  acceptanceCriteriaJson String    @default("[]")
+  /// The Reviewer checks the result against the acceptance criteria before the step counts as done.
+  review                 Boolean   @default(false)
+  estimatedCostCents     Float?
+  estimatedMinutes       Int?
+  riskNotes              String?
+  attempts               Int       @default(0)
+  /// Why the last attempt was rejected or failed; given to the next attempt and to replanning.
+  feedback               String?
+  resultJson             String?
+  reviewJson             String?
+  sortOrder              Int       @default(0)
+  startedAt              DateTime?
+  finishedAt             DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  plan                   Plan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, key])
+  @@index([planId, status])
+}
+
+/// The Chief of Staff's summary for the founder: what shipped, what is blocked, what needs them, what it cost.
+model Briefing {
+  id             String       @id @default(cuid())
+  organizationId String
+  /// daily | weekly | manual
+  period         String
+  periodStart    DateTime
+  periodEnd      DateTime
+  /// writing (the Chief of Staff is on it) | ready
+  status         String       @default("writing")
+  /// The facts the briefing is written from (counts, lists, spend), as JSON.
+  dataJson       String
+  text           String?
+  /// The Chief of Staff's run that writes it; null when it was built from the records alone.
+  runId          String?
+  emailedAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, period, periodStart])
+  @@index([organizationId, createdAt])
 }

@@ -23,6 +23,7 @@ export const TOOL_RISK: Record<string, ToolRisk> = {
   list_files: "read",
   memory_retrieve: "read",
   memory_list: "read",
+  search_knowledge: "read",
   github_list_repos: "read",
   github_read_file: "read",
   vercel_list_deployments: "read",
@@ -66,8 +67,15 @@ export const TOOL_RISK: Record<string, ToolRisk> = {
   stripe_create_payment_link: "spend",
   vercel_trigger_deploy: "spend",
 
-  // Orchestration
-  delegate_agent: "delegate"
+  // Orchestration (carried out by the run engine, bounded by the run tree's limits)
+  delegate_agent: "delegate",
+  delegate_many: "delegate",
+  ask_agent: "delegate",
+  // Pausing to ask the founder and handing back a result have no effect outside the run.
+  ask_user: "read",
+  finish_run: "read",
+  // Records the Chief of Staff's plan on its Plan row; nothing runs until the founder approves it.
+  propose_plan: "write_internal"
 };
 
 /** Risks that can never be pre-approved for a run or an agent: every use needs a fresh human decision. */

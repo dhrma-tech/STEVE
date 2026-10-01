@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { errorResponse } from "@/lib/api/responses";
-import { requireOrgAdmin, requireOrgMember } from "@/lib/auth/session";
+import { requireOrgAdmin, requireOrgMember, requireOrgWriter } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { startAgentRun } from "@/lib/agents/run-service";
 import { agentSkillCatalog, normalizeSkillKeys, skillsForDepartment } from "@/data/agents";
@@ -90,10 +90,10 @@ export async function getAgentWorkspaceData(orgId: string, query: { departmentId
     ...(filters.q
       ? {
           OR: [
-            { name: { contains: filters.q } },
-            { description: { contains: filters.q } },
-            { prompt: { contains: filters.q } },
-            { department: { name: { contains: filters.q } } }
+            { name: { contains: filters.q, mode: "insensitive" } },
+            { description: { contains: filters.q, mode: "insensitive" } },
+            { prompt: { contains: filters.q, mode: "insensitive" } },
+            { department: { name: { contains: filters.q, mode: "insensitive" } } }
           ]
         }
       : {})
@@ -274,7 +274,7 @@ export async function launchAgentSession({
   taskId?: string | null;
   message?: string | null;
 }) {
-  const { user } = await requireOrgMember(orgId);
+  const { user } = await requireOrgWriter(orgId);
   const agent = await prisma.agent.findFirst({
     where: { id: agentId, organizationId: orgId, archivedAt: null },
     include: { department: true }
@@ -346,7 +346,7 @@ export async function getSessionActions(orgId: string, sessionId: string) {
 }
 
 export async function updateSessionScratchpad({ orgId, sessionId, scratchpad }: { orgId: string; sessionId: string; scratchpad: string }) {
-  await requireOrgMember(orgId);
+  await requireOrgWriter(orgId);
   const session = await prisma.taskSession.findFirst({ where: { id: sessionId, organizationId: orgId } });
   if (!session) return null;
 

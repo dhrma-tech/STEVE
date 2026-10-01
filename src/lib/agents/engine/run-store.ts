@@ -2,9 +2,10 @@ import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
 import type { Prisma, Run } from "@prisma/client";
 import { prisma } from "@/lib/db/client";
+import { listen, notify as pgNotify } from "@/lib/db/notify";
 import type { AgentEvent } from "../events";
 import { isForwardedEvent } from "../events";
-import { defaultLimits, RunBudget, type RunLimits } from "../policy/limits";
+import { defaultLimits, LimitExceededError, RunBudget, type RunLimits } from "../policy/limits";
 import { ACTIVE_STATUSES, isTerminalStatus, type RunState } from "./types";
 
 export type { Run } from "@prisma/client";
@@ -52,6 +53,10 @@ export async function createRun(data: {
   mode: string;
   parent?: { run: Run; slotId: string };
   limits?: RunLimits;
+  /** Run.kind; default task. */
+  kind?: string;
+  planId?: string | null;
+  planNodeId?: string | null;
 }) {
   const id = data.id ?? newRunId();
   const parent = data.parent?.run ?? null;
@@ -70,6 +75,9 @@ export async function createRun(data: {
       callChainJson: JSON.stringify(callChain),
       mode: data.mode,
       requestText: data.requestText,
+      ...(data.kind ? { kind: data.kind } : {}),
+      planId: data.planId ?? null,
+      planNodeId: data.planNodeId ?? null,
       // Limits, grants and totals live on the root run only.
       ...(parent ? {} : { limitsJson: JSON.stringify(data.limits ?? defaultLimits()) })
     }
@@ -113,6 +121,43 @@ export async function flushBudget(rootRunId: string, budget: RunBudget) {
   });
 }
 
+/** Charge a model turn's cost to the run and every run above it, so each run knows what its subtree cost. */
+export async function addRunCost(run: Pick<Run, "id">, cents: number): Promise<void> {
+  if (!(cents > 0)) return;
+  let id: string | null = run.id;
+  for (let hops = 0; id && hops < 12; hops++) {
+    const row: { parentRunId: string | null } = await prisma.run.update({
+      where: { id },
+      data: { costCents: { increment: cents } },
+      select: { parentRunId: true }
+    });
+    id = row.parentRunId;
+  }
+}
+
+/**
+ * Throw when this run or a run above it has used up the budget share its parent gave it. A parent splits its
+ * remaining budget among the teammates it delegates to, so one delegate cannot starve the others.
+ */
+export async function assertWithinBudgetCaps(run: Pick<Run, "id" | "parentRunId" | "costCents" | "budgetCapCents">): Promise<void> {
+  let current: Pick<Run, "id" | "parentRunId" | "costCents" | "budgetCapCents"> | null = run;
+  for (let hops = 0; current && hops < 12; hops++) {
+    if (current.budgetCapCents !== null && current.costCents >= current.budgetCapCents) {
+      const whose = current.id === run.id ? "This delegated work" : "The delegated work this run belongs to";
+      throw new LimitExceededError(
+        "budget",
+        `${whose} used its budget share (~${current.costCents.toFixed(1)}¢ of ${current.budgetCapCents.toFixed(1)}¢). It was stopped.`
+      );
+    }
+    current = current.parentRunId
+      ? await prisma.run.findUnique({
+          where: { id: current.parentRunId },
+          select: { id: true, parentRunId: true, costCents: true, budgetCapCents: true }
+        })
+      : null;
+  }
+}
+
 export function parseGrants(root: Pick<Run, "grantsJson">): Set<string> {
   try {
     const parsed = JSON.parse(root.grantsJson) as unknown;
@@ -124,6 +169,8 @@ export function parseGrants(root: Pick<Run, "grantsJson">): Set<string> {
 
 export async function addRunGrant(rootRunId: string, toolName: string) {
   await prisma.$transaction(async (tx) => {
+    // Lock the root row: concurrent approvals would otherwise each read the old list and the last write would win.
+    await tx.$executeRaw`SELECT 1 FROM "Run" WHERE "id" = ${rootRunId} FOR UPDATE`;
     const root = await tx.run.findUnique({ where: { id: rootRunId }, select: { grantsJson: true } });
     if (!root) return;
     const grants = parseGrants(root);
@@ -137,27 +184,45 @@ export async function addRunGrant(rootRunId: string, toolName: string) {
 const g = globalThis as typeof globalThis & { _steveRunEvents?: EventEmitter };
 const emitter: EventEmitter = (g._steveRunEvents ??= new EventEmitter().setMaxListeners(0));
 
-/** Wake anything in this process that is waiting on a run's events. Other processes find out by polling. */
+/** Postgres NOTIFY channel carrying the id of a run that logged an event. */
+const RUN_EVENTS_CHANNEL = "steve_run_events";
+
+/**
+ * Wake anything waiting on a run's events: events logged in this process call the listener directly, events
+ * logged by another process (a standalone worker, another server) arrive through Postgres NOTIFY.
+ */
 export function onRunEvents(runId: string, listener: () => void): () => void {
   emitter.on(runId, listener);
-  return () => emitter.off(runId, listener);
+  const unlisten = listen(RUN_EVENTS_CHANNEL, (payload) => {
+    if (payload === runId) listener();
+  });
+  return () => {
+    emitter.off(runId, listener);
+    unlisten();
+  };
 }
 
 function notify(runId: string) {
   emitter.emit(runId);
+  void pgNotify(RUN_EVENTS_CHANNEL, runId);
 }
 
 export type StoredEvent = { seq: number; type: string; createdAt: Date; data: Record<string, unknown> };
 
 /** Append one event to a run's log and return its sequence number. */
 export async function appendEvent(runId: string, event: AgentEvent): Promise<number> {
-  const { eventSeq } = await prisma.run.update({
-    where: { id: runId },
-    data: { eventSeq: { increment: 1 } },
-    select: { eventSeq: true }
-  });
   const { type, ...rest } = event;
-  await prisma.runEvent.create({ data: { runId, seq: eventSeq, type, payloadJson: JSON.stringify(rest) } });
+  // One transaction: the increment locks the run row until the event row is committed, so events become visible
+  // in sequence order and a reader resuming after seq N never skips an N+1 that was still being written.
+  const eventSeq = await prisma.$transaction(async (tx) => {
+    const { eventSeq: seq } = await tx.run.update({
+      where: { id: runId },
+      data: { eventSeq: { increment: 1 } },
+      select: { eventSeq: true }
+    });
+    await tx.runEvent.create({ data: { runId, seq, type, payloadJson: JSON.stringify(rest) } });
+    return seq;
+  });
   notify(runId);
   return eventSeq;
 }

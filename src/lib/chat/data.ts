@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { errorResponse } from "@/lib/api/responses";
-import { requireOrgMember } from "@/lib/auth/session";
+import { requireOrgMember, requireOrgWriter } from "@/lib/auth/session";
 import { generateChatResponse, type ChatAgentSummary } from "@/lib/ai/sandbox-chat";
 import { maybeRunFromChat } from "@/lib/chat/run-command";
 import { prisma } from "@/lib/db/client";
@@ -132,7 +132,7 @@ export async function createChatThread({
   taskId?: string | null;
   agentId?: string | null;
 }) {
-  const { user } = await requireOrgMember(orgId);
+  const { user } = await requireOrgWriter(orgId);
   const safeKind = ["cofounder", "task", "department"].includes(kind) ? kind : "cofounder";
   const task = taskId
     ? await prisma.task.findFirst({ where: { id: taskId, organizationId: orgId, archivedAt: null }, include: { agent: true } })
@@ -178,7 +178,7 @@ export async function updateChatThread({
   title?: string | null;
   archived?: boolean | null;
 }) {
-  await requireOrgMember(orgId);
+  await requireOrgWriter(orgId);
   const thread = await prisma.chatThread.findFirst({ where: { id: threadId, organizationId: orgId, archivedAt: null } });
   if (!thread) return null;
 
@@ -229,7 +229,7 @@ export async function prepareChatMessage({
   attachmentNames = [],
   mentions = []
 }: ChatMessageInput): Promise<ChatMessagePreparation | null> {
-  const { user, organization } = await requireOrgMember(orgId);
+  const { user, organization } = await requireOrgWriter(orgId);
   const thread = await loadActiveThread(orgId, threadId);
   if (!thread) return null;
 
@@ -397,10 +397,10 @@ function threadWhere(orgId: string, filters: ReturnType<typeof normalizeThreadFi
     ...(filters.q
       ? {
           OR: [
-            { title: { contains: filters.q } },
-            { task: { title: { contains: filters.q } } },
-            { agent: { name: { contains: filters.q } } },
-            { messages: { some: { body: { contains: filters.q } } } }
+            { title: { contains: filters.q, mode: "insensitive" } },
+            { task: { title: { contains: filters.q, mode: "insensitive" } } },
+            { agent: { name: { contains: filters.q, mode: "insensitive" } } },
+            { messages: { some: { body: { contains: filters.q, mode: "insensitive" } } } }
           ]
         }
       : {})

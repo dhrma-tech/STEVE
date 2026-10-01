@@ -4,6 +4,7 @@ import { enqueueAdvance } from "@/lib/agents/engine/wake";
 import { AgentsPausedError, assertAgentsNotPaused } from "@/lib/agents/flags";
 import { defaultDailyBudgetCents } from "@/lib/agents/policy/limits";
 import { getEffectivePolicy, resolveRunLimits } from "@/lib/agents/policy/store";
+import { spendToday } from "@/lib/agents/policy/spend";
 import { parsePermissionMode } from "@/lib/agents/run-scope";
 import { AppError } from "@/lib/utils/error";
 
@@ -16,6 +17,12 @@ export type StartAgentRunInput = {
   agentId?: string | null;
   /** Extra instruction from the user; replaces the task text as the agent's request. */
   message?: string | null;
+  /** Run.kind (default task). Plans start their planning, step, review and report runs through here too. */
+  kind?: string;
+  planId?: string | null;
+  planNodeId?: string | null;
+  /** Allow a task that is archived (review runs work on hidden tasks, like consults). */
+  includeArchived?: boolean;
 };
 
 /**
@@ -31,11 +38,20 @@ export type StartAgentRunInput = {
  * Throws AgentsPausedError while the global kill switch or the org's pause is on, and a 429 AppError once the
  * org has used its daily agent budget.
  */
-export async function startAgentRun({ orgId, taskId, agentId = null, message = null }: StartAgentRunInput) {
+export async function startAgentRun({
+  orgId,
+  taskId,
+  agentId = null,
+  message = null,
+  kind,
+  planId = null,
+  planNodeId = null,
+  includeArchived = false
+}: StartAgentRunInput) {
   assertAgentsNotPaused();
 
   const task = await prisma.task.findFirst({
-    where: { id: taskId, organizationId: orgId, archivedAt: null },
+    where: { id: taskId, organizationId: orgId, ...(includeArchived ? {} : { archivedAt: null }) },
     include: { department: true }
   });
   if (!task) return null;
@@ -104,16 +120,22 @@ export async function startAgentRun({ orgId, taskId, agentId = null, message = n
     agentId: agent.id,
     requestText: request,
     mode,
-    limits: await resolveRunLimits(orgId, agent.id)
+    limits: await resolveRunLimits(orgId, agent.id),
+    kind,
+    planId,
+    planNodeId
   });
   await enqueueAdvance(run.id);
 
   return session;
 }
 
-/** Org-level pause and daily spend cap. Runs already in progress stop at their next turn if the org is paused. */
+/**
+ * Org-level pause and the daily spend caps: the org's, the agent's own and its department's. Runs already in progress
+ * stop at their next turn if the org is paused; caps are checked when a run starts.
+ */
 async function assertOrgMayRun(orgId: string, agentId: string) {
-  const { agentsPaused, dailyBudgetCents } = await getEffectivePolicy(orgId, agentId);
+  const { agentsPaused, dailyBudgetCents, agentDailyBudgetCents } = await getEffectivePolicy(orgId, agentId);
   if (agentsPaused) throw new AgentsPausedError("Agent execution is paused for this organization.");
 
   const cap = dailyBudgetCents ?? defaultDailyBudgetCents();
@@ -127,6 +149,30 @@ async function assertOrgMayRun(orgId: string, agentId: string) {
   if (spent >= cap) {
     throw new AppError(
       `This organization has used its daily agent budget (${spent}¢ of ${cap}¢). Raise the limit in agent settings or try again tomorrow.`,
+      429,
+      "INTERNAL"
+    );
+  }
+
+  const agent = await prisma.agent.findUnique({
+    where: { id: agentId },
+    select: { name: true, department: { select: { id: true, name: true, dailyBudgetCents: true } } }
+  });
+  const departmentCap = agent?.department.dailyBudgetCents ?? null;
+  if (agentDailyBudgetCents == null && departmentCap == null) return;
+  const today = await spendToday(orgId);
+  const agentSpent = today.byAgent.get(agentId) ?? 0;
+  if (agentDailyBudgetCents != null && agentSpent >= agentDailyBudgetCents) {
+    throw new AppError(
+      `${agent?.name ?? "This agent"} has used its daily budget (${agentSpent}¢ of ${agentDailyBudgetCents}¢). Raise it in Agent controls or try again tomorrow.`,
+      429,
+      "INTERNAL"
+    );
+  }
+  const departmentSpent = agent ? (today.byDepartment.get(agent.department.id) ?? 0) : 0;
+  if (departmentCap != null && departmentSpent >= departmentCap) {
+    throw new AppError(
+      `The ${agent?.department.name ?? ""} department has used its daily budget (${departmentSpent}¢ of ${departmentCap}¢). Raise it in Agent controls or try again tomorrow.`,
       429,
       "INTERNAL"
     );

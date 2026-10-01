@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/db/client";
 import { scriptedModel, type ScriptedTurn } from "@/lib/agents/testing/scripted-anthropic";
-import { drainAll, ORG, rawExec, resetDb, seedAgent, seedTask, testWorker, USER } from "@/lib/agents/testing/test-db";
+import { ago, drainAll, fromNow, ORG, resetDb, seedAgent, seedTask, testWorker, USER } from "@/lib/agents/testing/test-db";
 import { startAgentRun } from "@/lib/agents/run-service";
 import { cancelRun, cancelRunsForTask } from "@/lib/agents/engine/advance";
 import { getRun, getRunBySession, listEvents } from "@/lib/agents/engine/run-store";
@@ -44,6 +44,8 @@ const delegate = (agentSlug: string, task = "Write the launch copy"): ScriptedTu
   toolCalls: [{ name: "delegate_agent", input: { agentSlug, task } }]
 });
 const call = (name: string, input: Record<string, unknown> = {}): ScriptedTurn => ({ toolCalls: [{ name, input }] });
+/** A delegated agent ending its work with a structured handoff. */
+const finish = (summary: string, status = "done"): ScriptedTurn => call("finish_run", { status, summary });
 
 async function setup(mode: PermissionMode = "review_required") {
   const parent = await seedAgent({ slug: "engineering-default", name: "Engineering Agent", departmentSlug: "engineering", permissionMode: mode });
@@ -57,7 +59,9 @@ async function setup(mode: PermissionMode = "review_required") {
   return { parent, child, task, start };
 }
 
-const eventsOf = async (runId: string) => (await listEvents(runId, 0, 1000)).map((e) => ({ type: e.type, ...e.data }));
+/** A run's events without the per-turn usage records, which the event-order assertions are not about. */
+const eventsOf = async (runId: string) =>
+  (await listEvents(runId, 0, 1000)).filter((e) => e.type !== "model_usage").map((e) => ({ type: e.type, ...e.data }));
 const typesOf = async (runId: string) => (await eventsOf(runId)).map((e) => e.type);
 const runStatus = async (runId: string) => (await getRun(runId))?.status;
 
@@ -140,14 +144,15 @@ describe("a single agent", () => {
 describe("delegation", () => {
   it("runs the child as its own run, links it to the parent and feeds its result back", async () => {
     const { start } = await setup("review_required");
-    scriptedModel.load([delegate("marketing-default"), { text: "Launch copy drafted." }, { text: "Landing page is ready." }]);
+    scriptedModel.load([delegate("marketing-default"), finish("Launch copy drafted."), { text: "Landing page is ready." }]);
     const { session, run } = await start();
 
     await drainAll();
 
     expect((await getRun(run.id))?.status).toBe("completed");
     const child = (await prisma.run.findFirstOrThrow({ where: { parentRunId: run.id } }))!;
-    expect(child).toMatchObject({ status: "completed", depth: 1, rootRunId: run.id, outputText: "Launch copy drafted." });
+    expect(child).toMatchObject({ status: "completed", depth: 1, rootRunId: run.id, kind: "delegation" });
+    expect(child.outputText).toContain("Launch copy drafted.");
     expect((await prisma.taskSession.findUniqueOrThrow({ where: { id: child.sessionId } })).parentSessionId).toBe(session.id);
 
     // The parent's next model call carries the child's output as the tool result.
@@ -168,8 +173,8 @@ describe("delegation", () => {
         { name: "delegate_agent", input: { agentSlug: "marketing-default", task: "copy" } },
         { name: "delegate_agent", input: { agentSlug: "sales-default", task: "outreach" } }
       ] },
-      { text: "copy done" },
-      { text: "outreach done" },
+      finish("copy done"),
+      finish("outreach done"),
       { text: "All delegated work is done." }
     ]);
     const { run } = await start();
@@ -215,7 +220,7 @@ describe("delegation", () => {
   it("refuses a delegation loop back to an agent already in the chain", async () => {
     const { start } = await setup();
     // Engineering -> Marketing -> Engineering (blocked) -> Marketing finishes -> Engineering finishes
-    scriptedModel.load([delegate("marketing-default"), delegate("engineering-default"), { text: "Marketing done." }, { text: "All done." }]);
+    scriptedModel.load([delegate("marketing-default"), delegate("engineering-default"), finish("Marketing done."), { text: "All done." }]);
     const { run } = await start();
     await drainAll();
 
@@ -228,7 +233,7 @@ describe("delegation", () => {
     vi.stubEnv("AGENT_MAX_DEPTH", "1");
     const { start } = await setup();
     await seedAgent({ slug: "sales-default", name: "Sales Agent", departmentSlug: "sales" });
-    scriptedModel.load([delegate("marketing-default"), delegate("sales-default"), { text: "Did it myself." }, { text: "Done." }]);
+    scriptedModel.load([delegate("marketing-default"), delegate("sales-default"), finish("Did it myself."), { text: "Done." }]);
     const { run } = await start();
     await drainAll();
 
@@ -240,7 +245,7 @@ describe("delegation", () => {
   it("never lets a delegated agent be less restricted than its caller, and surfaces its approval on the root run", async () => {
     const { start } = await setup("review_required");
     // The child is configured 'trusted' but inherits review_required, so its push asks first.
-    scriptedModel.load([delegate("marketing-default"), call("github_push_file", { path: "a.ts" }), { text: "Pushed." }, { text: "Done." }]);
+    scriptedModel.load([delegate("marketing-default"), call("github_push_file", { path: "a.ts" }), finish("Pushed."), { text: "Done." }]);
     const { session, run } = await start();
 
     await drainAll();
@@ -314,7 +319,7 @@ describe("approvals", () => {
     // Days later, after a deploy: nothing in memory survives, only the database.
     resetCircuits();
     const approval = await pendingApproval();
-    rawExec("UPDATE Approval SET expiresAt = ? WHERE id = ?", Date.now() + 3 * 86_400_000, approval.id);
+    await prisma.approval.update({ where: { id: approval.id }, data: { expiresAt: fromNow(3 * 86_400_000) } });
     await answer(session.id, approval.id, "approve");
     await drainAll(testWorker({ id: "after-restart" }));
 
@@ -352,7 +357,7 @@ describe("approvals", () => {
     await drainAll();
 
     const approval = await pendingApproval();
-    rawExec("UPDATE Approval SET expiresAt = ? WHERE id = ?", Date.now() - 1000, approval.id);
+    await prisma.approval.update({ where: { id: approval.id }, data: { expiresAt: ago(1000) } });
     expect(await expireDueApprovals()).toBe(1);
     await drainAll();
 
@@ -527,9 +532,9 @@ describe("cancellation", () => {
 
 describe("crash recovery", () => {
   /** Simulate a worker dying mid-step: its lease on the job and the run simply runs out. */
-  function expireLeases() {
-    rawExec("UPDATE Job SET lockedUntil = ? WHERE status = 'active'", Date.now() - 1000);
-    rawExec("UPDATE Run SET lockedUntil = ? WHERE lockedUntil IS NOT NULL", Date.now() - 1000);
+  async function expireLeases() {
+    await prisma.job.updateMany({ where: { status: "active" }, data: { lockedUntil: ago(1000) } });
+    await prisma.run.updateMany({ where: { lockedUntil: { not: null } }, data: { lockedUntil: ago(1000) } });
   }
 
   it("re-runs a read-only call that a dead worker never finished, on a different worker", async () => {
@@ -548,7 +553,7 @@ describe("crash recovery", () => {
     void dying.runOnce(); // tool call: never returns, as if the process was killed
     await vi.waitFor(async () => expect(JSON.parse((await getRun(run.id))!.stateJson!).pending[0].status).toBe("executing"));
 
-    expireLeases();
+    await expireLeases();
     const survivor = testWorker({ id: "survivor" });
     const stats = await survivor.sweep();
     expect(stats.requeuedJobs).toBe(1);
@@ -573,7 +578,7 @@ describe("crash recovery", () => {
     void dying.runOnce();
     await vi.waitFor(async () => expect(JSON.parse((await getRun(run.id))!.stateJson!).pending[0].status).toBe("executing"));
 
-    expireLeases();
+    await expireLeases();
     const survivor = testWorker({ id: "survivor" });
     await survivor.sweep();
     await drainAll(survivor);
@@ -587,8 +592,8 @@ describe("crash recovery", () => {
     const { start } = await setup();
     scriptedModel.load([{ text: "Recovered." }]);
     const { run } = await start();
-    rawExec("DELETE FROM Job"); // the queue lost it
-    rawExec("UPDATE Run SET updatedAt = ? WHERE id = ?", Date.now() - 10 * 60_000, run.id);
+    await prisma.job.deleteMany(); // the queue lost it
+    await prisma.run.update({ where: { id: run.id }, data: { updatedAt: ago(10 * 60_000) } });
 
     const worker = testWorker();
     expect((await worker.sweep()).reawakenedRuns).toBe(1);
@@ -599,6 +604,8 @@ describe("crash recovery", () => {
 
 describe("provider failures", () => {
   it("retries a temporary provider error later instead of failing the run", async () => {
+    // With no fallback model, an outage waits for the job queue to try again.
+    vi.stubEnv("MODEL_WORKER_FALLBACK", "none");
     const { start } = await setup();
     scriptedModel.load([
       { error: { status: 503, message: "overloaded" } },
@@ -615,7 +622,7 @@ describe("provider failures", () => {
     expect(job).toMatchObject({ status: "queued", attempts: 1 });
     expect(job.lastError).toMatch(/did not respond/);
 
-    rawExec("UPDATE Job SET runAt = ? WHERE id = ?", Date.now() - 1000, job.id); // the backoff has passed
+    await prisma.job.update({ where: { id: job.id }, data: { runAt: ago(1000) } }); // the backoff has passed
     await drainAll(worker);
     expect(await getRun(run.id)).toMatchObject({ status: "completed", outputText: "Back online." });
   });
@@ -638,9 +645,11 @@ describe("event log", () => {
     const { run } = await start();
     await drainAll();
 
+    // Each turn's text is written before that turn's usage record.
     const all = await listEvents(run.id, 0);
-    expect(all.map((e) => e.seq)).toEqual([1, 2, 3, 4]);
-    const missed = await listEvents(run.id, 2); // the client saw up to event 2
-    expect(missed.map((e) => e.type)).toEqual(["text_delta", "done"]);
+    expect(all.map((e) => e.seq)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(all.map((e) => e.type)).toEqual(["model_usage", "tool_call", "tool_result", "text_delta", "model_usage", "done"]);
+    const missed = await listEvents(run.id, 3); // the client saw up to event 3
+    expect(missed.map((e) => e.type)).toEqual(["text_delta", "model_usage", "done"]);
   });
 });
