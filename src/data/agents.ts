@@ -9,7 +9,11 @@ export const agentStatusOptions = [
 ] as const;
 
 export const agentModelOptions = [
-  { value: "claude-sonnet-sandbox", label: "Claude Sonnet 4.6" },
+  // Not a pin: the run picks the model tier for the work (see src/lib/ai/model-tiers.ts).
+  { value: "claude-sonnet-sandbox", label: "Claude (automatic)" },
+  { value: "claude-opus-5-5", label: "Claude Opus 5.5" },
+  { value: "claude-sonnet-5-5", label: "Claude Sonnet 5.5" },
+  { value: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
   { value: "gpt-5.4-sandbox", label: "GPT-5.4" },
   { value: "gpt-5.4-mini-sandbox", label: "GPT-5.4 Mini" }
 ] as const;

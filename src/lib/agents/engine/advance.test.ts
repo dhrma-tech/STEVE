@@ -59,7 +59,9 @@ async function setup(mode: PermissionMode = "review_required") {
   return { parent, child, task, start };
 }
 
-const eventsOf = async (runId: string) => (await listEvents(runId, 0, 1000)).map((e) => ({ type: e.type, ...e.data }));
+/** A run's events without the per-turn usage records, which the event-order assertions are not about. */
+const eventsOf = async (runId: string) =>
+  (await listEvents(runId, 0, 1000)).filter((e) => e.type !== "model_usage").map((e) => ({ type: e.type, ...e.data }));
 const typesOf = async (runId: string) => (await eventsOf(runId)).map((e) => e.type);
 const runStatus = async (runId: string) => (await getRun(runId))?.status;
 
@@ -602,6 +604,8 @@ describe("crash recovery", () => {
 
 describe("provider failures", () => {
   it("retries a temporary provider error later instead of failing the run", async () => {
+    // With no fallback model, an outage waits for the job queue to try again.
+    vi.stubEnv("MODEL_WORKER_FALLBACK", "none");
     const { start } = await setup();
     scriptedModel.load([
       { error: { status: 503, message: "overloaded" } },
@@ -641,9 +645,11 @@ describe("event log", () => {
     const { run } = await start();
     await drainAll();
 
+    // Each turn's text is written before that turn's usage record.
     const all = await listEvents(run.id, 0);
-    expect(all.map((e) => e.seq)).toEqual([1, 2, 3, 4]);
-    const missed = await listEvents(run.id, 2); // the client saw up to event 2
-    expect(missed.map((e) => e.type)).toEqual(["text_delta", "done"]);
+    expect(all.map((e) => e.seq)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(all.map((e) => e.type)).toEqual(["model_usage", "tool_call", "tool_result", "text_delta", "model_usage", "done"]);
+    const missed = await listEvents(run.id, 3); // the client saw up to event 3
+    expect(missed.map((e) => e.type)).toEqual(["text_delta", "model_usage", "done"]);
   });
 });

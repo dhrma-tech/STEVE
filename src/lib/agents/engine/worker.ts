@@ -7,6 +7,7 @@ import { ADVANCE_JOB, enqueueAdvance, onWake } from "./wake";
 import { advancePlan } from "../plans/scheduler";
 import { enqueuePlanAdvance, PLAN_JOB } from "../plans/wake";
 import { ensureDailyBriefings } from "@/lib/briefings/briefings";
+import { reportError } from "@/lib/observability/log";
 
 /** Plans that are moving (or waiting on a run) and could miss a wake-up. */
 const LIVE_PLAN_STATUSES = ["drafting", "running", "replanning", "reporting"];
@@ -168,6 +169,7 @@ export class Worker {
       this.log(`job ${job.id} (${job.type}) failed on attempt ${job.attempts}: ${message}`);
       if (job.attempts >= job.maxAttempts) {
         await this.queue.fail(job.id, message);
+        await reportError(error, { jobId: job.id, jobType: job.type, runId: job.runId ?? undefined, attempts: job.attempts, workerId: this.id });
         if (job.runId) await failRunById(job.runId, `The run stopped after ${job.attempts} failed attempts: ${message}`).catch(() => undefined);
       } else {
         await this.queue.retry(job.id, message, backoffMs(job.attempts));

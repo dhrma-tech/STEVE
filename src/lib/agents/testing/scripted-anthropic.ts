@@ -20,13 +20,21 @@ export type ScriptedTurn = {
   error?: { status?: number; message: string };
   /** Hold the answer this long, so calls from agents running in parallel overlap. */
   delayMs?: number;
+  /** End the turn as a classifier refusal (`stop_reason: "refusal"`). */
+  refusal?: { category?: string | null; explanation?: string | null };
+  /** The model that answered (as after a server-side fallback). Defaults to the requested model. */
+  servedModel?: string;
+  cache?: { read?: number; write?: number };
 };
 
 export type RecordedCall = {
   model: string;
+  /** The system prompt as text (a cached system prompt arrives as text blocks). */
   system: string;
   messages: unknown[];
   toolNames: string[];
+  /** The whole request body, for assertions on betas, caching, effort and thinking settings. */
+  params: Record<string, unknown>;
 };
 
 class ScriptedModel {
@@ -74,17 +82,37 @@ class ScriptedModel {
     return {
       turn,
       content,
-      stop_reason: turn.toolCalls?.length ? "tool_use" : "end_turn",
-      usage: { input_tokens: turn.usage?.input ?? 100, output_tokens: turn.usage?.output ?? 50 }
+      stop_reason: turn.refusal ? "refusal" : turn.toolCalls?.length ? "tool_use" : "end_turn",
+      stop_details: turn.refusal ? { type: "refusal", category: turn.refusal.category ?? null, explanation: turn.refusal.explanation ?? null } : null,
+      model: turn.servedModel ?? call.model,
+      usage: {
+        input_tokens: turn.usage?.input ?? 100,
+        output_tokens: turn.usage?.output ?? 50,
+        cache_read_input_tokens: turn.cache?.read ?? 0,
+        cache_creation_input_tokens: turn.cache?.write ?? 0
+      }
     };
   }
 }
 
 export const scriptedModel = new ScriptedModel();
 
+type StreamParams = {
+  model: string;
+  system: string | Array<{ type: string; text?: string }>;
+  messages: unknown[];
+  tools?: Array<{ name: string }>;
+};
+
+const systemText = (system: StreamParams["system"]) =>
+  typeof system === "string" ? system : system.map((block) => block.text ?? "").join("\n");
+
 class ScriptedAnthropic {
-  messages = {
-    stream: (params: { model: string; system: string; messages: unknown[]; tools?: Array<{ name: string }> }) => {
+  messages = { stream: (params: StreamParams) => scriptedStream(params) };
+  beta = { messages: { stream: (params: StreamParams) => scriptedStream(params) } };
+}
+
+function scriptedStream(params: StreamParams) {
       const handlers: Record<string, Array<(text: string) => void>> = {};
       return {
         on(event: string, cb: (text: string) => void) {
@@ -92,11 +120,12 @@ class ScriptedAnthropic {
           return this;
         },
         async finalMessage() {
-          const { turn, content, stop_reason, usage } = scriptedModel.next({
+          const { turn, content, stop_reason, stop_details, model, usage } = scriptedModel.next({
             model: params.model,
-            system: params.system,
+            system: systemText(params.system),
             messages: structuredClone(params.messages),
-            toolNames: (params.tools ?? []).map((t) => t.name)
+            toolNames: (params.tools ?? []).map((t) => t.name),
+            params: structuredClone(params) as unknown as Record<string, unknown>
           });
           if (turn.delayMs) {
             scriptedModel.inFlight += 1;
@@ -108,11 +137,9 @@ class ScriptedAnthropic {
             }
           }
           if (turn.text) for (const cb of handlers.text ?? []) cb(turn.text);
-          return { content, stop_reason, usage };
+          return { content, stop_reason, stop_details, model, usage };
         }
       };
-    }
-  };
 }
 
 /** Return value for `vi.mock("@anthropic-ai/sdk", ...)`. */

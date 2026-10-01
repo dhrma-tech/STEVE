@@ -27,8 +27,31 @@ export const EMPTY_POLICY: EffectivePolicy = { autoApprove: new Set(), alwaysAsk
  *
  * The decision depends on the tool and its arguments only, never on text the model wrote,
  * so injected instructions cannot talk their way past it.
+ *
+ * `tainted`: the run has read content that looked like a prompt injection (policy/injection.ts). From then on
+ * nothing outside STEVE is pre-approved: run grants, agent auto-approve rules and trusted mode stop applying, and
+ * every approval card says why.
  */
 export function decide(params: {
+  toolName: string;
+  input: Record<string, unknown>;
+  mode: PermissionMode;
+  policy?: EffectivePolicy;
+  grants?: ReadonlySet<string>;
+  tainted?: boolean;
+}): PolicyDecision {
+  const decision = baseDecision(params);
+  if (!params.tainted || decision.action === "deny" || decision.risk === "read" || decision.risk === "write_internal" || decision.risk === "delegate") {
+    return decision;
+  }
+  return {
+    action: "ask",
+    risk: decision.risk,
+    reason: `${decision.action === "ask" ? `${decision.reason} ` : ""}This run read content that looked like a prompt injection, so outside actions need your approval.`
+  };
+}
+
+function baseDecision(params: {
   toolName: string;
   input: Record<string, unknown>;
   mode: PermissionMode;

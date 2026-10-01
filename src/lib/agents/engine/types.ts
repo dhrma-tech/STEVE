@@ -61,6 +61,14 @@ export interface SlotChild {
 export interface RunState {
   provider: ProviderId;
   modelId: string;
+  /** The tier the model came from (null when the agent is pinned to a model). Older runs have none. */
+  tier?: string | null;
+  /** `output_config.effort` for models that take it. */
+  effort?: "low" | "medium" | "high" | "xhigh" | "max" | null;
+  /** Used for a turn when `modelId` is unavailable. */
+  fallbackModelId?: string | null;
+  /** Something the run read looked like a prompt injection; approvals it asks for afterwards say so. */
+  injectionSuspected?: { tool: string; excerpt: string } | null;
   system: string;
   user: string;
   skillKeys: string[];

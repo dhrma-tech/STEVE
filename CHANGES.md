@@ -1076,3 +1076,38 @@ Verification: `pnpm typecheck` → exit 0. Zero `var(--app-|var(--brand-|rgba(` 
   - Viewer: a temporary viewer could read Mission Control and approvals but got 403 on plan, memory, briefing and policy changes.
   - The live-check user, briefings and their runs were deleted afterwards. Not run against a real model.
 - Not done (Phase 7 items left for later): diffs for file and code changes in the run detail; Slack or mobile push; "retry from step N" (a run can be retried or forked whole, not resumed from a middle step: runs keep no per-step history snapshots); plan steps assigned to people; a spend sparkline on canvas nodes; a role editor (set `viewer` on the membership for now). The golden-scenario exit test ("a non-technical founder completes it using only the UI in under five minutes of attention") needs a real model and a person; it has not been run.
+
+## Orchestration Phase 8 — model tiers, evals, observability, red-team (2026-10-01)
+- **Model tiers** (`src/lib/ai/model-tiers.ts`, `model-router.ts`):
+  - Planner (Chief of Staff: plans, reports, briefings) uses `claude-opus-5-5` at effort high, workers use `claude-sonnet-5-5` at effort medium, and consults use `claude-haiku-4-5`.
+  - Each tier can be overridden with environment variables. An agent can be pinned to a model; the picker now offers "Claude (automatic)", Opus 5.5, Sonnet 5.5 and Haiku 4.5.
+  - The old `anthropic-client.ts` / `openai-client.ts` and the unused `callModel` were removed.
+- **Model calls** (`engine/models.ts`):
+  - Calls now go through the beta Messages stream with prompt caching (tools, system prompt, conversation), `output_config.effort`, adaptive thinking with `block_binding: drop_block`, server-side tool-result clearing (instead of client-side trimming, which would break preserved thinking), and the server-side refusal fallback.
+  - When a model is down, a turn runs on the tier's fallback model. A final refusal fails the run with its category (`ModelRefusalError`). `max_tokens` went from 4096 to 16000.
+- **Cost:** prices are now current first-party rates including cache reads and writes. A `model_usage` event per turn records the model that answered, tier, tokens, cache tokens, cost, tool calls and latency. Budgets count cached tokens at their cached price.
+- **Tool input validation** (`tools/validate.ts`): every call is checked with Zod schemas built from the tool's JSON Schema, before policy runs. Problems go back to the model as a failed tool result.
+- **Prompt injection** (`policy/injection.ts`):
+  - Output from tools that return outside content (web, files, GitHub, support, email, analytics, Apify, SQL) is screened.
+  - On a hit, the output reaches the model wrapped as `<untrusted_content>`, and an `injection_suspected` event is recorded.
+  - From then on, the run (and anything it delegates to) gets no pre-approved outside actions: run grants, always-approve rules and trusted mode stop applying, and approval cards say why.
+  - A "Tool output is data" rule was added to every agent's system prompt.
+- **Observability:**
+  - `observability/log.ts` writes structured logs (JSON in production, `LOG_LEVEL`, `LOG_FORMAT`) with run, session, org and job ids.
+  - `reportError` sends unexpected run failures and jobs that run out of attempts to Sentry when `SENTRY_DSN` is set (no SDK; uses the envelope API, never throws).
+  - Mission Control has a new **Health** tab (24h / 7d / 30d) showing:
+    - success rate and p50/p95 run time;
+    - cost per run, cost by model and cache hit rate;
+    - approval wait time and replan rate;
+    - suspected injections, fallback turns and limit stops;
+    - a recent runs table that opens run detail.
+- **Evals** (`src/lib/agents/evals`):
+  - 20 scenarios cover engineering, marketing, sales, finance, support, design and cross-department work (delegation, consult, read-only mode, malformed input, outage fallback, refusal, secret redaction).
+  - They run against the real engine and Postgres with outside services stubbed, and are part of `pnpm test`.
+  - `pnpm eval` runs only the evals. `pnpm eval:live` runs them against the real model, and `.github/workflows/evals-nightly.yml` runs that nightly when the `ANTHROPIC_API_KEY` secret is set.
+  - Scripted run: 20/20 pass, 9 unsafe attempts, 0 executed.
+- **Red-team tests** (`engine/safety.test.ts`): planted instructions in a web page or support thread cannot get `email_send`, `delete_file`, a deploy or a push to run without a person. This holds in trusted, review and read-only modes and through a delegated teammate.
+- Verification:
+  - `pnpm typecheck` clean, `pnpm lint:ci` 0 errors (53 existing warnings), `pnpm build` OK.
+  - `pnpm test`: 30 files, 348 tests (was 282).
+  - Not checked live: no model API key here, so neither live evals nor real-model runs have been done; the Health tab was not opened in a browser.

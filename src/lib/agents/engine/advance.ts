@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/db/client";
-import { resolveModel } from "@/lib/ai/model-router";
+import { resolveRunModel } from "@/lib/ai/model-router";
+import { bindsThinkingToConversation } from "@/lib/ai/model-tiers";
+import { log, reportError } from "@/lib/observability/log";
+import { UNTRUSTED_DATA_RULE } from "../policy/injection";
 import { ollamaChatSafe } from "@/lib/ai/ollama";
 import type { AgentEvent } from "../events";
 import { AgentsPausedError, assertAgentsNotPaused } from "../flags";
@@ -29,7 +32,7 @@ import {
   type Handoff,
   type HandoffInput
 } from "./handoff";
-import { compactMessages, initialMessages, runModelTurn, toolResultMessages, TransientModelError } from "./models";
+import { compactMessages, initialMessages, ModelRefusalError, runModelTurn, toolResultMessages, TransientModelError } from "./models";
 import {
   acquireRunLease,
   activeDescendants,
@@ -164,6 +167,12 @@ async function stepInner(run: Run, root: Run, budget: RunBudget): Promise<Advanc
   let state = parseState(run);
   if (!state) {
     state = await prepareState(run, agent);
+    // A brief from a run that read injection-shaped content may carry it along: the child starts tainted too.
+    if (run.parentRunId) {
+      const parent = await prisma.run.findUnique({ where: { id: run.parentRunId }, select: { stateJson: true } });
+      const inherited = parent ? parseState(parent)?.injectionSuspected : null;
+      if (inherited) state.injectionSuspected = inherited;
+    }
     await saveState(run.id, state);
   }
 
@@ -222,7 +231,7 @@ async function prepareState(run: Run, agent: NonNullable<Awaited<ReturnType<type
   } catch { /* ignore */ }
 
   const request = run.requestText;
-  const model = resolveModel(agent.model);
+  const model = resolveRunModel({ agentModel: agent.model, agentTier: agent.modelTier, kind: run.kind });
   // Only the memories that matter for this request, bounded in count and size (company, department, own notes).
   const memorySection = renderMemorySection(rankMemories(memories, `${task?.title ?? ""}\n${request}`, memoryScopes), {
     departmentName: agent.department.name,
@@ -242,13 +251,17 @@ async function prepareState(run: Run, agent: NonNullable<Awaited<ReturnType<type
         brandKit: orgContext.brandKit,
         team: renderDirectory(directory, agent.id)
       }),
-      memorySection
+      memorySection,
+      UNTRUSTED_DATA_RULE
     ]
       .filter(Boolean)
       .join("\n\n");
     return {
       provider: model.provider,
       modelId: model.modelId,
+      tier: model.tier,
+      effort: model.effort,
+      fallbackModelId: model.fallbackModelId,
       system,
       user: request,
       skillKeys,
@@ -288,11 +301,15 @@ async function prepareState(run: Run, agent: NonNullable<Awaited<ReturnType<type
     if (team) sections.push(team);
     sections.push(collaborationGuide({ mustHandOff: requiredEnding(run.kind) === "finish_run" }));
   }
+  sections.push(UNTRUSTED_DATA_RULE);
   const system = sections.join("\n\n");
 
   return {
     provider: model.provider,
     modelId: model.modelId,
+    tier: model.tier,
+    effort: model.effort,
+    fallbackModelId: model.fallbackModelId,
     system,
     user,
     skillKeys,
@@ -353,8 +370,13 @@ async function stepModelTurn(ctx: StepContext): Promise<AdvanceResult> {
     );
   }
 
-  state.messages = compactMessages(state.provider, state.messages);
+  // Models that bind thinking to the conversation need an append-only history: their old tool output is cleared
+  // server-side (see models.ts). Others are trimmed here when the history grows long.
+  if (!(state.provider === "anthropic" && bindsThinkingToConversation(state.modelId))) {
+    state.messages = compactMessages(state.provider, state.messages);
+  }
   const flusher = new TextFlusher(emit);
+  const started = Date.now();
   let turn;
   try {
     turn = await runModelTurn({
@@ -364,18 +386,47 @@ async function stepModelTurn(ctx: StepContext): Promise<AdvanceResult> {
       system: state.system,
       messages: state.messages,
       tools: ctx.toolset,
-      onText: (delta) => flusher.push(delta)
+      onText: (delta) => flusher.push(delta),
+      effort: state.effort ?? null,
+      fallbackModelId: state.fallbackModelId ?? null
     });
   } finally {
     await flusher.flush();
   }
+  // Priced as the model that actually answered (a fallback after an outage or a refusal costs what it costs).
+  const servedModelId = turn.servedModelId ?? state.modelId;
   const cost = budget.recordModelTurn({
-    modelId: state.modelId,
+    modelId: servedModelId,
     provider: state.provider,
     inputTokens: turn.inputTokens,
-    outputTokens: turn.outputTokens
+    outputTokens: turn.outputTokens,
+    cacheReadTokens: turn.cacheReadTokens,
+    cacheWriteTokens: turn.cacheWriteTokens
   });
   await addRunCost(run, cost);
+  // One usage record per model turn: cost per run, per agent and (divided by the calls it made) per tool call.
+  await emit({
+    type: "model_usage",
+    modelId: servedModelId,
+    requestedModelId: state.modelId,
+    tier: state.tier ?? null,
+    inputTokens: turn.inputTokens,
+    outputTokens: turn.outputTokens,
+    cacheReadTokens: turn.cacheReadTokens ?? 0,
+    cacheWriteTokens: turn.cacheWriteTokens ?? 0,
+    costCents: Math.round(cost * 10_000) / 10_000,
+    toolCalls: turn.toolCalls.map((call) => call.name),
+    latencyMs: Date.now() - started
+  });
+  log.info("model turn", {
+    runId: run.id,
+    sessionId: run.sessionId,
+    orgId: run.organizationId,
+    model: servedModelId,
+    costCents: cost,
+    toolCalls: turn.toolCalls.length,
+    latencyMs: Date.now() - started
+  });
 
   state.messages.push(turn.assistantMessage);
   const outputText = run.outputText + turn.text;
@@ -576,7 +627,8 @@ async function runSlot(ctx: StepContext, slot: Slot): Promise<boolean> {
 
   if (!slot.approved) {
     const evaluation = await evaluateToolCall({
-      toolName: slot.name, toolInput: slot.input, toolset, ctx: toolCtx, counted: !!slot.counted, emit
+      toolName: slot.name, toolInput: slot.input, toolset, ctx: toolCtx, counted: !!slot.counted, emit,
+      tainted: !!ctx.state.injectionSuspected
     });
     slot.counted = true;
 
@@ -619,6 +671,11 @@ async function runSlot(ctx: StepContext, slot: Slot): Promise<boolean> {
     emit
   });
   slot.actionId = result.actionId;
+  if (result.injection && !ctx.state.injectionSuspected) {
+    // From here on this run gets no pre-approved outside actions (see policy/engine.ts).
+    ctx.state.injectionSuspected = { tool: slot.name, excerpt: result.injection.excerpt };
+    log.warn("prompt injection suspected", { runId: run.id, sessionId: run.sessionId, orgId: run.organizationId, tool: slot.name, pattern: result.injection.pattern });
+  }
   settle(slot, result);
   await saveState(run.id, ctx.state);
   return false;
@@ -997,6 +1054,10 @@ async function failRun(run: Run, root: Run, error: unknown): Promise<AdvanceResu
     await emitRunEvent(current, { type: "limit_reached", limit: error.limit, message: error.message });
   }
   await emitRunEvent(current, { type: "error", message: `Agent run failed: ${message}` });
+  // Expected stops (limits, pauses, a declined request, a missing key) are logged; anything else is a bug worth reporting.
+  const expected = error instanceof LimitExceededError || error instanceof AgentsPausedError || error instanceof ModelRefusalError || /API_KEY is not set/.test(message);
+  if (expected) log.warn("run failed", { runId: run.id, sessionId: run.sessionId, orgId: run.organizationId, reason: message });
+  else await reportError(error, { runId: run.id, sessionId: run.sessionId, orgId: run.organizationId, kind: run.kind });
   // Nothing under a failed run should keep going.
   await cancelDescendants(run);
   await closeOut(current, root, { outcome: "failed", output: current.outputText, errorMessage: message });

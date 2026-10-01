@@ -179,7 +179,8 @@ describe("scenario: launch our landing page and announce it", () => {
     const report = (await getPlan(ORG, plan.id))!;
     expect(report.costCents).toBeGreaterThan(0);
     expect(report.reportSessionId).toBeTruthy();
-  });
+    // Room for a busy machine: the whole plan (15 runs) waits up to 30 s above.
+  }, 60_000);
 });
 
 describe("plan review", () => {

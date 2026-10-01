@@ -169,7 +169,7 @@ export function AiSettingsForm({ orgId, initialData }: { orgId: string; initialD
           value={data.aiModel}
           onValueChange={(value) => patch({ aiModel: value })}
           options={[
-            { value: "claude-sonnet-sandbox", label: "Claude Sonnet 4.6" },
+            { value: "claude-sonnet-sandbox", label: "Claude (automatic)" },
             { value: "gpt-5.4-sandbox", label: "GPT-5.4" },
             { value: "gpt-5.4-mini-sandbox", label: "GPT-5.4 Mini" }
           ]}

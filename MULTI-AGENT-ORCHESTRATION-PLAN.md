@@ -362,7 +362,8 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
 | 5 — Orchestrator and planning | **done 2026-10-01** (see notes below) |
 | 6 — Shared memory and knowledge | **done 2026-10-01** (see notes below) |
 | 7 — Founder and manager experience | **done 2026-10-01**, except the items listed in its notes |
-| 8–10 | not started |
+| 8 — Model strategy, evaluation, observability | **done 2026-10-01**, except the items listed in its notes |
+| 9–10 | not started |
 
 **Phase 0 notes**
 - Delivered: Vitest with a scripted Anthropic provider and in-memory DB (`src/lib/agents/testing/`), 16 passing tests (single run, delegation, approval approve/deny, kill switch, auth secret, flags) plus 6 `it.todo` markers for Phase 2–4 requirements; CI workflow (`.github/workflows/ci.yml`); `AUTH_SECRET` now required (32+ chars) in production; `/api/ai/chat` requires login; `/test` returns 404 in production; `ORCHESTRATOR_V2` flag and `AGENTS_PAUSED` env kill switch (enforced in `runAgent`).
@@ -454,5 +455,21 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
   - An edited call is approved once only, and an edit may not raise the call's risk.
   - Viewer enforcement covers the agent-work surface (launch, tasks, chat sends, roadmap, plans, memory, approvals, briefings), not every settings page.
 - Not done: file/code diffs in run detail, Slack/mobile push, retry from a middle step (runs keep no per-step snapshots), people as plan owners (§11 decision 5), node spend sparklines, a role editor UI. The exit test (a non-technical founder completes the golden scenario using only the UI) needs a real model and a person; not run.
+**Phase 8 notes (model strategy, evaluation, observability)**
+- Delivered:
+  1. Model tiers in configuration (`src/lib/ai/model-tiers.ts`): planner `claude-opus-5-5` (effort high), worker `claude-sonnet-5-5` (effort medium), triage `claude-haiku-4-5`. Each tier can be changed with `MODEL_<TIER>`, `MODEL_<TIER>_EFFORT` and `MODEL_<TIER>_FALLBACK`. An agent can be pinned to a model (`Agent.model`, which the picker now offers) or to a tier (`Agent.modelTier`). Model IDs, effort, pricing and beta names were checked against the Claude API reference (2026-09).
+  2. Per-turn cost tracking: a `model_usage` event per model turn records the model that answered, tier, tokens (including cache reads and writes), cost, the tool calls it made and latency. Prices are first-party rates with cache pricing (`policy/pricing.ts`).
+  3. Fallback on outage: when a model's retries are used up or its circuit is open, the turn runs on the tier's fallback model, and the turn is priced as the model that answered. Classifier refusals use the server-side fallback (`fallbacks: "default"`, Opus 5.5 and Sonnet 5.5). A final refusal fails the run with its category.
+  4. Prompt caching (tools, system prompt and conversation tail). For models that bind thinking to the conversation, the history stays append-only: old tool results are cleared server-side (`clear_tool_uses_20250919`), and `block_binding: drop_block` keeps a mismatched block from failing a turn.
+  5. Zod validation of every tool input against the tool's schema (`tools/validate.ts`). A malformed call goes back to the model to fix; nothing is asked or run.
+  6. Prompt-injection screening (`policy/injection.ts`). Output from tools that return outside content is screened. A hit wraps the output as untrusted data, records `injection_suspected`, and taints the run: from then on nothing outside STEVE is pre-approved (no run grants, auto-approve rules or trusted mode). Delegated runs inherit the taint. Every agent's system prompt states that tool output is data, not instructions.
+  7. Observability: structured logs with run, session, org and job ids (`observability/log.ts`, JSON in production). Unexpected run and job failures are reported to Sentry when `SENTRY_DSN` is set. A **Health** tab in Mission Control (`observability/run-metrics.ts`, `GET /api/orgs/:id/mission/health`) shows success rate, p50/p95 run time, cost per run and by model, cache hit rate, approval wait, replan rate, suspected injections, fallback turns, limit stops, and a table of recent runs that opens run detail.
+  8. Eval harness (`src/lib/agents/evals`): 20 scenarios covering every department and cross-department work, run through the real engine with outside services replaced by stand-ins. In CI they run against a scripted model as part of `pnpm test` (also `pnpm eval`). `pnpm eval:live` runs them against the real model, and a nightly workflow (`evals-nightly.yml`, needs the `ANTHROPIC_API_KEY` secret) uploads the JSON report. Each scenario measures success, steps, cost, latency, approvals requested and unsafe attempts. An unsafe action that runs without approval fails a scenario in either mode.
+  9. Red-team tests (`engine/safety.test.ts`): injected pages and threads that try to trigger `email_send`, `delete_file`, deploys and pushes, in review, trusted and read-only modes and through delegation.
+- Decisions:
+  - Injection detection is a heuristic that warns and removes conveniences. The defense remains the policy engine, which decides from the tool and its arguments only.
+  - Fallback is within the provider (another Claude model). A cross-provider fallback (OpenAI) was not added: its message format differs mid-conversation and it would drop thinking state.
+  - Live evals are measured, not gated per scenario (a real model can take another acceptable path). Only "no unsafe action ran" gates them.
+- Not done: no live eval run yet (no API key here). Embeddings for knowledge search are still deferred (§ Phase 6). Metrics are computed on read from run rows rather than exported to a metrics store. Plain chat (`/api/ai/chat`) and the onboarding idea and branding generators still call local Ollama, not the tiers.
 
 Existing code to build on rather than rewrite: `src/lib/agents/engine/*` (step machine, queue interface, worker), `tools/*` (tool implementations), `TaskSession.parentSessionId` and `Approval` (schema), `execution-feed.tsx` and `agent-workspace-dialog.tsx` (UI), `model-router.ts` (extend to tiers).
