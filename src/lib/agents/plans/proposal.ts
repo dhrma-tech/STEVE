@@ -1,3 +1,4 @@
+import { publishOrgEvent } from "@/lib/automations/channels";
 import type { Plan, PlanNode, Run } from "@prisma/client";
 import { prisma } from "@/lib/db/client";
 import { defaultDailyBudgetCents } from "../policy/limits";
@@ -140,6 +141,13 @@ async function recordFirstProposal(plan: Plan & { nodes: PlanNode[] }, input: un
   if (updated.count !== 1) return { ok: false, error: "Error: this plan was changed meanwhile and cannot take the proposal." };
   if (plan.taskId) await prisma.task.update({ where: { id: plan.taskId }, data: { status: autoStart ? "running" : "ready_to_review" } });
   if (autoStart) await enqueuePlanAdvance(plan.id);
+  else {
+    await publishOrgEvent(plan.organizationId, "plan.proposed", {
+      text: `Plan ready for review: ${plan.goal.slice(0, 200)} (${nodes.length} steps, ~${Math.round(estimates.estimatedCostCents)}¢)`,
+      path: `/org/${plan.organizationId}/canvas?plan=${plan.id}`,
+      data: { planId: plan.id, goal: plan.goal, summary: parsed.plan.summary, steps: nodes.length, estimatedCostCents: estimates.estimatedCostCents }
+    });
+  }
 
   return {
     ok: true,

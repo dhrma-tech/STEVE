@@ -1111,3 +1111,30 @@ Verification: `pnpm typecheck` → exit 0. Zero `var(--app-|var(--brand-|rgba(` 
   - `pnpm typecheck` clean, `pnpm lint:ci` 0 errors (53 existing warnings), `pnpm build` OK.
   - `pnpm test`: 30 files, 348 tests (was 282).
   - Not checked live: no model API key here, so neither live evals nor real-model runs have been done; the Health tab was not opened in a browser.
+
+## Orchestration Phase 9 — schedules, triggers, channels, public API (2026-10-01)
+- **Schedules** (`src/lib/automations/schedules.ts`, `cron.ts`, new `Schedule` table):
+  - Recurring goals or agent instructions on a cron in the founder's time zone (DST-safe).
+  - Fired by the worker sweep with a once-only claim. Missed slots fire once on recovery. A pause or empty budget is recorded as "skipped". "Run now" is available.
+- **Triggers** (`triggers.ts`, `inbound.ts`, `Trigger` and `InboundEvent` tables, `POST /api/hooks/<token>`):
+  - Stripe, Sentry, GitHub, Plain, inbound email and generic webhooks start a goal or an agent.
+  - Each trigger gets its own unguessable URL (hash stored), an optional provider signing secret (encrypted, verified on every delivery), event-type patterns, replay protection by delivery id, and an hourly cap.
+  - Event content is wrapped as `<untrusted_content>`. The run starts tainted (`untrusted` on the task metadata, read by `engine/advance.ts`), and goals from events always wait for plan review.
+  - `createGoalPlan` takes an `origin`.
+- **Notification channels** (`channels.ts`, `NotificationChannel` table):
+  - Slack incoming webhooks and signed JSON webhooks for approval required, question asked, plan proposed and finished, run completed and failed, and briefing ready.
+  - Published from `createApproval`, `createQuestion`, the plan proposal, plan finish, run close-out and briefing finish.
+  - Delivered as `channel.deliver` jobs with retries. A channel is turned off after repeated failures. Test send available.
+- **Encryption** (`src/lib/security/crypto.ts`): AES-256-GCM for stored channel URLs and signing secrets. The key comes from `SECRETS_ENCRYPTION_KEY`, or is derived from `AUTH_SECRET`. Values are versioned for Phase 10's key rotation.
+- **Public API** (`/api/v1`, `ApiKey` table):
+  - `stv_` keys (hash stored, scopes, revoke).
+  - Start a run or plan, list runs, read a run, page its events, read a plan. Scoped to the key's org.
+- **UI:** a Mission Control **Automations** tab for owners and admins, covering schedules, triggers (with templates), channels and API keys. Secrets and URLs are shown once.
+- **Fix:** the pg-boss queue now polls every job type a worker handles (`plan.advance` was missed by standalone workers).
+- **Policy:** the tainted-run reason now covers both injection-shaped content and event-started runs.
+- Migration `20261001500000_automations`.
+- Verification:
+  - `pnpm typecheck` clean, `pnpm lint:ci` 0 errors (53 existing warnings), `pnpm build` OK.
+  - `pnpm test`: 32 files, 373 tests (was 348). New: `cron.test.ts` and `automations.test.ts`.
+  - Live HTTP check against a dev server and local Postgres: API key auth, run start, signed and unsigned hook deliveries, duplicate handling, the tainted trigger run, and signed outbound webhook delivery. Live-check data was deleted.
+  - No real model calls (no key).

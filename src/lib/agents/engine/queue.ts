@@ -189,7 +189,8 @@ export function getQueue(): JobQueue {
   if (!g._steveJobQueue) {
     if (queueKind() === "pg-boss") {
       // pg-boss connects on first use, so the default setup never opens a connection for it.
-      g._steveJobQueue = new PgBossJobQueue({ connectionString: databaseUrl() });
+      // Every job type a worker handles, so a worker process polls them all even before it queues one itself.
+      g._steveJobQueue = new PgBossJobQueue({ connectionString: databaseUrl(), types: ["run.advance", "plan.advance", "channel.deliver"] });
     } else {
       g._steveJobQueue = new DbJobQueue();
     }

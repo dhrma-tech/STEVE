@@ -8,6 +8,8 @@ import { advancePlan } from "../plans/scheduler";
 import { enqueuePlanAdvance, PLAN_JOB } from "../plans/wake";
 import { ensureDailyBriefings } from "@/lib/briefings/briefings";
 import { reportError } from "@/lib/observability/log";
+import { deliverChannelJob, DELIVER_JOB } from "@/lib/automations/channels";
+import { fireDueSchedules } from "@/lib/automations/schedules";
 
 /** Plans that are moving (or waiting on a run) and could miss a wake-up. */
 const LIVE_PLAN_STATUSES = ["drafting", "running", "replanning", "reporting"];
@@ -41,6 +43,8 @@ export type SweepStats = {
   reawakenedRuns: number;
   closedOutRuns: number;
   reawakenedPlans: number;
+  /** Schedules that came due and were fired (started or recorded as skipped/failed). */
+  firedSchedules: number;
 };
 
 /** AGENT_WORKER_CONCURRENCY, or 4. Blank or invalid falls back to the default instead of a worker that never claims a job. */
@@ -162,6 +166,7 @@ export class Worker {
     try {
       if (job.type === ADVANCE_JOB) await this.handleAdvance(job);
       else if (job.type === PLAN_JOB) await this.handlePlan(job);
+      else if (job.type === DELIVER_JOB) await deliverChannelJob(job.payload, job.attempts, job.maxAttempts);
       else throw new Error(`Unknown job type: ${job.type}`);
       await this.queue.complete(job.id);
     } catch (error) {
@@ -245,15 +250,22 @@ export class Worker {
     // Daily briefings once the briefing hour has passed, and finishing any whose writer never came back.
     await ensureDailyBriefings().catch((error) => this.log(`briefings failed: ${String(error)}`));
 
+    // Schedules that are due (Phase 9).
+    const firedSchedules = await fireDueSchedules().catch((error) => {
+      this.log(`schedules failed: ${String(error)}`);
+      return 0;
+    });
+
     const stats = {
       requeuedJobs: requeued,
       failedJobs: failed,
       expiredApprovals,
       reawakenedRuns: reawakened,
       closedOutRuns,
-      reawakenedPlans: stalePlans.length
+      reawakenedPlans: stalePlans.length,
+      firedSchedules
     };
-    if (requeued || failed || expiredApprovals || reawakened || closedOutRuns || stalePlans.length) this.log(`sweep: ${JSON.stringify(stats)}`);
+    if (requeued || failed || expiredApprovals || reawakened || closedOutRuns || stalePlans.length || firedSchedules) this.log(`sweep: ${JSON.stringify(stats)}`);
     return stats;
   }
 }

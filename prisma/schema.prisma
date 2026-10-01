@@ -86,6 +86,11 @@ model Organization {
   memories                OrgMemory[]
   knowledgeChunks         KnowledgeChunk[]
   briefings               Briefing[]
+  schedules               Schedule[]
+  triggers                Trigger[]
+  inboundEvents           InboundEvent[]
+  notificationChannels    NotificationChannel[]
+  apiKeys                 ApiKey[]
 
   @@index([status])
   @@index([currentPlan])
@@ -127,27 +132,27 @@ model OnboardingAnswer {
 }
 
 model Department {
-  id             String        @id @default(cuid())
-  organizationId String
-  slug           String
-  name           String
-  description    String
-  icon           String
-  color          String
-  coverAsset     String?
-  availability   String        @default("active")
-  contextJson    String?
+  id               String        @id @default(cuid())
+  organizationId   String
+  slug             String
+  name             String
+  description      String
+  icon             String
+  color            String
+  coverAsset       String?
+  availability     String        @default("active")
+  contextJson      String?
   /// Most this department's agents may spend per day, in cents (their own runs' spend). Null: no department cap.
   dailyBudgetCents Int?
-  sortOrder      Int
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  agents         Agent[]
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  files          File[]
-  folders        Folder[]
-  roadmapItems   RoadmapItem[]
-  tasks          Task[]
+  sortOrder        Int
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  agents           Agent[]
+  organization     Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  files            File[]
+  folders          Folder[]
+  roadmapItems     RoadmapItem[]
+  tasks            Task[]
 
   @@unique([organizationId, slug])
   @@index([organizationId, availability])
@@ -663,24 +668,24 @@ model CanvasViewState {
 /// A durable fact the team knows: brand voice, ICP, pricing, decisions, pointers to where credentials live (never
 /// the secrets). Shared by scope: the whole company, one department, or one agent's own notes (see src/lib/memory).
 model OrgMemory {
-  id               String              @id @default(cuid())
-  organizationId   String
+  id              String              @id @default(cuid())
+  organizationId  String
   /// org | department:<slug> | agent:<agentId>
-  scope            String
-  key              String
-  value            String
+  scope           String
+  key             String
+  value           String
   /// active (agents see it) | proposed (waiting for the founder's review; agents do not see it)
-  status           String              @default("active")
+  status          String              @default("active")
   /// 0..1 as reported by whoever stated it; null when a person wrote it.
-  confidence       Float?
+  confidence      Float?
   /// founder | agent:<slug> | run:<runId> (a finding from a run's handoff) | migrated
-  source           String
-  sourceRunId      String?
-  updatedByUserId  String?
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  revisions        OrgMemoryRevision[]
+  source          String
+  sourceRunId     String?
+  updatedByUserId String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  revisions       OrgMemoryRevision[]
 
   @@unique([organizationId, scope, key])
   @@index([organizationId, status])
@@ -963,4 +968,136 @@ model Briefing {
 
   @@unique([organizationId, period, periodStart])
   @@index([organizationId, createdAt])
+}
+
+/// A recurring piece of work (Phase 9): on a cron schedule, give the Chief of Staff a goal or an agent an instruction.
+model Schedule {
+  id              String       @id @default(cuid())
+  organizationId  String
+  name            String
+  /// Five-field cron ("0 9 * * 1") or a macro (@daily, @weekly, ...), read in `timezone`.
+  cron            String
+  timezone        String       @default("UTC")
+  /// goal (the Chief of Staff plans it) | agent (one agent does it)
+  target          String
+  /// The goal, or the instruction for the agent.
+  instruction     String
+  agentId         String?
+  /// goal target: start the plan without review when it fits the daily budget.
+  autoApprove     Boolean      @default(false)
+  enabled         Boolean      @default(true)
+  nextRunAt       DateTime?
+  lastRunAt       DateTime?
+  /// started | skipped | failed
+  lastStatus      String?
+  lastMessage     String?
+  /// The plan or session the last firing started, as JSON.
+  lastRefJson     String?
+  runCount        Int          @default(0)
+  createdByUserId String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([enabled, nextRunAt])
+  @@index([organizationId])
+}
+
+/// Starts work when an outside event arrives at the org inbound endpoint (Phase 9).
+model Trigger {
+  id                      String       @id @default(cuid())
+  organizationId          String
+  name                    String
+  /// stripe | sentry | github | support | email | webhook
+  source                  String
+  /// Event types that fire it: exact ("customer.created"), a prefix pattern ("pull_request.*") or "*".
+  eventPattern            String       @default("*")
+  /// goal | agent (as on Schedule)
+  target                  String
+  instruction             String
+  agentId                 String?
+  /// The endpoint URL is /api/hooks/<token>; the token starts with this prefix and only its hash is stored.
+  tokenPrefix             String       @unique
+  tokenHash               String
+  /// Provider signing secret (Stripe whsec_, GitHub, Sentry client secret, or a shared HMAC secret), encrypted. When set, every delivery must carry a valid signature.
+  signingSecretCiphertext String?
+  enabled                 Boolean      @default(true)
+  fireCount               Int          @default(0)
+  lastFiredAt             DateTime?
+  lastStatus              String?
+  lastMessage             String?
+  createdByUserId         String?
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+  organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, source, enabled])
+}
+
+/// One delivery to an inbound endpoint, kept for replay protection and the activity list.
+model InboundEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  source         String
+  eventType      String
+  /// The sender event or delivery id; a repeat is ignored.
+  externalId     String
+  summary        String?
+  /// Redacted and size-capped.
+  payloadJson    String?
+  /// fired | ignored | failed
+  status         String
+  firedCount     Int          @default(0)
+  error          String?
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, source, externalId])
+  @@index([organizationId, createdAt])
+}
+
+/// Where org events go besides the app and email: a Slack incoming webhook or a signed HTTP webhook (Phase 9).
+model NotificationChannel {
+  id               String       @id @default(cuid())
+  organizationId   String
+  /// slack | webhook
+  kind             String
+  name             String
+  /// The destination URL, encrypted (src/lib/security/crypto.ts).
+  urlCiphertext    String
+  /// The host and last characters of the URL, to tell channels apart without decrypting.
+  urlHint          String
+  /// webhook: the HMAC signing secret, encrypted.
+  secretCiphertext String?
+  /// Event types sent to this channel, as a JSON array (see src/lib/automations/events.ts).
+  eventsJson       String       @default("[]")
+  enabled          Boolean      @default(true)
+  lastDeliveredAt  DateTime?
+  lastError        String?
+  failureCount     Int          @default(0)
+  createdByUserId  String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, enabled])
+}
+
+/// Key for the public API (/api/v1). Only a hash is stored; the key is shown once.
+model ApiKey {
+  id              String       @id @default(cuid())
+  organizationId  String
+  name            String
+  /// The visible start of the key (stv_ab12cd34ef), for lists and lookup.
+  prefix          String       @unique
+  keyHash         String
+  /// JSON array of scopes: runs:read, runs:write
+  scopesJson      String       @default("[\"runs:read\",\"runs:write\"]")
+  createdByUserId String?
+  lastUsedAt      DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime     @default(now())
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
 }

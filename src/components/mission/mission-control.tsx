@@ -12,11 +12,12 @@ import { ApprovalsInbox } from "./approvals-inbox";
 import { BriefingsView } from "./briefings-view";
 import { GoalBox } from "./goal-box";
 import { HealthView } from "./health-view";
+import { AutomationsView } from "./automations-view";
 import { LiveView } from "./live-view";
 import { api, cents, panelClass } from "./ui";
 
 const POLL_MS = 4000;
-const TABS = ["live", "approvals", "briefings", "health"] as const;
+const TABS = ["live", "approvals", "briefings", "health", "automations"] as const;
 type Tab = (typeof TABS)[number];
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "warning" }) {
@@ -112,7 +113,7 @@ export function MissionControl({ orgId, initialTab, role }: { orgId: string; ini
       {!readOnly ? <GoalBox orgId={orgId} onPlanned={({ planId }) => router.push(`/org/${orgId}/canvas?plan=${planId}`)} /> : null}
 
       <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)} className="grid gap-4">
-        <TabsList className="flex w-full max-w-lg gap-1">
+        <TabsList className="flex w-full max-w-2xl gap-1">
           <TabsTrigger value="live" className="flex-1 text-xs">Live</TabsTrigger>
           <TabsTrigger value="approvals" className="flex-1 gap-1.5 text-xs">
             Approvals
@@ -120,6 +121,7 @@ export function MissionControl({ orgId, initialTab, role }: { orgId: string; ini
           </TabsTrigger>
           <TabsTrigger value="briefings" className="flex-1 text-xs">Briefings</TabsTrigger>
           <TabsTrigger value="health" className="flex-1 text-xs">Health</TabsTrigger>
+          {isManager ? <TabsTrigger value="automations" className="flex-1 text-xs">Automations</TabsTrigger> : null}
         </TabsList>
         <TabsContent value="live" className="mt-0">
           {overview ? <LiveView orgId={orgId} overview={overview} onChanged={refresh} /> : <p className="text-sm text-[var(--foreground-50)]">Loading…</p>}
@@ -133,6 +135,11 @@ export function MissionControl({ orgId, initialTab, role }: { orgId: string; ini
         <TabsContent value="health" className="mt-0">
           {tab === "health" ? <HealthView orgId={orgId} onChanged={refresh} /> : null}
         </TabsContent>
+        {isManager ? (
+          <TabsContent value="automations" className="mt-0">
+            {tab === "automations" ? <AutomationsView orgId={orgId} /> : null}
+          </TabsContent>
+        ) : null}
       </Tabs>
     </div>
   );
