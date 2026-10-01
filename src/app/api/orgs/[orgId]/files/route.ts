@@ -2,6 +2,7 @@ import { z } from "zod";
 import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
 import { createFile, getFileLibraryData } from "@/lib/files/data";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const createFileSchema = z.object({
   name: z.string().trim().min(1).max(180),
@@ -41,6 +42,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const { orgId } = await context.params;
+    await enforceRateLimit("upload", `org:${orgId}`);
     const file = await createFile({ orgId, ...parsed.data });
     return dataResponse(file, { status: 201 });
   } catch (error) {

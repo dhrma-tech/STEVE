@@ -20,7 +20,9 @@
     "lint:ci": "eslint .",
     "worker": "tsx src/worker/index.ts",
     "db:local": "tsx scripts/db-local.ts",
-    "db:import-sqlite": "tsx prisma/import-sqlite.ts"
+    "db:import-sqlite": "tsx prisma/import-sqlite.ts",
+    "db:backup": "tsx scripts/backup-db.ts",
+    "secrets:rotate": "tsx scripts/secrets-rotate.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

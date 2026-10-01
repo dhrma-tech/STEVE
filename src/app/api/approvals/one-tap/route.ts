@@ -3,6 +3,7 @@ import { errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
 import { redeemOneTap } from "@/lib/agents/policy/approval-inbox";
 import { decideResponse } from "@/lib/agents/policy/decide-response";
+import { clientIp, rateLimitResponse } from "@/lib/security/rate-limit";
 
 const schema = z.object({ token: z.string().min(10).max(2000) });
 
@@ -13,6 +14,8 @@ const schema = z.object({ token: z.string().min(10).max(2000) });
  */
 export async function POST(request: Request) {
   try {
+    const limited = await rateLimitResponse("approval", `ip:${clientIp(request)}`);
+    if (limited) return limited;
     const parsed = schema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) return errorResponse("VALIDATION_ERROR", "A token is required.", 422);
     return decideResponse(await redeemOneTap(parsed.data.token));

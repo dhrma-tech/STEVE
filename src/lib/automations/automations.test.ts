@@ -53,11 +53,11 @@ afterEach(() => {
 describe("stored secrets", () => {
   it("round-trips and refuses a tampered value", () => {
     const sealed = encryptSecret("https://hooks.slack.com/services/T/B/x");
-    expect(sealed).toMatch(/^v1:/);
+    expect(sealed).toMatch(/^v2:/);
     expect(sealed).not.toContain("hooks.slack.com");
     expect(decryptSecret(sealed)).toBe("https://hooks.slack.com/services/T/B/x");
     const parts = sealed.split(":");
-    parts[3] = Buffer.from("tampered").toString("base64url");
+    parts[5] = Buffer.from("tampered").toString("base64url");
     expect(() => decryptSecret(parts.join(":"))).toThrow();
   });
 });

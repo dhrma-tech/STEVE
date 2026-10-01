@@ -3,6 +3,7 @@ import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
 import { requireOrgWriter } from "@/lib/auth/session";
 import { resolveApproval } from "@/lib/agents/policy/approvals";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const approveSchema = z.object({
   action: z.enum(["approve", "deny"]),
@@ -18,6 +19,7 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const { orgId, sessionId } = await context.params;
     const { user, membership } = await requireOrgWriter(orgId);
+    await enforceRateLimit("approval", `user:${user.id}`);
 
     const parsed = approveSchema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) {

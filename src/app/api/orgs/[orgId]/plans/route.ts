@@ -4,6 +4,7 @@ import { routeError } from "@/lib/api/route-errors";
 import { requireOrgMember, requireOrgWriter } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { createGoalPlan, getPlan, listPlans } from "@/lib/agents/plans/store";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const createSchema = z.object({
   goal: z.string().trim().min(3).max(1000),
@@ -31,6 +32,7 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const { orgId } = await context.params;
     const { user, membership } = await requireOrgWriter(orgId);
+    await enforceRateLimit("run_start", `org:${orgId}`);
     const parsed = createSchema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) return errorResponse("VALIDATION_ERROR", "A goal of at least 3 characters is required.", 422, parsed.error.flatten());
 

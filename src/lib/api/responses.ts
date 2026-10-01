@@ -6,6 +6,7 @@ export type ApiErrorCode =
   | "NOT_FOUND"
   | "VALIDATION_ERROR"
   | "CONFLICT"
+  | "RATE_LIMITED"
   | "INTERNAL";
 
 export function dataResponse<T>(data: T, init?: ResponseInit) {

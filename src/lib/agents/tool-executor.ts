@@ -9,6 +9,7 @@ import { summarizeToolCall, type ToolRisk } from "./policy/risk";
 import { redactSecrets, sanitizeToolOutput } from "./policy/sanitize";
 import { screenToolOutput, wrapUntrusted, type InjectionFinding } from "./policy/injection";
 import { validateToolInput } from "./tools/validate";
+import { audit } from "@/lib/security/audit";
 
 export type ToolCallResult = {
   /** Text handed back to the model. Already redacted and length-capped. */
@@ -267,16 +268,34 @@ async function recordAction(params: {
       ...(params.status === "running" || params.status === "waiting_approval" ? {} : { completedAt: new Date() })
     }
   });
+  if (params.status !== "running" && params.status !== "waiting_approval") await auditToolCall(action);
   return action.id;
 }
 
 async function updateAction(actionId: string, params: { status: string; payload: Record<string, unknown> }) {
-  await prisma.agentAction.update({
+  const action = await prisma.agentAction.update({
     where: { id: actionId },
     data: {
       status: params.status,
       payloadJson: redactSecrets(JSON.stringify(params.payload)),
       ...(params.status === "running" ? {} : { completedAt: new Date() })
     }
+  });
+  if (params.status !== "running" && params.status !== "waiting_approval") await auditToolCall(action);
+}
+
+/** Every finished tool call (completed, failed, denied, skipped) goes to the audit log with the agent as actor. */
+async function auditToolCall(action: { id: string; organizationId: string; agentId: string | null; actionType: string; status: string; sessionId: string | null; payloadJson: string | null }) {
+  let risk: unknown = null;
+  try {
+    risk = (JSON.parse(action.payloadJson ?? "{}") as { risk?: unknown }).risk ?? null;
+  } catch { /* ignore */ }
+  await audit({
+    orgId: action.organizationId,
+    actorAgentId: action.agentId,
+    action: action.actionType,
+    targetType: "agent_action",
+    targetId: action.id,
+    metadata: { status: action.status, risk, sessionId: action.sessionId }
   });
 }

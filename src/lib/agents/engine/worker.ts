@@ -10,6 +10,8 @@ import { ensureDailyBriefings } from "@/lib/briefings/briefings";
 import { reportError } from "@/lib/observability/log";
 import { deliverChannelJob, DELIVER_JOB } from "@/lib/automations/channels";
 import { fireDueSchedules } from "@/lib/automations/schedules";
+import { maybeApplyRetention } from "@/lib/security/retention";
+import { recordWorkerHeartbeat } from "@/lib/observability/health";
 
 /** Plans that are moving (or waiting on a run) and could miss a wake-up. */
 const LIVE_PLAN_STATUSES = ["drafting", "running", "replanning", "reporting"];
@@ -265,6 +267,9 @@ export class Worker {
       reawakenedPlans: stalePlans.length,
       firedSchedules
     };
+    // Retention (hourly) and a heartbeat for the status page. Neither may break the sweep.
+    await maybeApplyRetention().catch((error) => this.log(`retention failed: ${String(error)}`));
+    await recordWorkerHeartbeat(this.id, { ...stats, pid: process.pid }).catch(() => undefined);
     if (requeued || failed || expiredApprovals || reawakened || closedOutRuns || stalePlans.length || firedSchedules) this.log(`sweep: ${JSON.stringify(stats)}`);
     return stats;
   }

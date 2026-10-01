@@ -364,7 +364,7 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
 | 7 — Founder and manager experience | **done 2026-10-01**, except the items listed in its notes |
 | 8 — Model strategy, evaluation, observability | **done 2026-10-01**, except the items listed in its notes |
 | 9 — Triggers, schedules and integrations | **done 2026-10-01**, except the items listed in its notes |
-| 10 | not started |
+| 10 — Production hardening | **done 2026-10-01**, except the items listed in its notes |
 
 **Phase 0 notes**
 - Delivered: Vitest with a scripted Anthropic provider and in-memory DB (`src/lib/agents/testing/`), 16 passing tests (single run, delegation, approval approve/deny, kill switch, auth secret, flags) plus 6 `it.todo` markers for Phase 2–4 requirements; CI workflow (`.github/workflows/ci.yml`); `AUTH_SECRET` now required (32+ chars) in production; `/api/ai/chat` requires login; `/test` returns 404 in production; `ORCHESTRATOR_V2` flag and `AGENTS_PAUSED` env kill switch (enforced in `runAgent`).
@@ -494,5 +494,47 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
   - Svix-signed inbound email (Resend) is not verified natively; use the STEVE signature or an unsigned trigger.
   - OAuth app installs (URLs are pasted into each service).
   - Rate limits on `/api/v1` and streaming events (Phase 10; poll `/events`).
+**Phase 10 notes (production hardening)**
+- Delivered:
+  1. **Secret vault** (`src/lib/security/crypto.ts`, `vault.ts`):
+     - Envelope encryption (a fresh AES-256-GCM data key per value, wrapped by a master key) with a key ring (`SECRETS_MASTER_KEYS`, active key first) and `pnpm secrets:rotate`. The wrap step is the seam for a cloud KMS.
+     - Integration credentials now live encrypted in `Secret` (environment "integration"). Connecting an integration routes credential fields there and keeps only settings in the config.
+     - Integration API responses no longer echo credentials (they used to return the whole config). Disconnecting deletes them.
+     - Env-file uploads are encrypted instead of hash-only. Old plaintext config credentials move into the vault with `pnpm secrets:rotate`.
+  2. **Per-org credentials for tools:** GitHub, Vercel, Stripe, Supabase, Postiz, email, Plain, PostHog, Sentry and Apify read the org vault. Global env keys are used only outside production or with `ALLOW_GLOBAL_TOOL_CREDENTIALS=1`. Web search may use an org key and otherwise the platform key.
+  3. **OAuth connect** (`src/lib/integrations/oauth.ts`): GitHub, Vercel (integration install), Stripe Connect and Supabase.
+     - The state is encrypted, bound to the browser with a nonce cookie and to the user, expires after ten minutes, and uses PKCE where the provider supports it.
+     - Tokens are stored in the vault and refreshed automatically when they expire.
+     - A provider is offered on its integration card when its client id and secret are configured.
+  4. **Rate limits** (`rate-limit.ts`): Postgres fixed windows, so they hold across instances.
+     - Coverage: sign-in by IP; run, plan and task starts and chat sends by org; uploads by org; approvals and answers by user (one-tap by IP); public API reads and writes by key; inbound hooks by endpoint.
+     - Responses are 429 with `Retry-After`. Limits are configurable per bucket.
+  5. **Tenant isolation tests:**
+     - A static check that every `/api/orgs/:orgId` route checks membership, directly or in the library it calls. It found the chat stream route checking only inside the stream; it now refuses before streaming.
+     - Cross-org data checks for runs, Mission Control, schedules, approvals and the vault (the public API and triggers were covered in Phase 9).
+  6. **Audit log completeness** (`audit.ts`): every finished agent tool call (agent as actor), approval and question decisions, policy, budget and agent changes, integration connect, OAuth and disconnect, secret writes, every automation change (schedules, triggers, channels, API keys) and data settings. Metadata is redacted. A viewer is in Mission Control → Security.
+  7. **Retention and PII** (`retention.ts`, `pii.ts`):
+     - Per-org retention (7, 30, 90 or 365 days) for run events of finished runs and inbound events, applied hourly by the worker. Finished jobs and rate-limit windows are pruned too.
+     - Card numbers are always removed from tool output and stored events.
+     - Optional redaction of emails and phone numbers before storage. It applies to string values only, so stored JSON stays valid. The model still sees the current turn as is.
+  8. **Operations:**
+     - `/api/health`: database, worker heartbeats and queue age, with 503 when the database is down.
+     - A public `/status` page.
+     - `pnpm db:backup` (pg_dump custom format with rotation).
+     - `docs/runbook.md`: runaway agents or spend, provider outage, database or workers down, webhook abuse, leaked credentials, master key rotation, backup and restore, data requests.
+- Live check (dev server and local Postgres):
+  - Migration applied, and `pnpm secrets:rotate` ran.
+  - `/api/health` was operational with the inline worker heartbeat, and `/status` rendered.
+  - With `RATE_LIMIT_AUTH=3/60`, the fourth sign-in got 429 with `Retry-After: 54`.
+  - The OAuth start and audit routes refused unauthenticated requests (401).
+  - `pnpm db:backup` stopped cleanly on a pg_dump 16 vs server 18 mismatch, so no real dump was produced here.
+- Not done:
+  - No real OAuth round trip with any provider (no client credentials here).
+  - Supabase OAuth stores the management token, but the project service role key still has to be pasted.
+  - Vercel's install flow can need the team id in API calls.
+  - A cloud KMS adapter: the seam exists, and keys come from the environment.
+  - Status page history and incident posts.
+  - Scheduled backups depend on the host scheduler.
+  - The rate limits do not cover every route, only the expensive and sensitive ones.
 
 Existing code to build on rather than rewrite: `src/lib/agents/engine/*` (step machine, queue interface, worker), `tools/*` (tool implementations), `TaskSession.parentSessionId` and `Approval` (schema), `execution-feed.tsx` and `agent-workspace-dialog.tsx` (UI), `model-router.ts` (extend to tiers).

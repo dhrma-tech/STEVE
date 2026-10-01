@@ -3,6 +3,8 @@ import type { Prisma } from "@prisma/client";
 import { requireOrgAdmin, requireOrgMember } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { ensureIntegrationRecords, providerCatalog } from "@/lib/integrations/data";
+import { encryptSecret } from "@/lib/security/crypto";
+import { audit } from "@/lib/security/audit";
 
 const json = (value: unknown) => JSON.stringify(value);
 
@@ -809,7 +811,9 @@ async function writeSecret({
 }) {
   const normalizedKey = normalizeSecretKey(key);
   const normalizedEnvironment = normalizeEnvironment(environment);
-  const ciphertext = redactedCiphertext(value);
+  // Encrypted (not just hashed), so the value can later be pushed to the deployment target; never returned.
+  const ciphertext = encryptSecret(value);
+  await audit({ orgId, actorUserId: userId, action: "secret.updated", targetType: "secret", targetId: `${normalizedEnvironment}/${normalizedKey}` });
   return prisma.secret.upsert({
     where: { organizationId_environment_key: { organizationId: orgId, environment: normalizedEnvironment, key: normalizedKey } },
     update: {
@@ -908,11 +912,6 @@ function normalizeEnvironment(value: string) {
 
 function normalizeSource(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 40) || "other";
-}
-
-function redactedCiphertext(value: string) {
-  const digest = createHash("sha256").update(value).digest("hex");
-  return `redacted:sha256:${digest}`;
 }
 
 function dnsRecordsFor(domain: string) {

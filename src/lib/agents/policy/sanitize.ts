@@ -1,3 +1,5 @@
+import { redactCardNumbers } from "@/lib/security/pii-patterns";
+
 const SECRET_PATTERNS: RegExp[] = [
   /sk-ant-[A-Za-z0-9_-]{20,}/g, //                                   Anthropic
   /\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}/g, //                           OpenAI
@@ -53,5 +55,5 @@ export function capOutput(text: string, max = DEFAULT_TOOL_OUTPUT_LIMIT): string
 
 /** What is safe to hand back to the model and store: redacted first, then capped. */
 export function sanitizeToolOutput(text: string): string {
-  return capOutput(redactSecrets(text));
+  return capOutput(redactCardNumbers(redactSecrets(text)));
 }

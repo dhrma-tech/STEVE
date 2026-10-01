@@ -1,6 +1,7 @@
 import type { ApiKey } from "@prisma/client";
 import { prisma } from "@/lib/db/client";
 import { randomToken, safeEqual, sha256Hex } from "@/lib/security/crypto";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 /**
  * Keys for the public API (/api/v1, orchestration plan Phase 9).
@@ -85,6 +86,7 @@ export async function authenticateApiRequest(request: Request, scope: ApiScope):
   if (!row || row.revokedAt || !safeEqual(row.keyHash, sha256Hex(key))) throw new ApiAuthError("Invalid or revoked API key.", 401);
   const scopes = scopesOf(row);
   if (!scopes.includes(scope)) throw new ApiAuthError(`This key does not have the ${scope} scope.`, 403);
+  await enforceRateLimit(scope === "runs:write" ? "api_write" : "api_read", `key:${row.id}`);
   // At most one write a minute per key for the last-used time.
   if (!row.lastUsedAt || Date.now() - row.lastUsedAt.getTime() > 60_000) {
     await prisma.apiKey.update({ where: { id: row.id }, data: { lastUsedAt: new Date() } }).catch(() => undefined);

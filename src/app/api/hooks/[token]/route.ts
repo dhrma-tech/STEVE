@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { receiveInbound } from "@/lib/automations/triggers";
 import { reportError } from "@/lib/observability/log";
+import { rateLimitResponse } from "@/lib/security/rate-limit";
 
 type RouteContext = { params: Promise<{ token: string }> };
 
@@ -11,6 +12,8 @@ type RouteContext = { params: Promise<{ token: string }> };
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { token } = await context.params;
+    const limited = await rateLimitResponse("hook", `token:${token.slice(0, 10)}`);
+    if (limited) return limited;
     const rawBody = await request.text();
     if (rawBody.length > 512_000) return NextResponse.json({ error: "Payload too large." }, { status: 413 });
     const result = await receiveInbound({ token, headers: request.headers, rawBody });

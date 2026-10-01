@@ -7,6 +7,7 @@ import { ALWAYS_ASK_RISKS, type ToolRisk } from "./risk";
 import { redactSecrets } from "./sanitize";
 import { notifyApprovalRequested } from "@/lib/notifications/email";
 import { publishOrgEvent } from "@/lib/automations/channels";
+import { audit } from "@/lib/security/audit";
 
 /**
  * Tool-call approvals.
@@ -143,6 +144,14 @@ export async function resolveApproval(params: {
   }
 
   await enqueueAdvance(run.id);
+  await audit({
+    orgId: params.orgId,
+    actorUserId: params.userId,
+    action: params.decision === "approve" ? "approval.approved" : "approval.denied",
+    targetType: "approval",
+    targetId: approval.id,
+    metadata: { tool: toolName, risk, scope: params.decision === "approve" ? applied : null, note: params.note ?? null, sessionId: approval.sessionId }
+  });
   return { kind: "ok", approved: params.decision === "approve", scopeApplied: applied };
 }
 
@@ -211,6 +220,7 @@ export async function answerQuestion(params: { orgId: string; approvalId: string
     return { kind: "already_resolved", status: current?.status ?? "resolved" };
   }
   await enqueueAdvance(run.id);
+  await audit({ orgId: params.orgId, actorUserId: params.userId, action: "question.answered", targetType: "approval", targetId: question.id, metadata: { question: question.title } });
   return { kind: "ok" };
 }
 

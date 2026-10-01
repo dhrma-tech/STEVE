@@ -3,6 +3,7 @@ import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
 import { requireOrgWriter } from "@/lib/auth/session";
 import { answerQuestion } from "@/lib/agents/policy/approvals";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const answerSchema = z.object({ answer: z.string().trim().min(1).max(4000) });
 
@@ -13,6 +14,7 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const { orgId, approvalId } = await context.params;
     const { user } = await requireOrgWriter(orgId);
+    await enforceRateLimit("approval", `user:${user.id}`);
     const parsed = answerSchema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) return errorResponse("VALIDATION_ERROR", "answer is required", 422, parsed.error.flatten());
 

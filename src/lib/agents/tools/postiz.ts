@@ -1,21 +1,15 @@
-import { prisma } from "@/lib/db/client";
+import { getOrgCredential, integrationSettings } from "@/lib/security/vault";
+
 import type { AgentTool } from "./types";
 
 interface PostizConfig { apiUrl: string; apiKey: string }
 
 async function getConfig(orgId: string): Promise<PostizConfig | null> {
-  try {
-    const integration = await prisma.integration.findFirst({
-      where: { organizationId: orgId, provider: "postiz" }
-    });
-    if (integration?.configJson) {
-      const cfg = JSON.parse(integration.configJson) as { apiUrl?: string; apiKey?: string };
-      if (cfg.apiUrl && cfg.apiKey) return { apiUrl: cfg.apiUrl, apiKey: cfg.apiKey };
-    }
-  } catch { /* ignore */ }
-  const apiKey = process.env.POSTIZ_API_KEY;
-  const apiUrl = process.env.POSTIZ_API_URL ?? "https://app.postiz.com/api";
-  return apiKey ? { apiUrl, apiKey } : null;
+  const apiKey = await getOrgCredential(orgId, "postiz", "apiKey", "POSTIZ_API_KEY");
+  if (!apiKey) return null;
+  const settings = await integrationSettings(orgId, "postiz");
+  const apiUrl = typeof settings.apiUrl === "string" && settings.apiUrl ? settings.apiUrl : process.env.POSTIZ_API_URL ?? "https://app.postiz.com/api";
+  return { apiUrl, apiKey };
 }
 
 function noConfig() {

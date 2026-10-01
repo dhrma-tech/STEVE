@@ -46,3 +46,6 @@ dev.db-shm
 
 # Local Postgres for development (pnpm db:local)
 .pgdata/
+
+# Database dumps from pnpm db:backup
+backups/

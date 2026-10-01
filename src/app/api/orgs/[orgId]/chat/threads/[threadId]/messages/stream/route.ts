@@ -2,6 +2,8 @@ import { z } from "zod";
 import { errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
 import { buildChatMessageStream } from "@/lib/chat/streaming";
+import { requireOrgWriter } from "@/lib/auth/session";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const sendMessageSchema = z.object({
   body: z.string().trim().min(1).max(8000),
@@ -20,6 +22,9 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const { orgId, threadId } = await context.params;
+    // Checked before the stream opens, so a refused request gets a 401/403 instead of an error event.
+    await requireOrgWriter(orgId);
+    await enforceRateLimit("run_start", `org:${orgId}`);
     const stream = buildChatMessageStream({ orgId, threadId, ...parsed.data });
 
     return new Response(stream, {

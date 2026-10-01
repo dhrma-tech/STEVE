@@ -1,17 +1,9 @@
-import { prisma } from "@/lib/db/client";
+import { getOrgCredential } from "@/lib/security/vault";
+
 import type { AgentTool, ToolContext } from "./types";
 
 async function getToken(orgId: string): Promise<string | null> {
-  try {
-    const integration = await prisma.integration.findFirst({
-      where: { organizationId: orgId, provider: "github" }
-    });
-    if (integration?.configJson) {
-      const cfg = JSON.parse(integration.configJson) as { token?: string };
-      if (cfg.token) return cfg.token;
-    }
-  } catch { /* ignore */ }
-  return process.env.GITHUB_TOKEN ?? null;
+  return getOrgCredential(orgId, "github", "token", "GITHUB_TOKEN");
 }
 
 async function ghFetch(path: string, token: string, opts?: RequestInit): Promise<unknown> {

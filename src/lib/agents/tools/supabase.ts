@@ -1,4 +1,5 @@
-import { prisma } from "@/lib/db/client";
+import { getOrgCredential, globalCredentialsAllowed, integrationSettings } from "@/lib/security/vault";
+
 import type { AgentTool, ToolContext } from "./types";
 
 interface SupabaseConfig {
@@ -11,31 +12,14 @@ interface SupabaseConfig {
 }
 
 async function getConfig(orgId: string): Promise<SupabaseConfig | null> {
-  try {
-    const integration = await prisma.integration.findFirst({
-      where: { organizationId: orgId, provider: "supabase" }
-    });
-    if (integration?.configJson) {
-      const cfg = JSON.parse(integration.configJson) as {
-        projectRef?: string; serviceRoleKey?: string; url?: string; accessToken?: string
-      };
-      if (cfg.projectRef && cfg.serviceRoleKey) return {
-        projectRef: cfg.projectRef,
-        serviceRoleKey: cfg.serviceRoleKey,
-        projectUrl: cfg.url ?? `https://${cfg.projectRef}.supabase.co`,
-        accessToken: cfg.accessToken ?? process.env.SUPABASE_ACCESS_TOKEN ?? null
-      };
-    }
-  } catch { /* ignore */ }
-  const projectRef = process.env.SUPABASE_PROJECT_REF ?? null;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? null;
-  if (projectRef && key) return {
-    projectRef,
-    serviceRoleKey: key,
-    projectUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? `https://${projectRef}.supabase.co`,
-    accessToken: process.env.SUPABASE_ACCESS_TOKEN ?? null
-  };
-  return null;
+  const settings = await integrationSettings(orgId, "supabase");
+  const allowGlobal = globalCredentialsAllowed();
+  const projectRef = (typeof settings.projectRef === "string" && settings.projectRef) || (allowGlobal ? process.env.SUPABASE_PROJECT_REF ?? null : null);
+  const serviceRoleKey = await getOrgCredential(orgId, "supabase", "serviceRoleKey", "SUPABASE_SERVICE_ROLE_KEY");
+  const accessToken = await getOrgCredential(orgId, "supabase", "accessToken", "SUPABASE_ACCESS_TOKEN");
+  if (!projectRef || !serviceRoleKey) return null;
+  const url = typeof settings.url === "string" && settings.url ? settings.url : allowGlobal ? process.env.NEXT_PUBLIC_SUPABASE_URL : undefined;
+  return { projectRef, serviceRoleKey, projectUrl: url ?? `https://${projectRef}.supabase.co`, accessToken };
 }
 
 function noConfig() {

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
 import { chatThreadNotFoundResponse, getChatThreadDetail, sendChatMessage } from "@/lib/chat/data";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const sendMessageSchema = z.object({
   body: z.string().trim().min(1).max(8000),
@@ -30,6 +31,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const { orgId, threadId } = await context.params;
+    await enforceRateLimit("run_start", `org:${orgId}`);
     const result = await sendChatMessage({ orgId, threadId, ...parsed.data });
     return result ? dataResponse(result, { status: 201 }) : chatThreadNotFoundResponse();
   } catch (error) {

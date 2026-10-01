@@ -1138,3 +1138,31 @@ Verification: `pnpm typecheck` → exit 0. Zero `var(--app-|var(--brand-|rgba(` 
   - `pnpm test`: 32 files, 373 tests (was 348). New: `cron.test.ts` and `automations.test.ts`.
   - Live HTTP check against a dev server and local Postgres: API key auth, run start, signed and unsigned hook deliveries, duplicate handling, the tainted trigger run, and signed outbound webhook delivery. Live-check data was deleted.
   - No real model calls (no key).
+
+## Orchestration Phase 10 — production hardening (2026-10-01)
+- **Vault** (`src/lib/security/crypto.ts`, `vault.ts`):
+  - Envelope encryption with a rotatable master key ring (`SECRETS_MASTER_KEYS`), plus `pnpm secrets:rotate`.
+  - Integration credentials are encrypted in `Secret` and no longer kept in plain `Integration.configJson` or returned by the integrations API.
+  - Disconnect deletes credentials, and env-file secrets are encrypted instead of hashed.
+  - Tools read per-org credentials. Global env keys are used only outside production unless `ALLOW_GLOBAL_TOOL_CREDENTIALS=1`.
+  - Fixed: the email tool looked up a "resend" provider that does not exist; it is "email".
+- **OAuth connect** (`src/lib/integrations/oauth.ts`, `GET /api/orgs/:id/integrations/:provider/oauth`, `GET /api/oauth/:provider/callback`): GitHub, Vercel, Stripe Connect and Supabase, with encrypted state, a nonce cookie, PKCE, the user and admin checked, tokens in the vault and refresh. Each card offers "Connect with <provider>" when configured.
+- **Rate limits** (`rate-limit.ts`, `RateLimitBucket` table): sign-in, run and plan starts, chat sends, uploads, approvals, one-tap, public API and inbound hooks. 429 with `Retry-After`; `RATE_LIMIT_<BUCKET>` and `RATE_LIMITS=off` configure them.
+- **Audit** (`audit.ts`):
+  - Every finished tool call, approval and question decisions, policy, budget and agent changes, integration, secret and automation changes, and data settings.
+  - `GET /api/orgs/:id/audit`, plus a Mission Control **Security** tab with a filter and paging.
+- **Data:**
+  - Retention per org (`Policy.retentionDays`) applied hourly by the worker.
+  - Card numbers always redacted from tool output and stored events, and optional redaction of emails and phone numbers (`Policy.redactPii`).
+  - `GET/PATCH /api/orgs/:id/settings/data`.
+- **Operations:**
+  - `/api/health` now checks the database, workers (`WorkerHeartbeat`, written each sweep) and the queue.
+  - Public `/status` page.
+  - `pnpm db:backup`.
+  - `docs/runbook.md`.
+- **Tenant isolation:** a static test that every org route checks membership; cross-org data tests. The chat stream route now checks membership and the rate limit before opening the stream.
+- Migration `20261001600000_production_hardening`.
+- Verification:
+  - `pnpm typecheck` clean, `pnpm lint:ci` 0 errors (53 existing warnings), `pnpm build` OK.
+  - `pnpm test`: 33 files, 390 tests (was 373). New: `src/lib/security/security.test.ts`.
+  - Live check: health and status, a real 429 with `Retry-After`, auth refusals on the new routes, the rotation script, and the backup script version check.
