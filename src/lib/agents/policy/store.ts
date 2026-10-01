@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db/client";
 import { ALWAYS_ASK_RISKS, TOOL_RISK } from "./risk";
 import type { EffectivePolicy } from "./engine";
 import { defaultLimits, type RunLimits } from "./limits";
+import { audit } from "@/lib/security/audit";
 
 export type PolicyRecord = {
   agentsPaused: boolean;
@@ -111,7 +112,7 @@ export function assertKnownTools(tools: string[]): void {
 }
 
 /** Create or update the org policy (agentId undefined) or one agent's policy. */
-export async function updatePolicy(orgId: string, patch: PolicyPatch, agentId?: string | null) {
+export async function updatePolicy(orgId: string, patch: PolicyPatch, agentId?: string | null, actorUserId?: string | null) {
   const targetAgentId = agentId ?? null;
   if (patch.autoApprove) assertAutoApprovable(patch.autoApprove);
   if (patch.alwaysAsk) assertKnownTools(patch.alwaysAsk);
@@ -128,6 +129,7 @@ export async function updatePolicy(orgId: string, patch: PolicyPatch, agentId?: 
   const row = existing
     ? await prisma.policy.update({ where: { id: existing.id }, data })
     : await prisma.policy.create({ data: { organizationId: orgId, agentId: targetAgentId, ...data } });
+  await audit({ orgId, actorUserId, action: "policy.updated", targetType: targetAgentId ? "agent" : "organization", targetId: targetAgentId ?? orgId, metadata: { change: patch } });
   return toRecord(row);
 }
 

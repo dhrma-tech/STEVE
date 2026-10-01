@@ -3,6 +3,7 @@ import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { destinationForSession, getSession, setSessionCookie } from "@/lib/auth/session";
 import { findOrCreateSandboxUser } from "@/lib/auth/sandbox";
 import { isSandboxLoginEnabled } from "@/lib/auth/policy";
+import { clientIp, rateLimitResponse } from "@/lib/security/rate-limit";
 
 const sandboxLoginSchema = z.object({
   displayName: z.string().trim().min(1, "Display name is required").max(80),
@@ -10,6 +11,8 @@ const sandboxLoginSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const limited = await rateLimitResponse("auth", `ip:${clientIp(request)}`);
+  if (limited) return limited;
   if (!isSandboxLoginEnabled()) {
     return errorResponse("NOT_FOUND", "Not found.", 404);
   }

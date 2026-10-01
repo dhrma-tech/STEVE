@@ -2,6 +2,7 @@ import { z } from "zod";
 import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
 import { addFileVersion } from "@/lib/files/data";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const addVersionSchema = z.object({
   name: z.string().trim().min(1).max(180).nullable().optional(),
@@ -20,6 +21,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const { orgId, fileId } = await context.params;
+    await enforceRateLimit("upload", `org:${orgId}`);
     const file = await addFileVersion({ orgId, fileId, ...parsed.data });
     if (!file) {
       return errorResponse("NOT_FOUND", "File not found.", 404);

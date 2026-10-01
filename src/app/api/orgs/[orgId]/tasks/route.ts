@@ -2,6 +2,7 @@ import { z } from "zod";
 import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
 import { createTask, getTaskWorkspaceData } from "@/lib/tasks/data";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const createTaskSchema = z.object({
   title: z.string().trim().min(1).max(180),
@@ -49,6 +50,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const { orgId } = await context.params;
+    await enforceRateLimit("run_start", `org:${orgId}`);
     const task = await createTask({ orgId, ...parsed.data });
     return dataResponse(task, { status: 201 });
   } catch (error) {

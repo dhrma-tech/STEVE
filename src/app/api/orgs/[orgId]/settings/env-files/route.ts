@@ -2,6 +2,7 @@ import { z } from "zod";
 import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
 import { getEnvFilesSettings, uploadEnvFile } from "@/lib/settings/data";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const envFileSchema = z.object({
   fileName: z.string().trim().min(1).max(180),
@@ -26,6 +27,7 @@ export async function POST(request: Request, context: RouteContext) {
     const parsed = envFileSchema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) return errorResponse("VALIDATION_ERROR", "Env file payload is invalid.", 422, parsed.error.flatten());
     const { orgId } = await context.params;
+    await enforceRateLimit("upload", `org:${orgId}`);
     return dataResponse(await uploadEnvFile({ orgId, ...parsed.data }), { status: 201 });
   } catch (error) {
     return routeError(error);

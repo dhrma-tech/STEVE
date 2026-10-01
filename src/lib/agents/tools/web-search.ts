@@ -1,3 +1,5 @@
+import { readOrgCredential } from "@/lib/security/vault";
+
 import type { AgentTool } from "./types";
 
 export const webSearchTool: AgentTool = {
@@ -13,11 +15,12 @@ export const webSearchTool: AgentTool = {
     }
   },
 
-  async execute(input) {
+  async execute(input, ctx) {
     const query = typeof input.query === "string" ? input.query.trim() : "";
     if (!query) return "Error: query is required";
 
-    const braveKey = process.env.BRAVE_SEARCH_API_KEY;
+    // Search is a platform service: the org may bring its own Brave key, otherwise STEVE's is used.
+    const braveKey = (await readOrgCredential(ctx.orgId, "brave", "apiKey")) ?? process.env.BRAVE_SEARCH_API_KEY;
     if (braveKey) {
       try {
         const res = await fetch(

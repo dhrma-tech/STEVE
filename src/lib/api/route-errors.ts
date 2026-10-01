@@ -1,6 +1,7 @@
 import { errorResponse, type ApiErrorCode } from "@/lib/api/responses";
 import { AuthError, ForbiddenError } from "@/lib/auth/session";
 import { isAppError } from "@/lib/utils/error";
+import { RateLimitError } from "@/lib/security/rate-limit";
 
 const KNOWN_API_ERROR_CODES = new Set<ApiErrorCode>([
   "UNAUTHENTICATED",
@@ -8,6 +9,7 @@ const KNOWN_API_ERROR_CODES = new Set<ApiErrorCode>([
   "NOT_FOUND",
   "VALIDATION_ERROR",
   "CONFLICT",
+  "RATE_LIMITED",
   "INTERNAL",
 ]);
 
@@ -19,6 +21,11 @@ function normalizeCode(code: string | undefined): ApiErrorCode {
 }
 
 export function routeError(error: unknown) {
+  if (error instanceof RateLimitError) {
+    const response = errorResponse("RATE_LIMITED", error.message, 429, error.details);
+    response.headers.set("Retry-After", String(error.retryAfterSeconds));
+    return response;
+  }
   if (error instanceof AuthError) {
     return errorResponse("UNAUTHENTICATED", error.message, 401);
   }

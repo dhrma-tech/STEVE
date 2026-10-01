@@ -4,6 +4,7 @@ import { routeError } from "@/lib/api/route-errors";
 import { requireOrgWriter } from "@/lib/auth/session";
 import { decideApproval } from "@/lib/agents/policy/approval-inbox";
 import { decideResponse } from "@/lib/agents/policy/decide-response";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const decideSchema = z.object({
   action: z.enum(["approve", "deny"]),
@@ -20,6 +21,7 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const { orgId, approvalId } = await context.params;
     const { user, membership } = await requireOrgWriter(orgId);
+    await enforceRateLimit("approval", `user:${user.id}`);
     const parsed = decideSchema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) return errorResponse("VALIDATION_ERROR", "action is required", 422, parsed.error.flatten());
     return decideResponse(

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
 import { addTaskAttachments, taskNotFoundResponse } from "@/lib/tasks/data";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const attachmentSchema = z.object({
   fileIds: z.array(z.string().trim().min(1)).default([]),
@@ -18,6 +19,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const { orgId, taskId } = await context.params;
+    await enforceRateLimit("upload", `org:${orgId}`);
     const task = await addTaskAttachments({ orgId, taskId, ...parsed.data });
     return task ? dataResponse(task, { status: 201 }) : taskNotFoundResponse();
   } catch (error) {

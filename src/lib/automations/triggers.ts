@@ -5,6 +5,7 @@ import { redactSecrets } from "@/lib/agents/policy/sanitize";
 import { decryptSecret, encryptSecret, randomToken, safeEqual, sha256Hex } from "@/lib/security/crypto";
 import { eventMatches, isTriggerSource, normalizeEvent, verifySignature, type TriggerSource } from "./inbound";
 import { startWork, type WorkTarget } from "./start-work";
+import { redactForStorage, redactValueForStorage } from "@/lib/security/pii";
 
 /**
  * Event triggers (orchestration plan, Phase 9): an outside event at /api/hooks/<token> starts a goal or an agent.
@@ -175,8 +176,8 @@ export async function receiveInbound(params: { token: string; headers: { get(nam
     }
   }
   const event = normalizeEvent(source, params.headers, payload, params.rawBody);
-  const stored = redactSecrets(JSON.stringify(payload ?? {})).slice(0, PAYLOAD_LIMIT);
-  const summary = redactSecrets(event.summary);
+  const stored = redactSecrets(JSON.stringify(await redactValueForStorage(trigger.organizationId, payload ?? {}))).slice(0, PAYLOAD_LIMIT);
+  const summary = redactSecrets(await redactForStorage(trigger.organizationId, event.summary));
 
   const record = async (status: "fired" | "ignored" | "failed", extra: { error?: string; firedCount?: number } = {}) => {
     try {

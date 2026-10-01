@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { findOrCreateGitHubUser, githubStateCookieName } from "@/lib/auth/github-provider";
 import { destinationForSession, getSession, setSessionCookie } from "@/lib/auth/session";
+import { clientIp, rateLimitResponse } from "@/lib/security/rate-limit";
 
 type GitHubTokenResponse = {
   access_token?: string;
@@ -24,6 +25,8 @@ type GitHubEmailResponse = {
 };
 
 export async function GET(request: Request) {
+  const limited = await rateLimitResponse("auth", `ip:${clientIp(request)}`);
+  if (limited) return limited;
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");

@@ -1,30 +1,13 @@
-import { prisma } from "@/lib/db/client";
+import { getOrgCredential } from "@/lib/security/vault";
+
 import type { AgentTool, ToolContext } from "./types";
 
 async function getPostHogKey(orgId: string): Promise<string | null> {
-  try {
-    const integration = await prisma.integration.findFirst({
-      where: { organizationId: orgId, provider: "posthog" }
-    });
-    if (integration?.configJson) {
-      const cfg = JSON.parse(integration.configJson) as { apiKey?: string };
-      if (cfg.apiKey) return cfg.apiKey;
-    }
-  } catch { /* ignore */ }
-  return process.env.POSTHOG_API_KEY ?? null;
+  return getOrgCredential(orgId, "posthog", "apiKey", "POSTHOG_API_KEY");
 }
 
 async function getSentryToken(orgId: string): Promise<string | null> {
-  try {
-    const integration = await prisma.integration.findFirst({
-      where: { organizationId: orgId, provider: "sentry" }
-    });
-    if (integration?.configJson) {
-      const cfg = JSON.parse(integration.configJson) as { authToken?: string };
-      if (cfg.authToken) return cfg.authToken;
-    }
-  } catch { /* ignore */ }
-  return process.env.SENTRY_AUTH_TOKEN ?? null;
+  return getOrgCredential(orgId, "sentry", "authToken", "SENTRY_AUTH_TOKEN");
 }
 
 export const posthogGetEventsTool: AgentTool = {

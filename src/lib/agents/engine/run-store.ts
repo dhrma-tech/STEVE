@@ -7,6 +7,7 @@ import type { AgentEvent } from "../events";
 import { isForwardedEvent } from "../events";
 import { defaultLimits, LimitExceededError, RunBudget, type RunLimits } from "../policy/limits";
 import { ACTIVE_STATUSES, isTerminalStatus, type RunState } from "./types";
+import { redactValueForStorage } from "@/lib/security/pii";
 
 export type { Run } from "@prisma/client";
 
@@ -212,6 +213,9 @@ export type StoredEvent = { seq: number; type: string; createdAt: Date; data: Re
 /** Append one event to a run's log and return its sequence number. */
 export async function appendEvent(runId: string, event: AgentEvent): Promise<number> {
   const { type, ...rest } = event;
+  // Card numbers never reach the log; other personal data is removed when the org asked for it.
+  const owner = await prisma.run.findUnique({ where: { id: runId }, select: { organizationId: true } });
+  const stored = owner ? await redactValueForStorage(owner.organizationId, rest) : rest;
   // One transaction: the increment locks the run row until the event row is committed, so events become visible
   // in sequence order and a reader resuming after seq N never skips an N+1 that was still being written.
   const eventSeq = await prisma.$transaction(async (tx) => {
@@ -220,7 +224,7 @@ export async function appendEvent(runId: string, event: AgentEvent): Promise<num
       data: { eventSeq: { increment: 1 } },
       select: { eventSeq: true }
     });
-    await tx.runEvent.create({ data: { runId, seq, type, payloadJson: JSON.stringify(rest) } });
+    await tx.runEvent.create({ data: { runId, seq, type, payloadJson: JSON.stringify(stored) } });
     return seq;
   });
   notify(runId);

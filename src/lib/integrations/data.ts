@@ -1,6 +1,9 @@
 import { requireOrgAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { integrationProviders } from "@/lib/onboarding/definitions";
+import { deleteOrgCredentials, isSecretField, publicConfig, setOrgCredential } from "@/lib/security/vault";
+import { audit } from "@/lib/security/audit";
+import { oauthAvailable } from "@/lib/integrations/oauth";
 
 const json = (value: unknown) => JSON.stringify(value);
 
@@ -70,13 +73,15 @@ export async function getIntegrationsData(orgId: string) {
       const integration = integrations.find((item) => item.provider === provider.provider);
       return {
         ...provider,
+        /** The provider can be connected with its own sign-in (OAuth) on this server. */
+        oauth: oauthAvailable(provider.provider),
         integration: integration
           ? {
               id: integration.id,
               status: integration.status,
               mode: integration.mode,
               displayName: integration.displayName,
-              config: parseJsonObject(integration.configJson),
+              config: publicConfig(integration.configJson),
               lastCheckedAt: integration.lastCheckedAt?.toISOString() ?? null,
               errorMessage: integration.errorMessage,
               secretsCount: secretCountByIntegration.get(integration.id) ?? integration._count.secrets,
@@ -124,7 +129,7 @@ export async function getIntegrationDetail(orgId: string, provider: string) {
       mode: integration.mode,
       displayName: integration.displayName,
       externalId: integration.externalId,
-      config: parseJsonObject(integration.configJson),
+      config: publicConfig(integration.configJson),
       lastCheckedAt: integration.lastCheckedAt?.toISOString() ?? null,
       errorMessage: integration.errorMessage
     },
@@ -155,13 +160,19 @@ export async function connectIntegration({
   provider: string;
   config?: Record<string, unknown>;
 }) {
-  await requireOrgAdmin(orgId);
+  const { user } = await requireOrgAdmin(orgId);
   const integration = await ensureProvider(orgId, provider);
-  const previousConfig = parseJsonObject(integration.configJson);
+  const previousConfig = publicConfig(integration.configJson);
+  // Credentials go to the vault (encrypted, never returned); only settings stay in the config.
+  const secretEntries = Object.entries(config).filter(([field, value]) => isSecretField(field) && typeof value === "string" && value.trim());
+  const settings = Object.fromEntries(Object.entries(config).filter(([field]) => !isSecretField(field)));
+  for (const [field, value] of secretEntries) {
+    await setOrgCredential({ orgId, provider, field, value: String(value).trim(), integrationId: integration.id });
+  }
   const nextConfig = {
     ...defaultConfig(provider),
     ...previousConfig,
-    ...config,
+    ...settings,
     connectedAt: new Date().toISOString(),
     sandbox: true
   };
@@ -182,16 +193,17 @@ export async function connectIntegration({
         integrationId: integration.id,
         eventType: `${provider}.connected`,
         status: "connected_sandbox",
-        payloadJson: json({ valuesReturned: false, configKeys: Object.keys(config) })
+        payloadJson: json({ valuesReturned: false, configKeys: Object.keys(settings), credentialsStored: secretEntries.map(([field]) => field) })
       }
     })
   ]);
 
+  await audit({ orgId, actorUserId: user.id, action: "integration.connected", targetType: "integration", targetId: provider, metadata: { settings: Object.keys(settings), credentialsStored: secretEntries.map(([field]) => field) } });
   return getIntegrationDetail(orgId, provider);
 }
 
 export async function disconnectIntegration({ orgId, provider }: { orgId: string; provider: string }) {
-  await requireOrgAdmin(orgId);
+  const { user } = await requireOrgAdmin(orgId);
   const integration = await ensureProvider(orgId, provider);
   await prisma.$transaction([
     prisma.integration.update({
@@ -213,6 +225,9 @@ export async function disconnectIntegration({ orgId, provider }: { orgId: string
       }
     })
   ]);
+  // Disconnecting forgets the credentials too.
+  await deleteOrgCredentials(orgId, provider);
+  await audit({ orgId, actorUserId: user.id, action: "integration.disconnected", targetType: "integration", targetId: provider });
 
   return getIntegrationDetail(orgId, provider);
 }

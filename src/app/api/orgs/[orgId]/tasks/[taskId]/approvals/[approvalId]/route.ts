@@ -2,6 +2,7 @@ import { z } from "zod";
 import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
 import { reviewTaskApproval, taskNotFoundResponse } from "@/lib/tasks/data";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const reviewSchema = z.object({
   status: z.enum(["approved", "rejected"])
@@ -17,6 +18,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     const { orgId, taskId, approvalId } = await context.params;
+    await enforceRateLimit("approval", `org:${orgId}`);
     const task = await reviewTaskApproval({ orgId, taskId, approvalId, status: parsed.data.status });
     return task ? dataResponse(task) : taskNotFoundResponse();
   } catch (error) {

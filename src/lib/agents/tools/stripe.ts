@@ -1,17 +1,9 @@
-import { prisma } from "@/lib/db/client";
+import { getOrgCredential } from "@/lib/security/vault";
+
 import type { AgentTool, ToolContext } from "./types";
 
 async function getKey(orgId: string): Promise<string | null> {
-  try {
-    const integration = await prisma.integration.findFirst({
-      where: { organizationId: orgId, provider: "stripe" }
-    });
-    if (integration?.configJson) {
-      const cfg = JSON.parse(integration.configJson) as { secretKey?: string };
-      if (cfg.secretKey) return cfg.secretKey;
-    }
-  } catch { /* ignore */ }
-  return process.env.STRIPE_SECRET_KEY ?? null;
+  return getOrgCredential(orgId, "stripe", "secretKey", "STRIPE_SECRET_KEY");
 }
 
 function noKey() {

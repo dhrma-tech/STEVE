@@ -200,9 +200,18 @@ function ProviderCard({
             onClick={() => onAction(provider.provider, "connect")}
           >
             {isBusy ? <Loader2 className="size-3.5 animate-spin" /> : <PlugZap className="size-3.5" />}
-            Connect
+            {provider.oauth ? "Sandbox" : "Connect"}
           </Button>
         )}
+        {!isConnected && provider.oauth ? (
+          <a
+            href={`/api/orgs/${orgId}/integrations/${provider.provider}/oauth`}
+            className={buttonClassName({ variant: "app", size: "sm" })}
+          >
+            <PlugZap className="size-3.5" aria-hidden="true" />
+            Connect with {provider.label}
+          </a>
+        ) : null}
 
         {provider.provider === "postiz" ? (
           <Link

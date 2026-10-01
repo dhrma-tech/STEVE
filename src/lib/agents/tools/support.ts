@@ -1,23 +1,15 @@
-import { prisma } from "@/lib/db/client";
+import { getOrgCredential, integrationSettings } from "@/lib/security/vault";
+
 import type { AgentTool, ToolContext } from "./types";
 
 interface SupportConfig { apiKey: string; apiUrl: string }
 
 async function getConfig(orgId: string): Promise<SupportConfig | null> {
-  try {
-    const integration = await prisma.integration.findFirst({
-      where: { organizationId: orgId, provider: "support" }
-    });
-    if (integration?.configJson) {
-      const cfg = JSON.parse(integration.configJson) as { apiKey?: string; apiUrl?: string };
-      if (cfg.apiKey) return {
-        apiKey: cfg.apiKey,
-        apiUrl: cfg.apiUrl ?? "https://core-api.uk.plain.com/graphql/v1"
-      };
-    }
-  } catch { /* ignore */ }
-  const apiKey = process.env.PLAIN_API_KEY ?? null;
-  return apiKey ? { apiKey, apiUrl: process.env.SUPPORT_API_URL ?? "https://core-api.uk.plain.com/graphql/v1" } : null;
+  const apiKey = await getOrgCredential(orgId, "support", "apiKey", "PLAIN_API_KEY");
+  if (!apiKey) return null;
+  const settings = await integrationSettings(orgId, "support");
+  const apiUrl = typeof settings.apiUrl === "string" && settings.apiUrl ? settings.apiUrl : process.env.SUPPORT_API_URL ?? "https://core-api.uk.plain.com/graphql/v1";
+  return { apiKey, apiUrl };
 }
 
 function noConfig() {

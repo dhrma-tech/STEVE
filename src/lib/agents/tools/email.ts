@@ -1,23 +1,15 @@
-import { prisma } from "@/lib/db/client";
+import { getOrgCredential, integrationSettings } from "@/lib/security/vault";
+
 import type { AgentTool, ToolContext } from "./types";
 
 interface EmailConfig { apiKey: string; fromAddress: string }
 
 export async function getEmailConfig(orgId: string): Promise<EmailConfig | null> {
-  try {
-    const integration = await prisma.integration.findFirst({
-      where: { organizationId: orgId, provider: "email" }
-    });
-    if (integration?.configJson) {
-      const cfg = JSON.parse(integration.configJson) as { apiKey?: string; fromAddress?: string };
-      if (cfg.apiKey) return {
-        apiKey: cfg.apiKey,
-        fromAddress: cfg.fromAddress ?? process.env.EMAIL_FROM_ADDRESS ?? "noreply@example.com"
-      };
-    }
-  } catch { /* ignore */ }
-  const apiKey = process.env.RESEND_API_KEY ?? null;
-  return apiKey ? { apiKey, fromAddress: process.env.EMAIL_FROM_ADDRESS ?? "noreply@example.com" } : null;
+  const apiKey = await getOrgCredential(orgId, "email", "apiKey", "RESEND_API_KEY");
+  if (!apiKey) return null;
+  const settings = await integrationSettings(orgId, "email");
+  const fromAddress = typeof settings.fromAddress === "string" && settings.fromAddress ? settings.fromAddress : process.env.EMAIL_FROM_ADDRESS ?? "noreply@example.com";
+  return { apiKey, fromAddress };
 }
 
 function noConfig() {

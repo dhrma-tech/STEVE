@@ -2,6 +2,7 @@ import { z } from "zod";
 import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
 import { launchAgentSession } from "@/lib/agents/data";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const launchSchema = z.object({
   taskId: z.string().trim().min(1).nullable().optional(),
@@ -18,6 +19,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const { orgId, agentId } = await context.params;
+    await enforceRateLimit("run_start", `org:${orgId}`);
     const result = await launchAgentSession({ orgId, agentId, ...parsed.data });
     if (result.kind === "not_found") return errorResponse("NOT_FOUND", "Agent or task not found", 404);
     if (result.kind === "approval_required") return errorResponse("CONFLICT", "This task needs approval before launch.", 409, result);

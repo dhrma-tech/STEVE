@@ -6,6 +6,7 @@ import { defaultDailyBudgetCents, defaultLimits } from "@/lib/agents/policy/limi
 import { TOOL_RISK } from "@/lib/agents/policy/risk";
 import { getAgentPolicy, getOrgPolicy, PolicyValidationError, updatePolicy } from "@/lib/agents/policy/store";
 import { prisma } from "@/lib/db/client";
+import { audit } from "@/lib/security/audit";
 
 const policySchema = z.object({
   /** Omit to change the org-wide policy; pass an agent id to change that agent's rules only. */
@@ -41,7 +42,7 @@ export async function GET(request: Request, context: RouteContext) {
 export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { orgId } = await context.params;
-    await requireOrgAdmin(orgId);
+    const { user } = await requireOrgAdmin(orgId);
 
     const parsed = policySchema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) {
@@ -62,6 +63,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         data: { dailyBudgetCents: patch.dailyBudgetCents ?? null },
         select: { id: true, name: true, dailyBudgetCents: true }
       });
+      await audit({ orgId, actorUserId: user.id, action: "budget.department_updated", targetType: "department", targetId: department.id, metadata: { dailyBudgetCents: updated.dailyBudgetCents } });
       return dataResponse({ department: updated });
     }
 
@@ -74,7 +76,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     try {
-      return dataResponse(await updatePolicy(orgId, patch, agentId ?? null));
+      return dataResponse(await updatePolicy(orgId, patch, agentId ?? null, user.id));
     } catch (error) {
       if (error instanceof PolicyValidationError) return errorResponse("VALIDATION_ERROR", error.message, 422);
       throw error;

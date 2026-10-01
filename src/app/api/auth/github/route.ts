@@ -4,8 +4,11 @@ import { githubStateCookieName } from "@/lib/auth/github-provider";
 import { setSessionCookie } from "@/lib/auth/session";
 import { findOrCreateSandboxUser } from "@/lib/auth/sandbox";
 import { prisma } from "@/lib/db/client";
+import { clientIp, rateLimitResponse } from "@/lib/security/rate-limit";
 
 export async function GET(request: Request) {
+  const limited = await rateLimitResponse("auth", `ip:${clientIp(request)}`);
+  if (limited) return limited;
   const url = new URL(request.url);
   const clientId = process.env.GITHUB_CLIENT_ID;
 

@@ -754,6 +754,10 @@ model Policy {
   dailyBudgetCents  Int?
   autoApproveJson   String       @default("[]")
   alwaysAskJson     String       @default("[]")
+  /// Org policy only: delete run events, inbound events and finished jobs older than this many days (null: keep).
+  retentionDays     Int?
+  /// Org policy only: replace email addresses and phone numbers in stored run events and inbound payloads.
+  redactPii         Boolean      @default(false)
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -1100,4 +1104,23 @@ model ApiKey {
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
+}
+
+/// Fixed-window request counters for rate limits (src/lib/security/rate-limit.ts).
+model RateLimitBucket {
+  key         String
+  windowStart DateTime
+  count       Int      @default(0)
+
+  @@id([key, windowStart])
+  @@index([windowStart])
+}
+
+/// Last sign of life from each worker, for the status page and health checks.
+model WorkerHeartbeat {
+  id         String   @id
+  lastSeenAt DateTime
+  /// Last sweep stats and process info, as JSON.
+  infoJson   String   @default("{}")
+  startedAt  DateTime @default(now())
 }

@@ -1,17 +1,9 @@
-import { prisma } from "@/lib/db/client";
+import { getOrgCredential } from "@/lib/security/vault";
+
 import type { AgentTool } from "./types";
 
 async function getToken(orgId: string): Promise<string | null> {
-  try {
-    const integration = await prisma.integration.findFirst({
-      where: { organizationId: orgId, provider: "vercel" }
-    });
-    if (integration?.configJson) {
-      const cfg = JSON.parse(integration.configJson) as { token?: string };
-      if (cfg.token) return cfg.token;
-    }
-  } catch { /* ignore */ }
-  return process.env.VERCEL_TOKEN ?? null;
+  return getOrgCredential(orgId, "vercel", "token", "VERCEL_TOKEN");
 }
 
 async function vercelFetch(path: string, token: string): Promise<unknown> {
