@@ -44,8 +44,14 @@ export async function createGoalPlan(params: {
   context?: string | null;
   roadmapItemId?: string | null;
   autoApprove?: boolean;
+  /**
+   * Where the goal came from, recorded on the planning task (schedule, trigger, api). `untrusted` marks a goal that
+   * carries outside text (a webhook event): the planning run starts tainted (see policy/engine.ts).
+   */
+  origin?: { source: string; refId?: string; untrusted?: { tool: string; excerpt: string } };
 }) {
   const { orgId, userId, goal } = params;
+  const origin = params.origin ? { origin: params.origin.source, originId: params.origin.refId ?? null, ...(params.origin.untrusted ? { untrusted: params.origin.untrusted } : {}) } : {};
   const orchestrator = await ensureOrchestrator(orgId);
   await ensureReviewer(orgId);
 
@@ -61,7 +67,7 @@ export async function createGoalPlan(params: {
       type: "agent_task",
       status: "queued",
       priority: 2,
-      metadataJson: json({ source: "plan" })
+      metadataJson: json({ source: "plan", ...origin })
     }
   });
   const plan = await prisma.plan.create({
@@ -75,7 +81,7 @@ export async function createGoalPlan(params: {
       autoApprove: !!params.autoApprove
     }
   });
-  await prisma.task.update({ where: { id: task.id }, data: { metadataJson: json({ source: "plan", planId: plan.id }) } });
+  await prisma.task.update({ where: { id: task.id }, data: { metadataJson: json({ source: "plan", planId: plan.id, ...origin }) } });
 
   try {
     const session = await startAgentRun({

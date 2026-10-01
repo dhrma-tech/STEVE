@@ -363,7 +363,8 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
 | 6 — Shared memory and knowledge | **done 2026-10-01** (see notes below) |
 | 7 — Founder and manager experience | **done 2026-10-01**, except the items listed in its notes |
 | 8 — Model strategy, evaluation, observability | **done 2026-10-01**, except the items listed in its notes |
-| 9–10 | not started |
+| 9 — Triggers, schedules and integrations | **done 2026-10-01**, except the items listed in its notes |
+| 10 | not started |
 
 **Phase 0 notes**
 - Delivered: Vitest with a scripted Anthropic provider and in-memory DB (`src/lib/agents/testing/`), 16 passing tests (single run, delegation, approval approve/deny, kill switch, auth secret, flags) plus 6 `it.todo` markers for Phase 2–4 requirements; CI workflow (`.github/workflows/ci.yml`); `AUTH_SECRET` now required (32+ chars) in production; `/api/ai/chat` requires login; `/test` returns 404 in production; `ORCHESTRATOR_V2` flag and `AGENTS_PAUSED` env kill switch (enforced in `runAgent`).
@@ -471,5 +472,27 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
   - Fallback is within the provider (another Claude model). A cross-provider fallback (OpenAI) was not added: its message format differs mid-conversation and it would drop thinking state.
   - Live evals are measured, not gated per scenario (a real model can take another acceptable path). Only "no unsafe action ran" gates them.
 - Not done: no live eval run yet (no API key here). Embeddings for knowledge search are still deferred (§ Phase 6). Metrics are computed on read from run rows rather than exported to a metrics store. Plain chat (`/api/ai/chat`) and the onboarding idea and branding generators still call local Ollama, not the tiers.
+**Phase 9 notes (triggers, schedules and integrations)**
+- Delivered:
+  1. **Schedules** (`src/lib/automations/schedules.ts`, `cron.ts`): five-field cron or macros in an IANA time zone, DST-safe. Each fires a goal (the Chief of Staff plans it, auto-approve optional within budget) or an instruction for one agent, through the shared `startWork`. The worker sweep fires due schedules with a compare-and-set claim, so it fires once across workers and once (not per missed slot) after downtime. A pause or empty budget records "skipped". There is also "Run now".
+  2. **Event triggers** (`triggers.ts`, `inbound.ts`, `POST /api/hooks/<token>`): one unguessable URL per trigger, with only a hash stored. Sources: Stripe, Sentry, GitHub, Plain support, inbound email and any webhook, with event normalisation per source and event-type patterns. With a signing secret (stored encrypted), every delivery must carry a valid Stripe, GitHub, Sentry, Plain or STEVE signature (timestamped, 5-minute tolerance). Repeats are ignored by delivery id, and each trigger is capped per hour (`TRIGGER_MAX_PER_HOUR`). Templates cover the plan examples (Stripe new customer → onboarding plan, Sentry → Engineering triage, support thread → Support, GitHub CI → Engineering).
+  3. **Outside text stays untrusted.** The event reaches the agent inside `<untrusted_content>`. The task records `untrusted`, so the run starts tainted (no run grants, auto-approve rules or trusted mode; approval cards say why). A goal from a trigger never skips plan review.
+  4. **Outbound channels** (`channels.ts`): Slack incoming webhooks and signed JSON webhooks (`X-Steve-Signature`, same scheme as inbound), with URLs and secrets encrypted (`src/lib/security/crypto.ts`, AES-256-GCM). Events: approval required, question asked, plan proposed, plan finished, run completed or failed (top-level task and plan-step runs), and briefing ready. Delivery is a queued job with retries, never blocking the work. A channel that keeps failing is turned off. Includes a test send, and channels must use https with no private addresses in production.
+  5. **Public API** (`/api/v1`): API keys (`stv_…`, hash only, scopes `runs:read` / `runs:write`, revocable). Endpoints: `POST /runs` (`{agent, instruction}` or `{goal}`), `GET /runs`, `GET /runs/:id`, `GET /runs/:id/events?after=<seq>` and `GET /plans/:id`, all scoped to the key's org. Outbound webhooks are the push side.
+  6. **Automations tab** in Mission Control (owners and admins): schedules, triggers (endpoint URL shown once, rotate, recent events), notification channels (signing secret shown once, test) and API keys (shown once, revoke), with a curl example.
+- Also fixed: a standalone pg-boss worker only polled `run.advance` until it queued other job types itself. It now polls `plan.advance` and `channel.deliver` too.
+- Live check (dev server and local Postgres, no model key):
+  - `/api/v1/runs`: no key 401, list 200, start 201, bad body 422.
+  - `/api/hooks`: bad signature 401, signed GitHub event fired, repeat reported as duplicate, unknown token 404.
+  - The trigger's run started tainted with the event inside `<untrusted_content>`.
+  - Both runs failed on the missing API key, and the signed `run.failed` webhooks reached a local receiver.
+  - The live-check rows were deleted afterwards.
+- Not done:
+  - WhatsApp and mobile push (the plan says later).
+  - Approving from inside Slack (messages link to the inbox).
+  - A separate email digest (the daily briefing email and approval emails cover it).
+  - Svix-signed inbound email (Resend) is not verified natively; use the STEVE signature or an unsigned trigger.
+  - OAuth app installs (URLs are pasted into each service).
+  - Rate limits on `/api/v1` and streaming events (Phase 10; poll `/events`).
 
 Existing code to build on rather than rewrite: `src/lib/agents/engine/*` (step machine, queue interface, worker), `tools/*` (tool implementations), `TaskSession.parentSessionId` and `Approval` (schema), `execution-feed.tsx` and `agent-workspace-dialog.tsx` (UI), `model-router.ts` (extend to tiers).

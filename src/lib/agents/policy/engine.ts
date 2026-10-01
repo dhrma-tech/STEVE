@@ -28,7 +28,8 @@ export const EMPTY_POLICY: EffectivePolicy = { autoApprove: new Set(), alwaysAsk
  * The decision depends on the tool and its arguments only, never on text the model wrote,
  * so injected instructions cannot talk their way past it.
  *
- * `tainted`: the run has read content that looked like a prompt injection (policy/injection.ts). From then on
+ * `tainted`: the run read content that looked like a prompt injection (policy/injection.ts), or was started by an
+ * outside event (a webhook trigger, src/lib/automations). From then on
  * nothing outside STEVE is pre-approved: run grants, agent auto-approve rules and trusted mode stop applying, and
  * every approval card says why.
  */
@@ -47,7 +48,7 @@ export function decide(params: {
   return {
     action: "ask",
     risk: decision.risk,
-    reason: `${decision.action === "ask" ? `${decision.reason} ` : ""}This run read content that looked like a prompt injection, so outside actions need your approval.`
+    reason: `${decision.action === "ask" ? `${decision.reason} ` : ""}This run is working from outside content that may carry instructions (prompt injection risk), so outside actions need your approval.`
   };
 }
 

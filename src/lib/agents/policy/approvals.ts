@@ -6,6 +6,7 @@ import { addAutoApprove } from "./store";
 import { ALWAYS_ASK_RISKS, type ToolRisk } from "./risk";
 import { redactSecrets } from "./sanitize";
 import { notifyApprovalRequested } from "@/lib/notifications/email";
+import { publishOrgEvent } from "@/lib/automations/channels";
 
 /**
  * Tool-call approvals.
@@ -55,6 +56,11 @@ export async function createApproval(params: {
   });
   // Email the managers one-tap links when email is set up. Never holds up or fails the run.
   await notifyApprovalRequested(approval).catch((error) => console.error(`[approvals] could not email approval ${approval.id}:`, error));
+  await publishOrgEvent(params.orgId, "approval.required", {
+    text: `Approval needed (${params.risk}): ${params.summary}`,
+    path: `/org/${params.orgId}/mission?tab=approvals`,
+    data: { approvalId: approval.id, tool: params.toolName, risk: params.risk, summary: params.summary, sessionId: params.sessionId }
+  });
   return approval;
 }
 
@@ -155,7 +161,7 @@ export async function createQuestion(params: {
   options?: string[];
   timeoutMs: number;
 }) {
-  return prisma.approval.create({
+  const question = await prisma.approval.create({
     data: {
       organizationId: params.orgId,
       kind: "question",
@@ -170,6 +176,12 @@ export async function createQuestion(params: {
       expiresAt: new Date(Date.now() + params.timeoutMs)
     }
   });
+  await publishOrgEvent(params.orgId, "question.asked", {
+    text: `An agent asks: ${params.question.slice(0, 300)}`,
+    path: `/org/${params.orgId}/mission?tab=approvals`,
+    data: { approvalId: question.id, question: params.question, sessionId: params.sessionId }
+  });
+  return question;
 }
 
 export type AnswerResult =

@@ -1,3 +1,4 @@
+import { publishOrgEvent } from "@/lib/automations/channels";
 import type { Plan, PlanNode, Run } from "@prisma/client";
 import { prisma } from "@/lib/db/client";
 import { markRoadmapItemComplete } from "@/lib/roadmap/progress";
@@ -526,6 +527,11 @@ async function finishPlan(plan: PlanWithNodes, report: string | null) {
     data: { status: outcome, outcome, reportText, finishedAt: now }
   });
   if (finished.count !== 1) return;
+  await publishOrgEvent(plan.organizationId, "plan.finished", {
+    text: `Plan ${outcome}: ${plan.goal.slice(0, 200)}`,
+    path: `/org/${plan.organizationId}/canvas?plan=${plan.id}`,
+    data: { planId: plan.id, goal: plan.goal, outcome, report: reportText.slice(0, 2000) }
+  });
   if (plan.taskId) {
     await prisma.task.update({
       where: { id: plan.taskId },

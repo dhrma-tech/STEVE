@@ -3,6 +3,7 @@ import { resolveRunModel } from "@/lib/ai/model-router";
 import { bindsThinkingToConversation } from "@/lib/ai/model-tiers";
 import { log, reportError } from "@/lib/observability/log";
 import { UNTRUSTED_DATA_RULE } from "../policy/injection";
+import { publishOrgEvent } from "@/lib/automations/channels";
 import { ollamaChatSafe } from "@/lib/ai/ollama";
 import type { AgentEvent } from "../events";
 import { AgentsPausedError, assertAgentsNotPaused } from "../flags";
@@ -167,6 +168,10 @@ async function stepInner(run: Run, root: Run, budget: RunBudget): Promise<Advanc
   let state = parseState(run);
   if (!state) {
     state = await prepareState(run, agent);
+    // Work started by an outside event (a webhook trigger) carries outside text in its instruction: tainted from the start.
+    const origin = run.taskId ? await prisma.task.findUnique({ where: { id: run.taskId }, select: { metadataJson: true } }) : null;
+    const untrusted = untrustedOrigin(origin?.metadataJson ?? null);
+    if (untrusted) state.injectionSuspected = untrusted;
     // A brief from a run that read injection-shaped content may carry it along: the child starts tainted too.
     if (run.parentRunId) {
       const parent = await prisma.run.findUnique({ where: { id: run.parentRunId }, select: { stateJson: true } });
@@ -1085,6 +1090,16 @@ async function closeOut(run: Run, root: Run, result: { outcome: "completed" | "f
   // A briefing run hands its text (or, if it failed, the records-only version) to its briefing.
   await finishBriefingForRun(fresh).catch((error) => console.error(`[briefings] run ${run.id}:`, error));
   if (run.parentRunId) await enqueueAdvance(run.parentRunId);
+  // People and outside tools hear about work they started finishing (planning, review and briefing runs report
+  // through their plan or briefing instead).
+  if (isRoot && (run.kind === "task" || run.kind === "plan_node")) {
+    const name = await agentName(run.agentId);
+    await publishOrgEvent(run.organizationId, result.outcome === "completed" ? "run.completed" : "run.failed", {
+      text: result.outcome === "completed" ? `${name} finished: ${result.output.trim().slice(0, 240) || "done"}` : `${name} failed: ${result.errorMessage ?? "unknown error"}`,
+      path: `/org/${run.organizationId}/mission`,
+      data: { runId: run.id, sessionId: run.sessionId, taskId: run.taskId, kind: run.kind, agentId: run.agentId, outcome: result.outcome, costCents: rootFresh.costCents, error: result.errorMessage }
+    });
+  }
   await markClosedOut(run.id);
   // After the close-out: the plan reads the step's task and result, which the close-out writes.
   if (run.planId) await enqueuePlanAdvance(run.planId);
@@ -1170,4 +1185,16 @@ async function cancelDescendants(run: Run) {
 export async function cancelRunsForTask(taskId: string, reason = "The task was cancelled."): Promise<void> {
   const runs = await prisma.run.findMany({ where: { taskId, status: { in: [...ACTIVE_STATUSES] } } });
   for (const run of runs) await cancelRun(run.id, reason);
+}
+
+/** The untrusted origin recorded on a task started by an outside event (see src/lib/automations/start-work.ts). */
+function untrustedOrigin(metadataJson: string | null): { tool: string; excerpt: string } | null {
+  if (!metadataJson) return null;
+  try {
+    const meta = JSON.parse(metadataJson) as { untrusted?: { tool?: unknown; excerpt?: unknown } };
+    if (!meta.untrusted || typeof meta.untrusted.tool !== "string") return null;
+    return { tool: meta.untrusted.tool, excerpt: typeof meta.untrusted.excerpt === "string" ? meta.untrusted.excerpt : "" };
+  } catch {
+    return null;
+  }
 }

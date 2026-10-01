@@ -1,3 +1,4 @@
+import { publishOrgEvent } from "@/lib/automations/channels";
 import type { Briefing, Run } from "@prisma/client";
 import { prisma } from "@/lib/db/client";
 import { startAgentRun } from "@/lib/agents/run-service";
@@ -150,6 +151,11 @@ async function finish(briefing: Pick<Briefing, "id" | "organizationId" | "period
   const final = text?.trim() || renderFallbackBriefing(facts);
   const updated = await prisma.briefing.updateMany({ where: { id: briefing.id, status: "writing" }, data: { status: "ready", text: final } });
   if (updated.count !== 1) return;
+  await publishOrgEvent(briefing.organizationId, "briefing.ready", {
+    text: `Your ${briefing.period} briefing: ${final.replace(/s+/g, " ").slice(0, 300)}`,
+    path: `/org/${briefing.organizationId}/mission?tab=briefings`,
+    data: { briefingId: briefing.id, period: briefing.period, text: final.slice(0, 4000) }
+  });
   const sent = await emailBriefing({ id: briefing.id, organizationId: briefing.organizationId, text: final, period: briefing.period }).catch(() => 0);
   if (sent > 0) await prisma.briefing.update({ where: { id: briefing.id }, data: { emailedAt: new Date() } });
 }
