@@ -38,6 +38,7 @@ export function buildToolset(skillKeys: string[], options: ToolsetOptions = {}):
   switch (options.kind) {
     case "consult":
     case "plan_report":
+    case "briefing":
       return readOnly;
     case "plan":
       return [...readOnly, askAgentTool, askUserTool, proposePlanTool];

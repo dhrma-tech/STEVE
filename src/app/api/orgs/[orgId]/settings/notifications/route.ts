@@ -7,7 +7,9 @@ const notificationsSchema = z.object({
   desktopAlerts: z.boolean().nullable().optional(),
   emailTaskUpdates: z.boolean().nullable().optional(),
   emailBilling: z.boolean().nullable().optional(),
-  inAppMentions: z.boolean().nullable().optional()
+  inAppMentions: z.boolean().nullable().optional(),
+  emailApprovals: z.boolean().nullable().optional(),
+  emailBriefings: z.boolean().nullable().optional()
 });
 
 type RouteContext = { params: Promise<{ orgId: string }> };

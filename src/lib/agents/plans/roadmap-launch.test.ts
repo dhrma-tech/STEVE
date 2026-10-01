@@ -7,9 +7,10 @@ import { cancelPlan } from "./store";
 
 vi.mock("@anthropic-ai/sdk", async () => (await import("@/lib/agents/testing/scripted-anthropic")).anthropicModuleMock);
 // The roadmap API checks the signed-in member; here the reviewer user is always signed in.
-vi.mock("@/lib/auth/session", () => ({
-  requireOrgMember: async () => ({ user: { id: USER }, membership: { role: "owner" } })
-}));
+vi.mock("@/lib/auth/session", () => {
+  const owner = async () => ({ user: { id: USER }, membership: { role: "owner" } });
+  return { requireOrgMember: owner, requireOrgWriter: owner };
+});
 
 beforeEach(async () => {
   await resetDb();

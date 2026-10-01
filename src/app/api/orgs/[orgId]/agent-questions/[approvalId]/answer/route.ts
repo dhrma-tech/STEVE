@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
-import { requireOrgMember } from "@/lib/auth/session";
+import { requireOrgWriter } from "@/lib/auth/session";
 import { answerQuestion } from "@/lib/agents/policy/approvals";
 
 const answerSchema = z.object({ answer: z.string().trim().min(1).max(4000) });
@@ -12,7 +12,7 @@ type RouteContext = { params: Promise<{ orgId: string; approvalId: string }> };
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { orgId, approvalId } = await context.params;
-    const { user } = await requireOrgMember(orgId);
+    const { user } = await requireOrgWriter(orgId);
     const parsed = answerSchema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) return errorResponse("VALIDATION_ERROR", "answer is required", 422, parsed.error.flatten());
 

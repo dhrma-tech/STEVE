@@ -4,6 +4,7 @@ import { enqueueAdvance } from "@/lib/agents/engine/wake";
 import { AgentsPausedError, assertAgentsNotPaused } from "@/lib/agents/flags";
 import { defaultDailyBudgetCents } from "@/lib/agents/policy/limits";
 import { getEffectivePolicy, resolveRunLimits } from "@/lib/agents/policy/store";
+import { spendToday } from "@/lib/agents/policy/spend";
 import { parsePermissionMode } from "@/lib/agents/run-scope";
 import { AppError } from "@/lib/utils/error";
 
@@ -129,9 +130,12 @@ export async function startAgentRun({
   return session;
 }
 
-/** Org-level pause and daily spend cap. Runs already in progress stop at their next turn if the org is paused. */
+/**
+ * Org-level pause and the daily spend caps: the org's, the agent's own and its department's. Runs already in progress
+ * stop at their next turn if the org is paused; caps are checked when a run starts.
+ */
 async function assertOrgMayRun(orgId: string, agentId: string) {
-  const { agentsPaused, dailyBudgetCents } = await getEffectivePolicy(orgId, agentId);
+  const { agentsPaused, dailyBudgetCents, agentDailyBudgetCents } = await getEffectivePolicy(orgId, agentId);
   if (agentsPaused) throw new AgentsPausedError("Agent execution is paused for this organization.");
 
   const cap = dailyBudgetCents ?? defaultDailyBudgetCents();
@@ -145,6 +149,30 @@ async function assertOrgMayRun(orgId: string, agentId: string) {
   if (spent >= cap) {
     throw new AppError(
       `This organization has used its daily agent budget (${spent}¢ of ${cap}¢). Raise the limit in agent settings or try again tomorrow.`,
+      429,
+      "INTERNAL"
+    );
+  }
+
+  const agent = await prisma.agent.findUnique({
+    where: { id: agentId },
+    select: { name: true, department: { select: { id: true, name: true, dailyBudgetCents: true } } }
+  });
+  const departmentCap = agent?.department.dailyBudgetCents ?? null;
+  if (agentDailyBudgetCents == null && departmentCap == null) return;
+  const today = await spendToday(orgId);
+  const agentSpent = today.byAgent.get(agentId) ?? 0;
+  if (agentDailyBudgetCents != null && agentSpent >= agentDailyBudgetCents) {
+    throw new AppError(
+      `${agent?.name ?? "This agent"} has used its daily budget (${agentSpent}¢ of ${agentDailyBudgetCents}¢). Raise it in Agent controls or try again tomorrow.`,
+      429,
+      "INTERNAL"
+    );
+  }
+  const departmentSpent = agent ? (today.byDepartment.get(agent.department.id) ?? 0) : 0;
+  if (departmentCap != null && departmentSpent >= departmentCap) {
+    throw new AppError(
+      `The ${agent?.department.name ?? ""} department has used its daily budget (${departmentSpent}¢ of ${departmentCap}¢). Raise it in Agent controls or try again tomorrow.`,
       429,
       "INTERNAL"
     );

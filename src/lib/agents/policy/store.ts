@@ -69,7 +69,9 @@ export async function getEffectivePolicy(orgId: string, agentId: string) {
     policy,
     agentsPaused: org.agentsPaused || agent.agentsPaused,
     perRunBudgetCents: agent.perRunBudgetCents ?? org.perRunBudgetCents,
-    dailyBudgetCents: org.dailyBudgetCents
+    dailyBudgetCents: org.dailyBudgetCents,
+    /** The agent's own daily cap (its own runs' spend), on top of the org's. */
+    agentDailyBudgetCents: agent.dailyBudgetCents
   };
 }
 

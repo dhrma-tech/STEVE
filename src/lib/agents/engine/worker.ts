@@ -6,6 +6,7 @@ import { getQueue, type ClaimedJob, type JobQueue } from "./queue";
 import { ADVANCE_JOB, enqueueAdvance, onWake } from "./wake";
 import { advancePlan } from "../plans/scheduler";
 import { enqueuePlanAdvance, PLAN_JOB } from "../plans/wake";
+import { ensureDailyBriefings } from "@/lib/briefings/briefings";
 
 /** Plans that are moving (or waiting on a run) and could miss a wake-up. */
 const LIVE_PLAN_STATUSES = ["drafting", "running", "replanning", "reporting"];
@@ -238,6 +239,9 @@ export class Worker {
       take: 100
     });
     for (const plan of stalePlans) await enqueuePlanAdvance(plan.id);
+
+    // Daily briefings once the briefing hour has passed, and finishing any whose writer never came back.
+    await ensureDailyBriefings().catch((error) => this.log(`briefings failed: ${String(error)}`));
 
     const stats = {
       requeuedJobs: requeued,

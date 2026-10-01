@@ -361,7 +361,8 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
 | 4 — Team awareness and delegation protocol | **done 2026-10-01** (see notes below) |
 | 5 — Orchestrator and planning | **done 2026-10-01** (see notes below) |
 | 6 — Shared memory and knowledge | **done 2026-10-01** (see notes below) |
-| 7–10 | not started |
+| 7 — Founder and manager experience | **done 2026-10-01**, except the items listed in its notes |
+| 8–10 | not started |
 
 **Phase 0 notes**
 - Delivered: Vitest with a scripted Anthropic provider and in-memory DB (`src/lib/agents/testing/`), 16 passing tests (single run, delegation, approval approve/deny, kill switch, auth secret, flags) plus 6 `it.todo` markers for Phase 2–4 requirements; CI workflow (`.github/workflows/ci.yml`); `AUTH_SECRET` now required (32+ chars) in production; `/api/ai/chat` requires login; `/test` returns 404 in production; `ORCHESTRATOR_V2` flag and `AGENTS_PAUSED` env kill switch (enforced in `runAgent`).
@@ -436,5 +437,22 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
 - Decisions: findings from runs are only ever *proposed* (founder review), because memory reaches every later prompt and a run can be prompt-injected. An agent's own `memory_store` is trusted unless it reports confidence below 0.6. A proposal never overwrites an established fact. Values that look like secrets are refused.
 - Deviation: full-text search instead of embeddings and pgvector (not available in the embedded Postgres, and no embedding key). Add embeddings behind `searchKnowledge` when the deployment is on Supabase with pgvector; Phase 8's model configuration is the natural place for the embedding model.
 - Not run against a real model.
+
+**Phase 7 notes (founder and manager experience)**
+- Delivered:
+  1. Mission Control (run trees, plans, run detail with timeline and replay, manager actions).
+  2. Approvals inbox (risk chips, payloads, approve once or for the run, Edit & approve, deny, batch for low risk, keyboard shortcuts, questions) and signed, single-use, expiring one-tap email links behind a confirmation page.
+  3. Goal box on Home and in Mission Control.
+  4. Daily and on-demand briefings by the Chief of Staff, with a records fallback, in-app and by email.
+  5. Agent controls: pause, org, department and agent budgets, per-run caps and permission modes.
+  6. Manager tools: retry or fork a run, cancel, comment, retry or reassign plan steps, and a read-only viewer role.
+  7. Replay from the event log.
+  8. Canvas badges for waiting and running work.
+- Decisions:
+  - Department and agent budgets count each run's own spend, so delegated work counts where it was done.
+  - One-tap links act only on POST from their confirmation page.
+  - An edited call is approved once only, and an edit may not raise the call's risk.
+  - Viewer enforcement covers the agent-work surface (launch, tasks, chat sends, roadmap, plans, memory, approvals, briefings), not every settings page.
+- Not done: file/code diffs in run detail, Slack/mobile push, retry from a middle step (runs keep no per-step snapshots), people as plan owners (§11 decision 5), node spend sparklines, a role editor UI. The exit test (a non-technical founder completes the golden scenario using only the UI) needs a real model and a person; not run.
 
 Existing code to build on rather than rewrite: `src/lib/agents/engine/*` (step machine, queue interface, worker), `tools/*` (tool implementations), `TaskSession.parentSessionId` and `Approval` (schema), `execution-feed.tsx` and `agent-workspace-dialog.tsx` (UI), `model-router.ts` (extend to tiers).

@@ -1,5 +1,5 @@
 import { errorResponse } from "@/lib/api/responses";
-import { requireOrgMember } from "@/lib/auth/session";
+import { requireOrgMember, requireOrgWriter } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { startAgentRun } from "@/lib/agents/run-service";
 import { createGoalPlan } from "@/lib/agents/plans/store";
@@ -130,7 +130,7 @@ export async function launchRoadmapItem({
   input?: string | null;
   agentId?: string | null;
 }) {
-  const { user } = await requireOrgMember(orgId);
+  const { user } = await requireOrgWriter(orgId);
   await ensureRoadmapStructure(orgId);
   await syncRoadmapUnlocks(orgId);
   const item = await findRoadmapItem(orgId, itemId);
@@ -270,7 +270,7 @@ export async function completeRoadmapItem({
   orgId: string;
   itemId: string;
 }) {
-  await requireOrgMember(orgId);
+  await requireOrgWriter(orgId);
   await ensureRoadmapStructure(orgId);
   await syncRoadmapUnlocks(orgId);
   const item = await findRoadmapItem(orgId, itemId);

@@ -85,6 +85,7 @@ model Organization {
   plans                   Plan[]
   memories                OrgMemory[]
   knowledgeChunks         KnowledgeChunk[]
+  briefings               Briefing[]
 
   @@index([status])
   @@index([currentPlan])
@@ -136,6 +137,8 @@ model Department {
   coverAsset     String?
   availability   String        @default("active")
   contextJson    String?
+  /// Most this department's agents may spend per day, in cents (their own runs' spend). Null: no department cap.
+  dailyBudgetCents Int?
   sortOrder      Int
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
@@ -470,6 +473,8 @@ model Approval {
   /// tool (approve a tool call) | question (an agent asked the founder something; the answer is responseText)
   kind               String       @default("tool")
   responseText       String?
+  /// The arguments a person changed before approving (Edit & approve). The call runs with these instead.
+  editedPayloadJson  String?
   createdAt          DateTime     @default(now())
   reviewedAt         DateTime?
   expiresAt          DateTime?
@@ -577,6 +582,10 @@ model NotificationPreference {
   desktopAlerts    Boolean      @default(false)
   emailTaskUpdates Boolean      @default(true)
   emailBilling     Boolean      @default(true)
+  /// Email when an agent needs an approval, with one-tap approve/deny links.
+  emailApprovals   Boolean      @default(true)
+  /// Email the daily briefing.
+  emailBriefings   Boolean      @default(true)
   inAppMentions    Boolean      @default(true)
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
@@ -930,4 +939,28 @@ model PlanNode {
 
   @@unique([planId, key])
   @@index([planId, status])
+}
+
+/// The Chief of Staff's summary for the founder: what shipped, what is blocked, what needs them, what it cost.
+model Briefing {
+  id             String       @id @default(cuid())
+  organizationId String
+  /// daily | weekly | manual
+  period         String
+  periodStart    DateTime
+  periodEnd      DateTime
+  /// writing (the Chief of Staff is on it) | ready
+  status         String       @default("writing")
+  /// The facts the briefing is written from (counts, lists, spend), as JSON.
+  dataJson       String
+  text           String?
+  /// The Chief of Staff's run that writes it; null when it was built from the records alone.
+  runId          String?
+  emailedAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, period, periodStart])
+  @@index([organizationId, createdAt])
 }

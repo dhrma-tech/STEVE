@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
-import { requireOrgMember } from "@/lib/auth/session";
+import { requireOrgMember, requireOrgWriter } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { createGoalPlan, getPlan, listPlans } from "@/lib/agents/plans/store";
 
@@ -30,7 +30,7 @@ export async function GET(_request: Request, context: RouteContext) {
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { orgId } = await context.params;
-    const { user, membership } = await requireOrgMember(orgId);
+    const { user, membership } = await requireOrgWriter(orgId);
     const parsed = createSchema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) return errorResponse("VALIDATION_ERROR", "A goal of at least 3 characters is required.", 422, parsed.error.flatten());
 

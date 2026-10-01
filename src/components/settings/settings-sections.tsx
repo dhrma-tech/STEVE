@@ -270,6 +270,8 @@ export function NotificationSettingsForm({ orgId, initialData }: { orgId: string
       <ToggleField label="Email task updates" checked={data.emailTaskUpdates} onCheckedChange={(checked) => patch({ emailTaskUpdates: checked })} />
       <ToggleField label="Email billing" checked={data.emailBilling} onCheckedChange={(checked) => patch({ emailBilling: checked })} />
       <ToggleField label="In-app mentions" checked={data.inAppMentions} onCheckedChange={(checked) => patch({ inAppMentions: checked })} />
+      <ToggleField label="Email approvals (one-tap approve/deny)" checked={data.emailApprovals} onCheckedChange={(checked) => patch({ emailApprovals: checked })} />
+      <ToggleField label="Email the daily briefing" checked={data.emailBriefings} onCheckedChange={(checked) => patch({ emailBriefings: checked })} />
     </SettingsPanel>
   );
 }

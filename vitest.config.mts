@@ -11,6 +11,8 @@ export default defineConfig({
     clearMocks: true,
     globalSetup: ["./tests/global-setup.ts"],
     setupFiles: ["./tests/setup-db.ts"],
-    testTimeout: 20000
+    testTimeout: 20000,
+    // The worker sweep would otherwise start daily briefings in unrelated tests; briefing tests turn it on.
+    env: { DAILY_BRIEFINGS: "off" }
   }
 });

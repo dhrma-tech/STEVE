@@ -8,6 +8,7 @@ import { ChatWorkspace } from "@/components/chat/chat-workspace";
 import { DepartmentDetailPanel } from "@/components/departments/department-detail-panel";
 import { FileLibrary } from "@/components/files/file-library";
 import { PlanWorkspace } from "@/components/plans/plan-workspace";
+import { GoalBox } from "@/components/mission/goal-box";
 import { TaskCreateDialog, type TaskCreateDefaults } from "@/components/tasks/task-create-dialog";
 import { TaskWorkspace } from "@/components/tasks/task-workspace";
 import { Badge } from "@/components/ui/badge";
@@ -108,6 +109,14 @@ export function CanvasSidePanel({
               <div className="flex-1 overflow-y-auto p-4 pb-2">
                 <div className="grid gap-4">
                   <PanelHeading eyebrow="Home" title={greeting(data.organization.name)} icon={<MessageSquare aria-hidden="true" className="size-4" />} />
+                  <GoalBox
+                    orgId={data.organization.id}
+                    compact
+                    onPlanned={({ sessionId }) => {
+                      onActiveTabChange("plans");
+                      onLaunchTaskSession(sessionId);
+                    }}
+                  />
                   <section className="grid gap-3 rounded-[12px] border border-[var(--border-10)] bg-[var(--foreground-3)] p-3 shadow-[var(--shadow-outset-100)]">
                     <div className="flex items-center justify-between gap-3">
                       <div>

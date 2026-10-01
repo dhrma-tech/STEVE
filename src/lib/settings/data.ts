@@ -539,7 +539,9 @@ export async function getNotificationSettings(orgId: string) {
     desktopAlerts: preferences.desktopAlerts,
     emailTaskUpdates: preferences.emailTaskUpdates,
     emailBilling: preferences.emailBilling,
-    inAppMentions: preferences.inAppMentions
+    inAppMentions: preferences.inAppMentions,
+    emailApprovals: preferences.emailApprovals,
+    emailBriefings: preferences.emailBriefings
   };
 }
 
@@ -548,13 +550,17 @@ export async function updateNotificationSettings({
   desktopAlerts,
   emailTaskUpdates,
   emailBilling,
-  inAppMentions
+  inAppMentions,
+  emailApprovals,
+  emailBriefings
 }: {
   orgId: string;
   desktopAlerts?: boolean | null;
   emailTaskUpdates?: boolean | null;
   emailBilling?: boolean | null;
   inAppMentions?: boolean | null;
+  emailApprovals?: boolean | null;
+  emailBriefings?: boolean | null;
 }) {
   const { user } = await requireOrgMember(orgId);
   await prisma.notificationPreference.upsert({
@@ -563,7 +569,9 @@ export async function updateNotificationSettings({
       ...(desktopAlerts !== undefined && desktopAlerts !== null ? { desktopAlerts } : {}),
       ...(emailTaskUpdates !== undefined && emailTaskUpdates !== null ? { emailTaskUpdates } : {}),
       ...(emailBilling !== undefined && emailBilling !== null ? { emailBilling } : {}),
-      ...(inAppMentions !== undefined && inAppMentions !== null ? { inAppMentions } : {})
+      ...(inAppMentions !== undefined && inAppMentions !== null ? { inAppMentions } : {}),
+      ...(emailApprovals !== undefined && emailApprovals !== null ? { emailApprovals } : {}),
+      ...(emailBriefings !== undefined && emailBriefings !== null ? { emailBriefings } : {})
     },
     create: {
       userId: user.id,
@@ -571,7 +579,9 @@ export async function updateNotificationSettings({
       desktopAlerts: desktopAlerts ?? false,
       emailTaskUpdates: emailTaskUpdates ?? true,
       emailBilling: emailBilling ?? true,
-      inAppMentions: inAppMentions ?? true
+      inAppMentions: inAppMentions ?? true,
+      emailApprovals: emailApprovals ?? true,
+      emailBriefings: emailBriefings ?? true
     }
   });
   return getNotificationSettings(orgId);

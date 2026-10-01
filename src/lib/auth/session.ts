@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db/client";
 import { getAuthSecret } from "@/lib/auth/secret";
+import { WRITER_ROLES } from "@/lib/auth/roles";
 
 export const sessionCookieName = "steve_session";
 const maxAgeSeconds = 60 * 60 * 24 * 30;
@@ -119,6 +120,15 @@ export async function requireOrgMember(orgId: string) {
   }
 
   return { user, membership, organization: membership.organization };
+}
+
+/** A member who may act: start work, approve, answer, edit plans and memory. Viewers are refused. */
+export async function requireOrgWriter(orgId: string) {
+  const context = await requireOrgMember(orgId);
+  if (!WRITER_ROLES.includes(context.membership.role)) {
+    throw new ForbiddenError("Your role in this organization is read-only.");
+  }
+  return context;
 }
 
 export async function requireOrgAdmin(orgId: string) {

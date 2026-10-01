@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
-import { requireOrgMember } from "@/lib/auth/session";
+import { requireOrgWriter } from "@/lib/auth/session";
 import { resolveApproval } from "@/lib/agents/policy/approvals";
 
 const approveSchema = z.object({
@@ -17,7 +17,7 @@ type RouteContext = { params: Promise<{ orgId: string; agentId: string; sessionI
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { orgId, sessionId } = await context.params;
-    const { user, membership } = await requireOrgMember(orgId);
+    const { user, membership } = await requireOrgWriter(orgId);
 
     const parsed = approveSchema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) {

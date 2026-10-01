@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
-import { requireOrgMember } from "@/lib/auth/session";
+import { requireOrgMember, requireOrgWriter } from "@/lib/auth/session";
 import { planActionResponse } from "@/lib/agents/plans/http";
 import { editPlan, getPlan } from "@/lib/agents/plans/store";
 
@@ -41,7 +41,7 @@ export async function GET(_request: Request, context: RouteContext) {
 export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { orgId, planId } = await context.params;
-    await requireOrgMember(orgId);
+    await requireOrgWriter(orgId);
     const parsed = editSchema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) return errorResponse("VALIDATION_ERROR", "The plan changes are invalid.", 422, parsed.error.flatten());
     return planActionResponse(orgId, planId, await editPlan({ orgId, planId, nodes: parsed.data.nodes }));

@@ -16,6 +16,7 @@ import { planRunSystemPrompt, PLAN_PROMPT_KINDS } from "../plans/prompts";
 import { isSystemAgentSlug } from "../plans/system-agents";
 import { enqueuePlanAdvance } from "../plans/wake";
 import { captureRunLearning } from "@/lib/memory/learning";
+import { finishBriefingForRun } from "@/lib/briefings/briefings";
 import { rankMemories, renderMemorySection, scopesFor, visibleMemories } from "@/lib/memory/store";
 import type { AgentTool, ToolContext } from "../tools/types";
 import { finalizeRunRecords, recordTreeUsage, usageNote } from "./finalize";
@@ -461,6 +462,12 @@ async function processSlots(ctx: StepContext): Promise<"waiting_approval" | "wai
       if (approval && approval.status === "approved") {
         slot.approved = true;
         slot.status = "pending";
+        // Edit & approve: the person approved changed arguments, so the call runs with exactly those.
+        const edited = parseEditedInput(approval.editedPayloadJson);
+        if (edited) {
+          slot.input = edited;
+          await ctx.emit({ type: "tool_call", tool: slot.name, input: edited });
+        }
       } else {
         const status = approval?.status === "denied" ? "denied" : approval?.status === "cancelled" ? "cancelled" : "expired";
         const result = await finishUnapprovedCall({
@@ -545,6 +552,16 @@ async function processSlots(ctx: StepContext): Promise<"waiting_approval" | "wai
   if (waitingApproval) return "waiting_approval";
   if (slots.some((s) => s.status === "waiting_child")) return "waiting_children";
   return "done";
+}
+
+function parseEditedInput(json: string | null): Record<string, unknown> | null {
+  if (!json) return null;
+  try {
+    const value = JSON.parse(json) as unknown;
+    return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
 }
 
 function settle(slot: Slot, result: { output: string; success: boolean }) {
@@ -1004,6 +1021,8 @@ async function closeOut(run: Run, root: Run, result: { outcome: "completed" | "f
   if (isRoot) await recordTreeUsage(rootFresh, totals);
   // What the run produced becomes searchable, and its findings are proposed to memory. Never fails the run.
   await captureRunLearning(fresh);
+  // A briefing run hands its text (or, if it failed, the records-only version) to its briefing.
+  await finishBriefingForRun(fresh).catch((error) => console.error(`[briefings] run ${run.id}:`, error));
   if (run.parentRunId) await enqueueAdvance(run.parentRunId);
   await markClosedOut(run.id);
   // After the close-out: the plan reads the step's task and result, which the close-out writes.

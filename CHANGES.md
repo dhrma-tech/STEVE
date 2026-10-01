@@ -1035,3 +1035,44 @@ Verification: `pnpm typecheck` → exit 0. Zero `var(--app-|var(--brand-|rgba(` 
 - Verified: tests 259 passed (23 files); typecheck 0; lint 0 errors (53 warnings); build passes. Live (dev server, local Postgres): teach (201), bad scope or missing value (422), edit with history (200), empty edit (422), list with scope labels, knowledge search finds the business plan, short query (422), palette Knowledge group, delete (200, then 404), 401 without login, and the settings page (200). The live-check memory was deleted. The search index built for the dev org stays; it is derived data. Not run against a real model.
 - Found live: the palette query "plan" missed `Business Plan.md` because Postgres reads `Plan.md` as one token. Fixed (file names are split into words), with a test.
 - Suite time: a full run took about 160 s, against about 51 s this morning. Running the Phase 5 commit on the same machine at the same time gave the same per-test times, so the machine is slower now, not the code.
+
+## Orchestration Phase 7 — founder and manager experience (2026-10-01)
+- **Mission Control** (`/org/:orgId/mission`, new nav item): header with work in progress, what waits for you, spend today against the daily budget, plans to review, and pause/resume all agents (managers). The goal box sits on top. Tabs:
+  - Live: plans with progress, and run trees for the last 24 hours (who started whom, kind, status, cost, elapsed time, pending approvals per node with a roll-up on the root).
+  - Approvals.
+  - Briefings.
+  Run detail: the event timeline (tool calls with inputs and outputs, delegations, approvals, questions, errors) with a replay scrubber and play button, teammates, approvals, and actions: open session, cancel run, retry or fork with an edited instruction (task runs), and comment (posted to the task chat). Data in `src/lib/mission/data.ts`; it refreshes every 4 s.
+- **Approvals inbox:** every pending tool call across runs, showing the risk chip, summary, agent and department, task, exact arguments, run spend against budget, and expiry.
+  - Decisions: approve once, approve for this run, always for this agent (managers; not offered for comms or spend), **Edit & approve**, deny.
+  - **Edit & approve:** the call runs with exactly the edited arguments (new `Approval.editedPayloadJson`, applied by the engine). An edit that keeps a `[REDACTED]` placeholder or raises the call's risk (a read query edited into a write) is refused.
+  - **Batch approve:** only low-risk calls; comms, spend and destructive calls are always skipped.
+  - Keyboard: j/k move, a approve, r approve for this run, e edit, d deny.
+  - Agents' open questions can be answered from the same tab.
+- **One-tap email approvals:** when email is set up (`RESEND_API_KEY` or the email integration), owners and admins get an email for each approval with Approve and Deny links (`src/lib/agents/policy/one-tap.ts`). Each token is HMAC-signed with a key derived from `AUTH_SECRET` for this use only. It names the approval, the decision and the recipient, expires in 24 h, and works once. The link opens a confirmation page (`/approve/<token>`); only its button acts (`POST /api/approvals/one-tap`), so mail scanners that follow links approve nothing. The recipient must still be a member who may act. The email preference is in Settings → Notifications.
+- **Goal box** on the canvas Home tab and in Mission Control: a goal goes to the Chief of Staff (Phase 5); the Plans tab and the planning session open.
+- **Briefings** (`src/lib/briefings/`, new `Briefing` table): facts from the records (what shipped, what is blocked, what needs you, spend). The Chief of Staff writes them up (new run kind `briefing`, read-only tools); if it cannot, a briefing is built from the facts. A daily briefing is made once per active org after `BRIEFING_HOUR` (default 8, server time) by the worker's sweep; turn it off with `DAILY_BRIEFINGS=off`. Briefings still being written after 20 minutes get the records-only version. "Brief me now" makes one on demand. They are emailed when email is set up (preference in Settings → Notifications).
+- **Agent controls** (Settings → Agent controls): pause or resume all agents; org daily and per-run budgets; **department daily budgets** (new `Department.dailyBudgetCents`); **agent daily budgets** (now allowed on agent policies) and per-run budgets; each agent's permission mode, with what each mode does; today's spend at every level. Department and agent caps count each run's own spend (its cost minus its children's), so delegated work counts against the agent and department that did it (`policy/spend.ts`). Caps are checked when a run starts, with a clear 429 message.
+- **Manager tools:**
+  - Retry or fork a finished task run.
+  - Cancel a run tree.
+  - Comment on a run.
+  - **Retry a failed plan step:** a stopped plan reopens and carries on.
+  - **Reassign** a plan step that has not started or has failed.
+- **Viewer role:** `viewer` members can see everything but act on nothing. `requireOrgWriter` now guards agent launch, task changes, chat sends (including `/run`), roadmap launch and complete, plans, memory, approvals and questions, briefings and the Phase 7 actions. Owners and admins remain the managers (budgets, policy, always-approve).
+- **Canvas:** department nodes show "N waiting" when their agents wait on you, and a pulsing "N running".
+- Tests: 13 new.
+  - Inbox list and resume; Edit & approve runs the edited arguments; redacted and riskier edits are refused; batch approve skips comms.
+  - One-tap: approve once, then reuse, tampering, expiry and viewers are refused; email with links goes to the owner and not the viewer.
+  - Spend attribution, and agent and department caps.
+  - Mission trees with roll-up, run detail and cancel; retry or fork, and comments.
+  - Plan step reassign and retry, including reopening a stopped plan.
+  - A briefing written by the Chief of Staff; the records fallback; the daily schedule (hour, once per day).
+- Verified: tests 272 passed (24 files, 57 s); typecheck 0; lint 0 errors (53 warnings); build passes.
+- Live (dev server, local Postgres, no model key):
+  - Pages: Mission Control (both tabs), Agent controls, Notifications and canvas return 200. Mission, approvals and controls APIs return data. Without login: 401.
+  - Budgets: a department budget set and cleared (200); a department change with a non-budget field (422).
+  - Briefings: "Brief me now" (201) fell back to the records-only briefing because there is no key. The dev server's own worker also made the scheduled daily briefing.
+  - One-tap: the page for a bad link (200, with an explanation); the API (422).
+  - Viewer: a temporary viewer could read Mission Control and approvals but got 403 on plan, memory, briefing and policy changes.
+  - The live-check user, briefings and their runs were deleted afterwards. Not run against a real model.
+- Not done (Phase 7 items left for later): diffs for file and code changes in the run detail; Slack or mobile push; "retry from step N" (a run can be retried or forked whole, not resumed from a middle step: runs keep no per-step history snapshots); plan steps assigned to people; a spend sparkline on canvas nodes; a role editor (set `viewer` on the membership for now). The golden-scenario exit test ("a non-technical founder completes it using only the UI in under five minutes of attention") needs a real model and a person; it has not been run.

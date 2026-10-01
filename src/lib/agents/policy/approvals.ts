@@ -5,6 +5,7 @@ import { enqueueAdvance } from "@/lib/agents/engine/wake";
 import { addAutoApprove } from "./store";
 import { ALWAYS_ASK_RISKS, type ToolRisk } from "./risk";
 import { redactSecrets } from "./sanitize";
+import { notifyApprovalRequested } from "@/lib/notifications/email";
 
 /**
  * Tool-call approvals.
@@ -34,7 +35,7 @@ export async function createApproval(params: {
   summary: string;
   timeoutMs: number;
 }) {
-  return prisma.approval.create({
+  const approval = await prisma.approval.create({
     data: {
       organizationId: params.orgId,
       // Deliberately not linked to the task: task approvals have their own review flow
@@ -52,6 +53,9 @@ export async function createApproval(params: {
       expiresAt: new Date(Date.now() + params.timeoutMs)
     }
   });
+  // Email the managers one-tap links when email is set up. Never holds up or fails the run.
+  await notifyApprovalRequested(approval).catch((error) => console.error(`[approvals] could not email approval ${approval.id}:`, error));
+  return approval;
 }
 
 /** True when `sessionId` is `ancestorId` or one of its delegated descendants. */

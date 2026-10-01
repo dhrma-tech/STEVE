@@ -220,6 +220,53 @@ export async function cancelPlan(params: { orgId: string; planId: string }): Pro
   return { kind: "ok", value: null };
 }
 
+// ── Manager tools on a plan that is running or has stopped ────────────────────
+
+/**
+ * Retry a failed step. A plan that stopped (failed) is reopened: it runs again from that step, keeping everything
+ * that was done. The step keeps the reason it failed, which goes into its next brief.
+ */
+export async function retryPlanStep(params: { orgId: string; planId: string; nodeId: string }): Promise<PlanActionResult> {
+  const plan = await prisma.plan.findFirst({ where: { id: params.planId, organizationId: params.orgId }, include: { nodes: true } });
+  if (!plan) return { kind: "not_found" };
+  const node = plan.nodes.find((candidate) => candidate.id === params.nodeId);
+  if (!node) return { kind: "not_found" };
+  if (node.status !== "failed") return { kind: "conflict", message: `Only a failed step can be retried; this one is ${node.status}.` };
+  if (!["running", "failed"].includes(plan.status)) {
+    return { kind: "conflict", message: `The plan is ${plan.status}. Retry a step once it is running or has stopped.` };
+  }
+
+  await prisma.$transaction([
+    prisma.planNode.update({
+      where: { id: node.id },
+      data: { status: "pending", attempts: 0, runId: null, reviewRunId: null, startedAt: null, finishedAt: null }
+    }),
+    prisma.plan.update({
+      where: { id: plan.id },
+      data: plan.status === "failed" ? { status: "running", outcome: null, finishedAt: null, errorMessage: null } : { errorMessage: null }
+    })
+  ]);
+  if (plan.taskId && plan.status === "failed") await prisma.task.update({ where: { id: plan.taskId }, data: { status: "running" } });
+  await enqueuePlanAdvance(plan.id);
+  return { kind: "ok", value: null };
+}
+
+/** Give a step that has not started (or failed) to another agent. Running and finished steps stay as they are. */
+export async function reassignPlanStep(params: { orgId: string; planId: string; nodeId: string; agentId: string }): Promise<PlanActionResult> {
+  const plan = await prisma.plan.findFirst({ where: { id: params.planId, organizationId: params.orgId }, include: { nodes: true } });
+  if (!plan) return { kind: "not_found" };
+  const node = plan.nodes.find((candidate) => candidate.id === params.nodeId);
+  if (!node) return { kind: "not_found" };
+  if (FINAL_PLAN_STATUSES.has(plan.status) && plan.status !== "failed") return { kind: "conflict", message: `The plan is ${plan.status}.` };
+  if (!["pending", "failed"].includes(node.status)) {
+    return { kind: "conflict", message: `This step is ${node.status}; only a step that has not started or has failed can be reassigned.` };
+  }
+  const agent = await prisma.agent.findFirst({ where: { id: params.agentId, organizationId: params.orgId, archivedAt: null } });
+  if (!agent || isSystemAgentSlug(agent.slug)) return { kind: "invalid", message: "Steps can only be assigned to the company's department agents." };
+  await prisma.planNode.update({ where: { id: node.id }, data: { agentId: agent.id, departmentId: agent.departmentId } });
+  return { kind: "ok", value: null };
+}
+
 // ── Reading plans ─────────────────────────────────────────────────────────────
 
 const RISK_LABELS: Partial<Record<ToolRisk, string>> = {

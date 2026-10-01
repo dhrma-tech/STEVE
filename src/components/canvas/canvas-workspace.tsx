@@ -48,6 +48,8 @@ type DepartmentNodeData = {
   availability: string;
   agents: number;
   tasks: number;
+  waitingForYou: number;
+  runningRuns: number;
 };
 
 type WorkspaceNode = Node<CofounderNodeData | DepartmentNodeData>;
@@ -305,7 +307,9 @@ function buildNodes(data: CanvasData, selectedNodeId: string | null): WorkspaceN
         color: department.color,
         availability: department.availability,
         agents: department.agents.length,
-        tasks: department.taskCount
+        tasks: department.taskCount,
+        waitingForYou: department.waitingForYou,
+        runningRuns: department.runningRuns
       }
     };
   });

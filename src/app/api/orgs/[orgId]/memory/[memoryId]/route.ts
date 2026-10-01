@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
-import { requireOrgMember } from "@/lib/auth/session";
+import { requireOrgWriter } from "@/lib/auth/session";
 import { deleteMemory, MAX_VALUE_LENGTH, updateMemory } from "@/lib/memory/store";
 
 const patchSchema = z
@@ -20,7 +20,7 @@ type RouteContext = { params: Promise<{ orgId: string; memoryId: string }> };
 export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { orgId, memoryId } = await context.params;
-    const { user } = await requireOrgMember(orgId);
+    const { user } = await requireOrgWriter(orgId);
     const parsed = patchSchema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) return errorResponse("VALIDATION_ERROR", "The change is invalid.", 422, parsed.error.flatten());
     const result = await updateMemory({ orgId, id: memoryId, userId: user.id, ...parsed.data });
@@ -36,7 +36,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 export async function DELETE(_request: Request, context: RouteContext) {
   try {
     const { orgId, memoryId } = await context.params;
-    await requireOrgMember(orgId);
+    await requireOrgWriter(orgId);
     if (!(await deleteMemory(orgId, memoryId))) return errorResponse("NOT_FOUND", "Memory not found", 404);
     return dataResponse({ deleted: true });
   } catch (error) {

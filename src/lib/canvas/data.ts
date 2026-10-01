@@ -19,6 +19,10 @@ export type CanvasDepartment = {
   taskCount: number;
   fileCount: number;
   roadmapCount: number;
+  /** Approvals and questions from this department's agents waiting on the founder. */
+  waitingForYou: number;
+  /** Runs of this department's agents in progress. */
+  runningRuns: number;
 };
 
 export type CanvasTask = {
@@ -121,6 +125,27 @@ export async function getCanvasData(orgId: string) {
       roadmapProgress: organization.roadmapProgress,
       businessPlanFileId: organization.businessPlanFileId
     };
+  // Live state for the department nodes: agents at work, and approvals or questions waiting on the founder.
+  const [waitingRows, runningRows] = await Promise.all([
+    prisma.approval.groupBy({
+      by: ["requestedByAgentId"],
+      where: { organizationId: orgId, status: "pending", sessionId: { not: null } },
+      _count: { _all: true }
+    }),
+    prisma.run.groupBy({ by: ["agentId"], where: { organizationId: orgId, status: { in: ["queued", "running", "waiting_approval", "waiting_children"] } }, _count: { _all: true } })
+  ]);
+  const departmentOfAgent = new Map(departments.flatMap((department) => department.agents.map((agent) => [agent.id, department.id] as const)));
+  const perDepartment = (rows: Array<{ id: string | null; count: number }>) => {
+    const totals = new Map<string, number>();
+    for (const row of rows) {
+      const department = row.id ? departmentOfAgent.get(row.id) : undefined;
+      if (department) totals.set(department, (totals.get(department) ?? 0) + row.count);
+    }
+    return totals;
+  };
+  const waitingByDepartment = perDepartment(waitingRows.map((row) => ({ id: row.requestedByAgentId, count: row._count._all })));
+  const runningByDepartment = perDepartment(runningRows.map((row) => ({ id: row.agentId, count: row._count._all })));
+
   const serializedDepartments = departments.map((department): CanvasDepartment => {
     const visual = getDepartmentVisual(department.slug);
     return {
@@ -144,7 +169,9 @@ export async function getCanvasData(orgId: string) {
       })),
       taskCount: department._count.tasks,
       fileCount: department._count.files,
-      roadmapCount: department._count.roadmapItems
+      roadmapCount: department._count.roadmapItems,
+      waitingForYou: waitingByDepartment.get(department.id) ?? 0,
+      runningRuns: runningByDepartment.get(department.id) ?? 0
     };
   });
   const roadmap = {
@@ -242,7 +269,9 @@ function buildGraphNodes({
         color: department.color,
         availability: department.availability,
         agents: department.agents.length,
-        tasks: department.taskCount
+        tasks: department.taskCount,
+        waitingForYou: department.waitingForYou,
+        runningRuns: department.runningRuns
       }
     };
   });

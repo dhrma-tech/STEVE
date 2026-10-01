@@ -4,7 +4,7 @@
  */
 
 /** Run kinds whose prompt comes from here instead of the department prompt. */
-export const PLAN_PROMPT_KINDS: ReadonlySet<string> = new Set(["plan", "review", "plan_report"]);
+export const PLAN_PROMPT_KINDS: ReadonlySet<string> = new Set(["plan", "review", "plan_report", "briefing"]);
 
 const PLANNING_GUIDE = [
   "## How to plan",
@@ -42,6 +42,14 @@ const REPORT_GUIDE = [
   "- Under 300 words. Do not call any tools unless you need to check a file."
 ].join("\n");
 
+const BRIEFING_GUIDE = [
+  "## How to write the briefing",
+  "- You write the founder's briefing from the facts in the request: what shipped, what is blocked, what needs them, and what it cost.",
+  "- Lead with the one thing that most needs their attention. Then four short sections: Shipped, Blocked, Needs you, Spend.",
+  "- Name tasks and plans as they are named in the facts. Do not invent work, numbers or causes that are not in the facts.",
+  "- If nothing happened, say so in one line. Under 250 words. Do not call tools."
+].join("\n");
+
 export function planRunSystemPrompt(params: {
   kind: string;
   agentName: string;
@@ -56,7 +64,16 @@ export function planRunSystemPrompt(params: {
     kind === "review"
       ? `You are ${agentName}, the reviewer at ${orgName}. You check finished work against its acceptance criteria.`
       : `You are ${agentName}, the Chief of Staff at ${orgName}. You turn the founder's goals into plans, assign the work to the team and report back.`;
-  const guide = kind === "review" ? REVIEW_GUIDE : kind === "plan_report" ? REPORT_GUIDE : replanning ? REPLANNING_GUIDE : PLANNING_GUIDE;
+  const guide =
+    kind === "review"
+      ? REVIEW_GUIDE
+      : kind === "plan_report"
+        ? REPORT_GUIDE
+        : kind === "briefing"
+          ? BRIEFING_GUIDE
+          : replanning
+            ? REPLANNING_GUIDE
+            : PLANNING_GUIDE;
   return [
     role,
     businessPlan ? `## Business plan (authoritative reference)\n${businessPlan.slice(0, 2000)}${businessPlan.length > 2000 ? "\n[truncated]" : ""}` : "",

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { dataResponse, errorResponse } from "@/lib/api/responses";
 import { routeError } from "@/lib/api/route-errors";
-import { requireOrgMember } from "@/lib/auth/session";
+import { requireOrgMember, requireOrgWriter } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { isValidScope, listMemories, MAX_VALUE_LENGTH, remember } from "@/lib/memory/store";
 
@@ -45,7 +45,7 @@ export async function GET(request: Request, context: RouteContext) {
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { orgId } = await context.params;
-    const { user } = await requireOrgMember(orgId);
+    const { user } = await requireOrgWriter(orgId);
     const parsed = createSchema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) return errorResponse("VALIDATION_ERROR", "A key and a value are required.", 422, parsed.error.flatten());
     if (!isValidScope(parsed.data.scope)) return errorResponse("VALIDATION_ERROR", "Unknown scope.", 422);
