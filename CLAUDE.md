@@ -1,43 +1,91 @@
-# CLAUDE.md — Cofounder Design System Overhaul
+# CLAUDE.md — STEVE Frontend Redesign
 
-> Last updated: All 17 slices complete + legacy alias cleanup (2026-09-29)
+> Last updated: 2026-10-02 — repo cleaned and docs reorganised; full frontend redesign starting.
 > Read this before touching any file in this session.
 
 ---
 
 ## Project identity
 
-This is **STEVE** — a full Cofounder.co clone built over 17 phases. Product is functionally complete. The current work is a **UI/UX design-token overhaul** to match `report100.txt` (the spec, Sections A–V).
+This is **STEVE** — a full Cofounder.co clone built over 17 phases. Product is functionally complete. The current work is a **complete frontend redesign**, designed in Claude Design and implemented here. Features, functionality and backend stay exactly as they are; only the UI changes.
 
 ---
 
-## Current overhaul state
+## Current work — frontend redesign (Claude Design)
 
-| Slice | Scope | Status |
-|---|---|---|
-| Slice 1 | Design tokens + typography | ✅ |
-| Slice 2 | 21 UI primitives | ✅ |
-| Slice 3 / 3b | Light-mode system + 15 marketing files | ✅ |
-| Slice 4 | Settings cluster | ✅ |
-| Slice 5 | App-shell cluster | ✅ |
-| Slice 6a / 6b | Canvas cluster (tokens + animations) | ✅ |
-| Slice 7 | Agents cluster | ✅ |
-| Slice 8 | Chat cluster | ✅ |
-| Slice 9 | Notifications cluster | ✅ |
-| Slice 10 | Command-palette cluster | ✅ |
-| Slice 11 | Integrations cluster | ✅ |
-| Slice 12 | Side-panel cluster | ✅ |
-| Slice 13 | Tasks cluster | ✅ |
-| Slice 14 | Onboarding cluster | ✅ |
-| Slice 15 | Roadmap cluster | ✅ |
-| Slice 16 | Files cluster | ✅ |
-| Slice 17 | Departments cluster (pixel-drift wiring) | ✅ |
+**Workflow:** design system lives in a Claude Design design-system project → screens are designed there one area at a time → each design link is handed over here and implemented → component changes sync back to the design system.
 
-**Progress: 17/17 slices complete. 100% spec alignment. Multi-agent system (MULTI-AGENT-PLAN.md phases 1–8) also complete.**
+**Order:** design system → app shell + Canvas → Mission Control → Settings → Onboarding → Marketing.
+
+### Frontend-only boundary (enforced by a PreToolUse hook)
+
+Hook: `.claude/settings.json` → `.claude/hooks/frontend-guard.js` (local only — `.claude/` is gitignored). It blocks Edit/Write outside the allowed paths, including `route.ts` and `action(s).ts` files under `src/app`. To pause it, run `/hooks` and disable it, or set `"disableAllHooks": true` in `.claude/settings.local.json`.
+
+| Can change | Can't change |
+|---|---|
+| `src/components/**` | `src/lib/**` |
+| `src/styles/**` | `src/app/api/**` |
+| `src/app/**/page.tsx`, `layout.tsx` (markup only) | `prisma/**` |
+| `public/**` | `src/data/**`, data loading, server actions |
+| `CLAUDE.md`, design docs | Props/contracts sent to the backend, route URLs |
+
+Inside allowed files: keep every data fetch, handler, API call, query param and prop contract intact. Restyle and restructure the markup around them.
+
+### Redesign rules
+
+1. **Frontend only.** No backend, API, schema, data-loading or routing changes. Every existing feature must still work.
+2. **Structural changes allowed** in the UI (layouts, page composition, components). The old "re-skin only" rule (DECISION-62/63) and the "marketing locked" rule are lifted for the redesign.
+3. **Design system first.** Tokens and primitives come from the Claude Design design-system project; screens use them, not one-off values.
+4. **No hardcoded values** — colors, shadows, spacing, easing → tokens.
+5. **One area per slice.** Typecheck after each, compare against the design, stop and report.
+6. Every state gets designed and built: empty, loading, error, mobile.
 
 ---
 
-## Design system foundation (what's done)
+## Repository map
+
+| Path | What |
+|---|---|
+| `src/app/` | Routes: `(marketing)`, `(auth)`, `org/[orgId]/…`, `api/` |
+| `src/components/` | UI by feature; `ui/` = primitives |
+| `src/lib/` | Domain logic (agents, ai, policy, automations, security…) — off-limits during redesign |
+| `src/styles/` | `tokens.css`, `animations.css`, `motion.css`, `globals.css` |
+| `docs/` | Index at `docs/README.md` — product, architecture, design, runbook, decision log |
+| `docs/decisions.md` | Decision log. `DECISION-NN` references in code/docs point here (latest: DECISION-65) |
+| `docs/architecture/agent-orchestration.md` | The multi-agent system spec + per-phase notes (§12) incl. what was deferred |
+
+Housekeeping (2026-10-02): checkpoints, phase plans, scratchpad, registry, slice change logs, status/gap reports and phase smoke-test artifacts were deleted — they're in git history (commit `d5b4dbe` and earlier) if ever needed. `report100.txt` (the A–V spec referenced in `tokens.css`, `animations.css`, `z-index.ts` comments) is **not in the repo**; treat those section letters as historical labels.
+
+---
+
+## Project history (short)
+
+1. **17-phase build** — full Cofounder.co clone (marketing, auth, onboarding, canvas, departments, roadmap, tasks, agents, chat, files, settings, billing, integrations).
+2. **Token overhaul, slices 1–17** — every cluster migrated to Section V tokens; complete.
+3. **Multi-agent system** — v1 (router, tools, runner, streaming, approvals, memory) then v2 orchestration phases 0–10 (run service, policy engine, Postgres + pg-boss queue, delegation, orchestrator, shared memory, Mission Control, model tiers + evals, schedules/triggers/public API, vault/OAuth/rate limits/audit). Built on stacked branches up to `phase-10-hardening`; **not merged to `main`**.
+4. **Frontend redesign** — current work (above).
+
+---
+
+## Open items (not redesign work — don't fix during UI slices)
+
+**Needs credentials / external action**
+- Provider credentials: GitHub OAuth, Stripe, Vercel, Supabase, Postiz, S3. Code paths exist; sandbox adapters run when keys are absent.
+- No live agent run or live eval with a real `ANTHROPIC_API_KEY` yet.
+- No real OAuth round trip with any provider. Supabase still needs the service role key pasted; Vercel installs may need team id.
+- Licensed fonts (Departure Mono, ppmondwest/Neoris) — currently fallbacks (DECISION-03).
+- Legal review of `/privacy-policy` and `/terms` (current copy is unreviewed default text).
+
+**Deferred by design (agent system)**
+- Plain chat (`/api/ai/chat`) and onboarding idea/branding generators still call local Ollama, not the model tiers.
+- Embeddings for knowledge search; metrics computed on read (no metrics store); cloud KMS adapter (seam only).
+- Run detail lacks file/code diffs; no retry-from-middle-step; no role editor UI; no people as plan owners.
+- No WhatsApp/mobile push, no approve-from-Slack, no native Svix verification for Resend inbound.
+- Rate limits cover only expensive/sensitive routes; scheduled backups rely on the host scheduler.
+
+---
+
+## Design system foundation (pre-redesign baseline)
 
 ### Token layer (`src/styles/tokens.css`)
 319 Section V dark tokens + Section B light tokens + legacy `:root` shim. Additional named tokens: `--border-subtle`, `--background-settings`. **Legacy shim is partially retired:** dead `--app-*`, `--brand-*`, `--warning`, `--danger` aliases were deleted (zero consumers). Still live and kept: `--terminal-*`, `--color-*`, `--hero-blue`, `--feature-blue-*`, `--running`, `--success`, `--caret`.
@@ -46,31 +94,6 @@ This is **STEVE** — a full Cofounder.co clone built over 17 phases. Product is
 36 Section L keyframes + utility classes. Wired so far: `canvasDashFlow` (orbital edges), `animate-agent-pulse` (running agents), `animate-agent-cue-pop` (workspace dialog), `animate-typing-dot` (chat typing indicator), `animate-attention-slide-up` + `animate-attention-item` (inbox panel/items).
 
 ### Z-index (`src/lib/z-index.ts`) — Section S complete, 17 constants.
-
-### Migrated clusters
-
-| Cluster | Files | Spec |
-|---|---|---|
-| UI primitives (21) | `src/components/ui/*.tsx` | ✅ J/K/N |
-| Marketing (15) | `src/components/marketing/*`, `src/app/(marketing)/*` | ✅ B |
-| Settings | `settings-shell.tsx`, `settings-sections.tsx` | ✅ I |
-| App-shell | 5 files + `z-index.ts` | ✅ D/E/F/S |
-| Canvas | 4 files + `animations.css` (36 kf) | ✅ D/E/H/L/S |
-| Agents | 5 files | ✅ H/I/J/L |
-| Chat | 4 files | ✅ N/L |
-| Notifications | `inbox-panel.tsx` | ✅ N/O/S |
-| Command-palette | `command-palette.tsx` | ✅ E/M/U |
-| Integrations | `integration-center.tsx`, `postiz-integration.tsx` | ✅ M/N |
-| Side-panel | `canvas-side-panel.tsx` | ✅ F/U/S |
-| Tasks | 4 files | ✅ M/R/T |
-
----
-
-## What's remaining
-
-No UI clusters pending (onboarding, roadmap, files, departments all done in slices 14–17).
-
-Open items are external, not code: provider credentials (GitHub OAuth, Stripe, Vercel, Supabase, Postiz, S3), licensed fonts (Departure Mono, ppmondwest), and legal review of `/privacy-policy` and `/terms`. See the P2 table in `MASTER_GAP_REPORT.md`. The multi-agent system (`MULTI-AGENT-PLAN.md`) is code-complete but has no recorded live run with real API keys.
 
 ---
 
@@ -109,24 +132,16 @@ Open items are external, not code: provider credentials (GitHub OAuth, Stripe, V
 
 ---
 
-## Hard rules
+## Carried-over token rules
 
-1. **Re-skin only.** No structural rebuilds (see DECISION-62, DECISION-63).
-2. **No hardcoded values** — every color, shadow, spacing, easing → token.
-3. **Marketing locked.** 100% done. Do not touch.
-4. **One cluster per slice.** Typecheck after each. Stop and report.
-5. **Legacy `:root` shim:** remaining live aliases migrate only when their consumers do.
-6. **SVG attribute values** use resolved literals (DECISION-60).
+1. **Legacy `:root` shim:** remaining live aliases migrate only when their consumers do.
+2. **SVG attribute values** use resolved literals (DECISION-60).
+3. **z-index** values come from `src/lib/z-index.ts`, never inline.
 
 ---
 
-## Key files
+## Housekeeping rules
 
-| File | What |
-|---|---|
-| `src/styles/tokens.css` | 319 dark tokens + light + legacy shim |
-| `src/styles/animations.css` | 36 Section L keyframes + utility classes |
-| `src/lib/z-index.ts` | Section S z-index constants |
-| `report100.txt` | **The spec.** Sections A–V. |
-| `checkpoint-slice-17.md` | Most recent checkpoint |
-| `CHANGES.md` | All cluster logs + pending list |
+- Don't create checkpoint, scratchpad or per-phase status files in the repo root. Progress lives in this file (short) and in git commits.
+- New docs go under `docs/` in the matching folder and get a line in `docs/README.md`.
+- Decisions get a new `DECISION-NN` entry in `docs/decisions.md`.

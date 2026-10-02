@@ -512,7 +512,7 @@ html.dark {
    layout.tsx. ppmondwest and Departure Mono have no Google Fonts
    source; layout.tsx wires them as font-family literals so they
    render if locally installed and gracefully fall back to the
-   declared system stack otherwise. See checkpoint-1.md.
+   declared system stack otherwise.
    ============================================================ */
 :root {
   /* Literal font-family defaults for the two proprietary faces that

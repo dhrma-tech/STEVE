@@ -83,9 +83,9 @@ Ordered by severity. Every item was seen in the code or repo, not assumed.
 6. **No automated tests, no CI.** There is no `*.test.*`, no Playwright/Vitest config and no `.github`. `pnpm verify` is typecheck plus lint only. Add unit tests for the runner, approval gate and session signing, and Playwright smoke tests for login → onboarding → canvas → task run.
 7. **Agent runtime never run live.** No recorded end-to-end run with real keys. Do a smoke test per department, then record the results.
 8. **Sandbox simulation still present.** `src/lib/queue/sandbox-execution.ts` still contains an artificial `setTimeout(1200)`, and tasks/roadmap still call `startAgentSession` from it. Confirm which code paths are real runs and which are still simulated, and remove the simulation.
-9. **Stale docs contradicting the code.** `MASTER_GAP_REPORT.md` still lists "real agent runtime" as open, and `PROJECT_STATUS_REPORT.md` is dated 2026-05-12. Refresh or archive them.
+9. ~~**Stale docs contradicting the code.**~~ Done 2026-10-02: old status and gap reports removed.
 10. **Build rewrites `next-env.d.ts`**, which breaks typecheck. Add `next-env.d.ts` handling to the build script or CI (`git checkout`), or gitignore it.
-11. **`login-bg.mp4.mp4`** has a double extension, and `public/business-plan (1).md` plus a stray extensionless `business-plan` are leftovers. Rename or delete them.
+11. ~~**Leftover public files.**~~ Done 2026-10-02: renamed to `login-bg.mp4`, removed the duplicate business plan.
 12. **Rate limiting** is absent everywhere (no matches for `rateLimit`). Add it to auth, AI, upload and agent-launch routes.
 13. **Cost and abuse controls for agents:** per-org token budget, per-run tool-call cap beyond the 20-turn loop, and a kill switch. `UsageRecord` exists, so enforce it before a run starts.
 

@@ -233,9 +233,8 @@ Expected but optional in sandbox:
 - Empty/loading/error components are part of the component registry after Execution Phase 2.
 
 ## Schema Freeze Rule
-`docs/database-schema.md` is frozen after this planning phase. Any future schema change must:
+Any schema change must:
 - Add a migration file.
-- Add a DECISIONS.md entry.
-- Update API spec if request/response shapes change.
-- Note the drift in SCRATCHPAD.md and the relevant checkpoint.
+- Add a `docs/decisions.md` entry.
+- Update `docs/architecture/api-reference.md` if request/response shapes change.
 

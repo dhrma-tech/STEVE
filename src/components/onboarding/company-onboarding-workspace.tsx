@@ -171,7 +171,7 @@ export function CompanyOnboardingWorkspace({ initialState, userName }: { initial
 
   return (
     <main className="relative z-[40] h-dvh overflow-hidden bg-black">
-      {/* Looping background video — replace /login-bg.mp4.mp4 with your own clip */}
+      {/* Looping background video — replace /onboarding.mp4 with your own clip */}
       <video
         autoPlay
         loop

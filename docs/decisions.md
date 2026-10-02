@@ -1,4 +1,4 @@
-# DECISIONS.md
+# Decision log
 
 - [DECISION-01] Use `C:\Users\ACER\OneDrive\Music\Documents\Playground\STEVE` as the product repository root - this is the cloned target repo requested by the user and it is currently empty.
 - [DECISION-02] Use source confidence precedence [VERIFIED] > [OBSERVED] > [INFERRED] > [UNKNOWN] - the documents explicitly label evidence and the precision gap-fill corrects earlier reports.

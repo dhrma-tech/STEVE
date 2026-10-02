@@ -1,34 +1,51 @@
-# STEVE Cofounder Build
+# STEVE
 
-This repository is the Cofounder.co-style product build requested from the four source-note documents. The notes are treated as source of truth; `docs/implementation-plan.md` is the execution law.
+An AI company operating system. A founder describes an idea, STEVE generates a business plan and brand kit, and a team of department agents (engineering, marketing, sales, and more) plans and executes the work on a live canvas, with approvals, budgets and a full audit trail.
 
-## Current Status
-- Phase 0: deep read complete.
-- Phase 1: planning docs complete.
-- Execution Phase 1: project setup in progress.
+Built with Next.js (App Router), TypeScript, Tailwind, Prisma on Postgres, pg-boss and the Claude API.
 
-## Local Setup
+## Getting started
 
 ```bash
 pnpm install
-copy .env.example .env
+cp .env.example .env      # fill in the values you need
+pnpm db:local             # optional: local Postgres in .pgdata/
 pnpm db:generate
 pnpm db:migrate
 pnpm db:seed
-pnpm dev
+pnpm dev                  # app on http://localhost:3000
+pnpm worker               # agent job worker (separate terminal)
 ```
 
-## Verification
+## Scripts
 
-```bash
-pnpm typecheck
-pnpm lint
+| Command | What it does |
+|---|---|
+| `pnpm dev` / `build` / `start` | Next.js dev server, production build, production server |
+| `pnpm worker` | Runs the agent job worker |
+| `pnpm verify` | Typecheck + lint + tests (what CI runs) |
+| `pnpm typecheck` · `lint` · `test` | Individual checks |
+| `pnpm eval` / `eval:live` | Agent evals (scripted / against the real API) |
+| `pnpm db:migrate` · `db:seed` · `db:backup` | Database migrations, seed data, backup |
+| `pnpm secrets:rotate` | Re-encrypt stored credentials with a new master key |
+
+## Project structure
+
+```
+src/
+  app/          Routes: (marketing), (auth), org/[orgId]/…, api/
+  components/   UI grouped by feature (canvas, agents, chat, mission, settings…); ui/ holds primitives
+  lib/          Domain logic by feature (agents, ai, automations, security, observability…)
+  data/         Static seed/config data (departments, agents)
+  styles/       tokens.css, animations.css, motion.css, globals.css
+  worker/       Agent job worker entry point
+prisma/         Schema, migrations, seed
+scripts/        DB, eval and secrets tooling
+tests/          Test DB setup
+docs/           Product, architecture, design and ops docs
+public/         Static media
 ```
 
-## Persistent Build Files
-- `SCRATCHPAD.md`
-- `OPEN-QUESTIONS.md`
-- `DECISIONS.md`
-- `checkpoint-*.md`
-- `docs/`
+## Documentation
 
+See [docs/README.md](docs/README.md).

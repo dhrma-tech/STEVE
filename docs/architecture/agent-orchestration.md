@@ -1,7 +1,7 @@
 # STEVE — Multi-Agent Orchestration Plan (v2)
 
-> Created: 2026-09-29 · Status: proposed, not started
-> Supersedes the "what's next" part of `MULTI-AGENT-PLAN.md` (phases 1–8 of that plan are built; this plan makes them a *system*).
+> Created: 2026-09-29 · Status: phases 0–10 built (2026-10-01); open items are listed in each phase's notes in §12.
+> Builds on the earlier v1 plan (model router, tools, agent runner, streaming, approvals, orchestration, real-time UI, memory), which is complete and now retired.
 > Audience: founders and managers who delegate company work to AI agents and stay in control.
 
 ---
@@ -329,7 +329,7 @@ Runs end by calling a `finish_run` tool with this shape (validated by Zod). Plai
 
 ## 11. Sequencing, milestones, and decisions
 
-**Critical path:** 0 → 1 → 2 → 3 → 4 → 5. Phases 6, 7, 8 can partly overlap after Phase 3. Phases 9–10 follow. We work **one phase at a time**: implement, verify (typecheck, lint, tests, build), record in `CHANGES.md`, then stop for review before the next phase.
+**Critical path:** 0 → 1 → 2 → 3 → 4 → 5. Phases 6, 7, 8 can partly overlap after Phase 3. Phases 9–10 follow. We work **one phase at a time**: implement, verify (typecheck, lint, tests, build), record in §12, then stop for review before the next phase.
 
 | Milestone | Phases | What you can show |
 |---|---|---|

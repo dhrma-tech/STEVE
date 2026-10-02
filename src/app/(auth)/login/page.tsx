@@ -26,7 +26,7 @@ export default async function LoginPage() {
         preload="auto"
         className="absolute inset-0 h-full w-full object-cover"
       >
-        <source src="/login-bg.mp4.mp4" type="video/mp4" />
+        <source src="/login-bg.mp4" type="video/mp4" />
       </video>
       {/* Overlay to keep card readable */}
       <div className="absolute inset-0 bg-black/40" />

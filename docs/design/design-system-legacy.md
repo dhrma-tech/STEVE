@@ -4,7 +4,7 @@
 - Marketing site: warm, editorial, nostalgic, precise. Pixel art carries color and emotion; layout stays calm and readable.
 - App: dark, focused, spatial, mission-control style. Dense but organized, with practical controls and clear status.
 - Assets: create original artwork inspired by the described patterns. Do not copy exact Cofounder imagery, wordmark, or proprietary fonts.
-- Components must be reusable and registered in `REGISTRY.md` after Execution Phase 2.
+- Components must be reusable; check `src/components/ui/` before creating a new primitive.
 - Cards are for repeated items, modals, and framed tools. Page sections are not nested card stacks.
 
 ## Source Precedence
